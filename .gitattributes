@@ -1,0 +1,20 @@
+# 모든 텍스트 파일은 LF 고정
+* text=auto eol=lf
+
+# 확실하게 강제할 파일 확장자 지정
+*.java   text eol=lf
+*.js     text eol=lf
+*.ts     text eol=lf
+*.css    text eol=lf
+*.html   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.md     text eol=lf
+
+# 바이너리 파일은 변환 금지
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
