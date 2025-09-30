@@ -1,22 +1,24 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
-// 'auth' 스토어 정의
 export const useAuthStore = defineStore('auth', () => {
-  // State: 현재 사용자 정보 (null이면 로그아웃 상태)
+  // State
   const user = ref(null);
 
-  // Getters: 상태를 기반으로 계산되는 값들
+  // Getters
   const isLoggedIn = computed(() => !!user.value);
-  const isAdmin = computed(() => user.value?.role === 'admin');
-  const isStoreOwner = computed(() => user.value?.role === 'store_owner');
+  const isSuperAdmin = computed(() => user.value?.role === 'super_admin');
+  const isSubAdmin = computed(() => user.value?.role === 'sub_admin');
+  const isStoreManager = computed(() => user.value?.role === 'store_manager');
 
-  // Actions: 상태를 변경하는 함수들
+  // Actions
   function login(role) {
-    if (role === 'admin') {
-      user.value = { name: '관리자', role: 'admin' };
-    } else if (role === 'store_owner') {
-      user.value = { name: '최민성 (강남점)', role: 'store_owner' };
+    if (role === 'super_admin') {
+      user.value = { id: 1, name: '총괄 관리자', role: 'super_admin' };
+    } else if (role === 'sub_admin') {
+      user.value = { id: 2, name: '부관리자', role: 'sub_admin' };
+    } else if (role === 'store_manager') {
+      user.value = { id: 3, name: 'HypeLink 강남점', role: 'store_manager' };
     }
   }
 
@@ -24,6 +26,5 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null;
   }
 
-  // 스토어에서 사용할 state, getters, actions를 반환
-  return { user, isLoggedIn, isAdmin, isStoreOwner, login, logout };
+  return { user, isLoggedIn, isSuperAdmin, isSubAdmin, isStoreManager, login, logout };
 });

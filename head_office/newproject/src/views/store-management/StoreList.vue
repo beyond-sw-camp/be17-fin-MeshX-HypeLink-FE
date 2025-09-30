@@ -35,6 +35,6 @@
 import { useAuthStore } from '@/stores/auth';
 import BaseCard from '@/components/BaseCard.vue';
 defineProps({ stores: Array });
-const emit = defineEmits(['add-store']);
+const emit = defineEmits(['add-store', 'download-pdf']);
 const authStore = useAuthStore();
 </script>
