@@ -27,6 +27,7 @@
 </template>
 
 <script>
+
 import { onMounted, computed } from 'vue'
 import { useStore } from 'vuex'
 import Scrollbar from 'smooth-scrollbar'
