@@ -1,0 +1,80 @@
+/* 1. 변수 및 기본 설정 */
+:root {
+  --bs-font-sans-serif: 'Inter', sans-serif;
+  --bs-body-bg: #f8f9fa; // 전체 페이지 배경색
+  --sidebar-width: 260px;
+  --bs-primary: #0d6efd;
+  --bs-primary-rgb: 13, 110, 253;
+}
+
+body {
+  margin: 0;
+  font-family: var(--bs-font-sans-serif);
+  background-color: var(--bs-body-bg);
+}
+
+/* 2. 카드 및 버튼 등 전역 컴포넌트 스타일 */
+.card {
+  border: none; // 테두리 제거
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05); // 그림자 효과
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+}
+
+.card-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 1rem 1.5rem;
+  // 카드 헤더에 얇은 하단 테두리 액센트 추가
+  border-bottom: 2px solid var(--bs-primary);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.btn {
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+  &:hover {
+    transform: translateY(-2px); // 버튼 호버 시 살짝 위로 이동
+    box-shadow: 0 0.5rem 1rem rgba(var(--bs-primary-rgb), 0.25);
+  }
+}
+
+/* 3. 접히는 사이드바를 위한 전역 스타일 */
+.sidebar-collapsed .sidebar {
+  margin-left: calc(-1 * var(--sidebar-width));
+}
+
+/* 4. 추가된 디자인 디테일 */
+
+// 4.1 페이지 전환 애니메이션
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+// 4.2 테이블 행 호버 효과
+.table-hover > tbody > tr:hover > * {
+  background-color: #f0f5ff;
+  cursor: pointer;
+}
+
+// 4.3 폼 입력창 스타일 개선
+.form-control {
+  border: 1px solid #dee2e6;
+  transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+  &:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+  }
+}
