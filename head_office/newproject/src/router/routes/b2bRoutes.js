@@ -2,22 +2,56 @@ const b2bRoutes = [
   {
     path: '/stores',
     name: 'stores',
-    component: () => import('@/views/StoreManagementView.vue')
+    component: () => import('@/views/StoreManagementView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin'] }
   },
   {
     path: '/inventory',
     name: 'inventory',
-    component: () => import('@/views/InventoryManagementView.vue')
+    component: () => import('@/views/InventoryManagementView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin', 'store_manager'] }
   },
   {
     path: '/sales',
     name: 'sales',
-    component: () => import('@/views/SalesManagementView.vue')
+    component: () => import('@/views/SalesManagementView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin', 'store_manager'] }
   },
   {
     path: '/pos-support',
     name: 'pos-support',
-    component: () => import('@/views/POSSupportView.vue')
+    component: () => import('@/views/POSSupportView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin', 'store_manager'] }
+  },
+  {
+    path: '/promotions',
+    name: 'promotions',
+    component: () => import('@/views/PromotionManagementView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin'] }
+  },
+  {
+    path: '/promotions/:id',
+    name: 'promotion-detail',
+    component: () => import('@/views/PromotionDetailView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin'] }
+  },
+  {
+    path: '/products',
+    name: 'products',
+    component: () => import('@/views/ProductManagementView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin'] }
+  },
+  {
+    path: '/warehouse-inventory',
+    name: 'warehouse-inventory',
+    component: () => import('@/views/WarehouseInventoryView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin'] }
+  },
+  {
+    path: '/purchase-orders',
+    name: 'purchase-orders',
+    component: () => import('@/views/PurchaseOrderView.vue'),
+    meta: { roles: ['super_admin', 'sub_admin', 'store_manager'] }
   }
 ];
 

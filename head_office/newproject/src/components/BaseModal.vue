@@ -30,6 +30,22 @@ const props = defineProps({ modelValue: Boolean });
 const emit = defineEmits(['update:modelValue']);
 
 const modalRef = ref(null);
+let modalInstance = null; // Bootstrap Modal 인스턴스
+
+onMounted(() => {
+  // 컴포넌트 마운트 시 Bootstrap Modal 인스턴스 생성
+  modalInstance = new Modal(modalRef.value);
+
+  // Bootstrap 모달이 닫힐 때 Vue의 modelValue를 업데이트하기 위한 이벤트 리스너
+  modalRef.value.addEventListener('hidden.bs.modal', () => {
+    emit('update:modelValue', false);
+  });
+
+  // 초기 로드 시 modelValue가 false이면 모달을 숨김
+  if (!props.modelValue) {
+    modalInstance.hide();
+  }
+});
 
 const closeModal = () => {
   emit('update:modelValue', false);
@@ -37,11 +53,6 @@ const closeModal = () => {
 
 // modelValue(v-model)의 변경을 감지하여 모달을 열고 닫습니다.
 watch(() => props.modelValue, (newValue) => {
-  if (!modalRef.value) return;
-  
-  // 항상 최신 상태의 모달 인스턴스를 가져오거나 생성합니다. (더 안정적인 방식)
-  const modalInstance = Modal.getOrCreateInstance(modalRef.value);
-
   if (newValue) {
     modalInstance.show();
   } else {

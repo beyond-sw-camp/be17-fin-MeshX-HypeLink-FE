@@ -11,7 +11,7 @@
     </div>
 
     <!-- 관리자용 화면 -->
-    <div v-if="authStore.isAdmin">
+    <div v-if="authStore.isSuperAdmin || authStore.isSubAdmin">
       <POSReportList 
         title="전체 POS 신고 접수 현황" 
         :reports="reports" 
