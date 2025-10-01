@@ -12,6 +12,7 @@ const props = defineProps({
     default: '번호를 입력하세요'
   },
   maxLength: {
+
     type: Number,
     default: 11
   }
