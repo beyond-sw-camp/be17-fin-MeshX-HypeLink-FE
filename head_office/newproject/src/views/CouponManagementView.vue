@@ -72,7 +72,9 @@ const formatValue = (type, value) => {
       <template #header>
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0">쿠폰 관리</h5>
-          <button v-if="authStore.isAdmin || authStore.isSubAdmin" class="btn btn-primary btn-sm" @click="openCouponModal">+ 새 쿠폰 생성</button>
+          <div class="d-flex">
+            <button v-if="authStore.isSuperAdmin || authStore.isSubAdmin" class="btn btn-primary btn-sm" @click="openCouponModal">+ 새 쿠폰 생성</button>
+          </div>
         </div>
       </template>
 
@@ -96,7 +98,7 @@ const formatValue = (type, value) => {
               <td>{{ formatValue(coupon.type, coupon.value) }}</td>
               <td>{{ coupon.expiryDate }}</td>
               <td>
-                <button v-if="authStore.isAdmin || authStore.isSubAdmin" class="btn btn-sm btn-danger" @click="deleteCoupon(coupon.id)">삭제</button>
+                <button v-if="authStore.isSuperAdmin || authStore.isSubAdmin" class="btn btn-sm btn-danger" @click="deleteCoupon(coupon.id)">삭제</button>
               </td>
             </tr>
           </tbody>

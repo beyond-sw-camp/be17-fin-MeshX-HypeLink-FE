@@ -21,6 +21,7 @@
     "@vuelidate/validators": "^2.0.0-alpha.29",
     "aos": "^2.3.4",
     "apexcharts": "^3.35.2",
+    "axios": "^1.12.2",
     "bootstrap": "^5.2.3",
     "bootstrap-vue-3": "^0.2.8",
     "core-js": "^3.6.5",
