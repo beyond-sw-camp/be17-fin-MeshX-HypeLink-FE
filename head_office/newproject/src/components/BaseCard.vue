@@ -1,3 +1,12 @@
+<script setup>
+import { useSlots, computed } from 'vue';
+
+const slots = useSlots();
+
+const hasHeaderSlot = computed(() => !!slots.header);
+const hasFooterSlot = computed(() => !!slots.footer);
+</script>
+
 <template>
   <div class="card">
     <div v-if="hasHeaderSlot" class="card-header">
@@ -11,15 +20,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { useSlots, computed } from 'vue';
-
-const slots = useSlots();
-
-const hasHeaderSlot = computed(() => !!slots.header);
-const hasFooterSlot = computed(() => !!slots.footer);
-</script>
 
 <style scoped>
 .card {

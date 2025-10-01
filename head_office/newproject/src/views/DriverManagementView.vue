@@ -1,3 +1,127 @@
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue';
+import BaseCard from '@/components/BaseCard.vue';
+import draggable from 'vuedraggable';
+import BaseModal from '@/components/BaseModal.vue';
+import BaseSpinner from '@/components/BaseSpinner.vue';
+import BaseEmptyState from '@/components/BaseEmptyState.vue';
+import SortIcon from '@/components/SortIcon.vue';
+import { useToastStore } from '@/stores/toast';
+import { useModalStore } from '@/stores/modal';
+import { useDriverStore } from '@/stores/drivers';
+
+const toastStore = useToastStore();
+const modalStore = useModalStore();
+const driverStore = useDriverStore();
+
+const isLoading = ref(true);
+
+const regions = ref([
+  '서울/경기', '강원', '충청', '경상', '전라', '제주'
+]);
+
+const isAddDriverModalOpen = ref(false);
+const formSubmitted = ref(false);
+const newDriver = reactive({ name: '', phone: '', region: '' });
+
+// 검색, 필터, 정렬, 페이지네이션 상태
+const searchTerm = ref('');
+const sortKey = ref('name');
+const sortOrder = ref('asc');
+const currentPage = ref(1);
+const itemsPerPage = ref(5);
+
+// --- 데이터 로딩 시뮬레이션 ---
+onMounted(() => {
+  setTimeout(() => {
+    isLoading.value = false;
+  }, 500);
+});
+
+// --- 검색, 필터링, 정렬 로직 ---
+const filteredAndSortedDrivers = computed(() => {
+  let drivers = [...driverStore.allDrivers];
+
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase();
+    drivers = drivers.filter(driver => 
+      driver.name.toLowerCase().includes(term) || 
+      driver.phone.toLowerCase().includes(term) ||
+      driver.region.toLowerCase().includes(term)
+    );
+  }
+
+  if (sortKey.value) {
+    drivers.sort((a, b) => {
+      const valA = a[sortKey.value];
+      const valB = b[sortKey.value];
+      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  return drivers;
+});
+
+// --- 페이지네이션 로직 ---
+const paginatedDrivers = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredAndSortedDrivers.value.slice(start, end);
+});
+
+const totalPages = computed(() => Math.ceil(filteredAndSortedDrivers.value.length / itemsPerPage.value));
+
+// --- 이벤트 핸들러 ---
+const updatePage = (page) => { 
+  if (page > 0 && page <= totalPages.value) {
+    currentPage.value = page; 
+  }
+};
+
+const handleDriverDrop = (store, event) => {
+  const droppedDriverId = event.item.dataset.id;
+  const droppedDriver = driverStore.allDrivers.find(d => d.id == droppedDriverId) || 
+                      driverStore.stores.flatMap(s => s.drivers).find(d => d.id == droppedDriverId);
+
+  if (!droppedDriver) return;
+
+  driverStore.assignDriverToStore(droppedDriver, store);
+  toastStore.showToast(`${droppedDriver.name} 기사가 ${store.name}에 배정되었습니다.`, 'success');
+};
+
+const unassignDriver = (store, driver) => {
+  driverStore.unassignDriver(store, driver);
+  toastStore.showToast(`${driver.name} 기사가 ${store.name}에서 해제되었습니다.`, 'info');
+};
+
+const addDriver = () => {
+  formSubmitted.value = true;
+  if (!newDriver.name || !newDriver.phone || !newDriver.region) {
+    toastStore.showToast('이름, 연락처, 담당 지역은 필수입니다.', 'danger');
+    return;
+  }
+  driverStore.addDriver(newDriver);
+  toastStore.showToast('새 기사가 추가되었습니다.', 'success');
+  Object.assign(newDriver, { name: '', phone: '', region: '' });
+  isAddDriverModalOpen.value = false;
+};
+
+const deleteDriver = async (id) => {
+  const confirmed = await modalStore.show({
+    title: '삭제 확인',
+    message: '정말 이 기사를 삭제하시겠습니까?',
+    isConfirmation: true,
+  });
+
+  if (confirmed) {
+    driverStore.deleteDriver(id);
+    toastStore.showToast('기사가 삭제되었습니다.', 'success');
+  }
+};
+</script>
+
 <template>
   <div>
     <div class="alert alert-info">'기사 목록'의 기사를 드래그하여 오른쪽 '직영점 목록'의 매장 위로 옮겨 배정할 수 있습니다.</div>
@@ -8,28 +132,50 @@
           <template #header>
             <div class="d-flex justify-content-between align-items-center">
               <h5 class="mb-0">배송 기사 목록</h5>
-              <button class="btn btn-primary btn-sm" @click="isAddDriverModalOpen = true">+ 기사 추가</button>
+              <div class="d-flex">
+                <input type="text" class="form-control form-control-sm me-2" placeholder="기사명/지역 검색" v-model="searchTerm">
+                <button class="btn btn-primary btn-sm" @click="isAddDriverModalOpen = true">+ 기사 추가</button>
+              </div>
             </div>
           </template>
-          <draggable 
-            v-model="drivers"
-            group="drivers"
-            item-key="id"
-            class="list-group"
-          >
-            <template #item="{element}">
-              <div class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 class="mb-0">{{ element.name }}</h6>
-                  <small class="text-muted">{{ element.phone }}</small>
+          
+          <div v-if="paginatedDrivers.length > 0">
+            <draggable 
+              :list="paginatedDrivers"
+              group="drivers"
+              item-key="id"
+              class="list-group"
+            >
+              <template #item="{element}">
+                <div class="list-group-item d-flex justify-content-between align-items-center" :data-id="element.id">
+                  <div>
+                    <h6 class="mb-0">{{ element.name }}</h6>
+                    <small class="text-muted">{{ element.phone }}</small>
+                  </div>
+                  <div>
+                    <span class="badge bg-primary rounded-pill me-2">{{ element.region }}</span>
+                    <button class="btn btn-sm btn-danger py-0 px-1" @click="deleteDriver(element.id)">X</button>
+                  </div>
                 </div>
-                <div>
-                  <span class="badge bg-primary rounded-pill me-2">{{ element.region }}</span>
-                  <button class="btn btn-sm btn-danger py-0 px-1" @click="deleteDriver(element.id)">X</button>
-                </div>
-              </div>
-            </template>
-          </draggable>
+              </template>
+            </draggable>
+
+            <!-- 페이지네이션 -->
+            <nav v-if="totalPages > 1">
+              <ul class="pagination justify-content-center mt-3">
+                <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                  <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
+                </li>
+                <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
+                  <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+                </li>
+                <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                  <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+          <BaseEmptyState v-else message="조회된 기사가 없습니다." />
         </BaseCard>
       </div>
 
@@ -38,7 +184,7 @@
         <BaseCard>
           <template #header><h5>직영점 목록</h5></template>
           <div class="list-group">
-            <div v-for="store in stores" :key="store.id" class="list-group-item">
+            <div v-for="store in driverStore.stores" :key="store.id" class="list-group-item">
               <h6 class="mb-1">{{ store.name }}</h6>
               <small class="text-muted">{{ store.address }}</small>
               <draggable
@@ -69,19 +215,22 @@
       <template #header><h5>새 배송 기사 추가</h5></template>
       <form @submit.prevent="addDriver">
         <div class="mb-3">
-          <label class="form-label">이름</label>
-          <input type="text" class="form-control" v-model="newDriver.name">
+          <label class="form-label">이름 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" v-model="newDriver.name" :class="{ 'is-invalid': !newDriver.name && formSubmitted }">
+          <div class="invalid-feedback">이름은 필수입니다.</div>
         </div>
         <div class="mb-3">
-          <label class="form-label">연락처</label>
-          <input type="text" class="form-control" v-model="newDriver.phone">
+          <label class="form-label">연락처 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" v-model="newDriver.phone" :class="{ 'is-invalid': !newDriver.phone && formSubmitted }">
+          <div class="invalid-feedback">연락처는 필수입니다.</div>
         </div>
         <div class="mb-3">
-          <label class="form-label">담당 지역</label>
-          <select class="form-select" v-model="newDriver.region">
+          <label class="form-label">담당 지역 <span class="text-danger">*</span></label>
+          <select class="form-select" v-model="newDriver.region" :class="{ 'is-invalid': !newDriver.region && formSubmitted }">
             <option disabled value="">지역 선택</option>
             <option v-for="region in regions" :key="region" :value="region">{{ region }}</option>
           </select>
+          <div class="invalid-feedback">담당 지역을 선택해주세요.</div>
         </div>
       </form>
       <template #footer>
@@ -89,69 +238,10 @@
         <button type="button" class="btn btn-primary" @click="addDriver">추가하기</button>
       </template>
     </BaseModal>
+
+    <BaseSpinner v-if="isLoading" height="200px" />
   </div>
 </template>
-
-<script setup>
-import { ref, reactive, onMounted } from 'vue';
-import BaseCard from '@/components/BaseCard.vue';
-import draggable from 'vuedraggable';
-import BaseModal from '@/components/BaseModal.vue';
-
-const drivers = ref([
-  { id: 1, name: '김기사', phone: '010-1111-1111', region: '서울/경기' },
-  { id: 2, name: '이기사', phone: '010-2222-2222', region: '서울/경기' },
-  { id: 3, name: '박기사', phone: '010-3333-3333', region: '부산/경남' },
-  { id: 4, name: '최기사', phone: '010-4444-4444', region: '제주' },
-]);
-
-const stores = ref([
-  { id: 1, name: 'HypeLink 강남점', address: '서울시 강남구 테헤란로', drivers: [] },
-  { id: 2, name: 'HypeLink 홍대점', address: '서울시 마포구 양화로', drivers: [] },
-  { id: 3, name: 'HypeLink 부산점', address: '부산시 해운대구', drivers: [] },
-  { id: 4, name: 'HypeLink 제주점', address: '제주시 첨단로', drivers: [] },
-]);
-
-const regions = ref([
-  '서울/경기', '강원', '충청', '경상', '전라', '제주'
-]);
-
-onMounted(() => {
-  console.log('Regions data:', regions.value);
-});
-
-const isAddDriverModalOpen = ref(false);
-const newDriver = reactive({ name: '', phone: '', region: '' });
-
-const handleDriverDrop = (store, event) => {
-  if (store.drivers.length > 1) {
-    const droppedDriver = event.item.__draggable_context.element;
-    drivers.value.push(store.drivers.find(d => d.id !== droppedDriver.id));
-    store.drivers = [droppedDriver];
-  }
-};
-
-const unassignDriver = (store, driver) => {
-  store.drivers = [];
-  drivers.value.push(driver);
-};
-
-const addDriver = () => {
-  if (!newDriver.name || !newDriver.phone) {
-    alert('이름과 연락처는 필수입니다.');
-    return;
-  }
-  drivers.value.push({ id: drivers.value.length + 1, ...newDriver });
-  Object.assign(newDriver, { name: '', phone: '', region: '' });
-  isAddDriverModalOpen.value = false;
-};
-
-const deleteDriver = (id) => {
-  if (confirm('정말 이 기사를 삭제하시겠습니까?')) {
-    drivers.value = drivers.value.filter(driver => driver.id !== id);
-  }
-};
-</script>
 
 <style scoped>
 .drop-zone {

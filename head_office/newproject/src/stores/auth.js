@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!user.value);
   const isSuperAdmin = computed(() => user.value?.role === 'super_admin');
   const isSubAdmin = computed(() => user.value?.role === 'sub_admin');
+  const isAdmin = computed(() => isSuperAdmin.value || isSubAdmin.value);
   const isStoreManager = computed(() => user.value?.role === 'store_manager');
 
   // Actions

@@ -7,7 +7,7 @@ export const usePermissionStore = defineStore('permissions', () => {
     'dashboard', 'stores', 'my-store', 'inventory', 
     'sales', 'pos-support', 'promotions', 'tracking', 'customer-analytics', 
     'pos-health', 'drivers', 'users', 'roles', 'announcements', 'messenger',
-    'products', 'warehouse-inventory', 'purchase-orders'
+    'products', 'warehouse-inventory', 'purchase-orders', 'announcement-detail'
   ];
 
   // 역할별 접근 가능한 라우트 이름 목록 (기본값)

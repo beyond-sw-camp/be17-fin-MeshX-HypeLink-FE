@@ -1,3 +1,22 @@
+<script setup>
+import { reactive } from 'vue';
+import BaseCard from '@/components/BaseCard.vue';
+
+const props = defineProps({ storeName: String });
+const emit = defineEmits(['submit-report']);
+
+const form = reactive({
+  issueType: '',
+  description: ''
+});
+
+const submitReport = () => {
+  emit('submit-report', { ...form });
+  form.issueType = '';
+  form.description = '';
+};
+</script>
+
 <template>
   <BaseCard>
     <template #header><h5>POS 기기 문제 신고</h5></template>
@@ -26,22 +45,3 @@
     </form>
   </BaseCard>
 </template>
-
-<script setup>
-import { reactive } from 'vue';
-import BaseCard from '@/components/BaseCard.vue';
-
-const props = defineProps({ storeName: String });
-const emit = defineEmits(['submit-report']);
-
-const form = reactive({
-  issueType: '',
-  description: ''
-});
-
-const submitReport = () => {
-  emit('submit-report', { ...form });
-  form.issueType = '';
-  form.description = '';
-};
-</script>

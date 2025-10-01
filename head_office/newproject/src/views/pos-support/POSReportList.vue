@@ -1,3 +1,22 @@
+<script setup>
+import BaseCard from '@/components/BaseCard.vue';
+
+defineProps({
+  title: String,
+  reports: Array,
+  isAdmin: Boolean
+});
+const emit = defineEmits(['assign-tech', 'change-status']);
+
+const statusClass = (status) => {
+  if (status === '접수완료') return 'bg-info';
+  if (status === '처리중') return 'bg-warning';
+  if (status === '부품요청') return 'bg-danger';
+  if (status === '처리완료') return 'bg-success';
+  return 'bg-secondary';
+};
+</script>
+
 <template>
   <BaseCard>
     <template #header><h5>{{ title }}</h5></template>
@@ -28,22 +47,3 @@
     </table>
   </BaseCard>
 </template>
-
-<script setup>
-import BaseCard from '@/components/BaseCard.vue';
-
-defineProps({
-  title: String,
-  reports: Array,
-  isAdmin: Boolean
-});
-const emit = defineEmits(['assign-tech', 'change-status']);
-
-const statusClass = (status) => {
-  if (status === '접수완료') return 'bg-info';
-  if (status === '처리중') return 'bg-warning';
-  if (status === '부품요청') return 'bg-danger';
-  if (status === '처리완료') return 'bg-success';
-  return 'bg-secondary';
-};
-</script>

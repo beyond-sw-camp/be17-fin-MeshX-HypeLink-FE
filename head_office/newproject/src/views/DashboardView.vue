@@ -1,3 +1,12 @@
+<script setup>
+import { useAuthStore } from '@/stores/auth';
+import AdminDashboard from './dashboard/AdminDashboard.vue';
+import StoreOwnerDashboard from './dashboard/StoreOwnerDashboard.vue';
+import BaseCard from '@/components/BaseCard.vue';
+
+const authStore = useAuthStore();
+</script>
+
 <template>
   <div>
     <!-- 관리자일 경우 AdminDashboard를 보여줌 -->
@@ -15,12 +24,3 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { useAuthStore } from '@/stores/auth';
-import AdminDashboard from './dashboard/AdminDashboard.vue';
-import StoreOwnerDashboard from './dashboard/StoreOwnerDashboard.vue';
-import BaseCard from '@/components/BaseCard.vue';
-
-const authStore = useAuthStore();
-</script>

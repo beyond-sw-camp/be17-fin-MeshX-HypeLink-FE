@@ -1,3 +1,22 @@
+<script setup>
+import { ref } from 'vue';
+import KpiCard from './KpiCard.vue';
+import PosStatusChart from './PosStatusChart.vue';
+import SalesChartCard from './SalesChartCard.vue';
+
+const salesChart = ref({
+  series: [{
+    name: '매출',
+    data: [30, 40, 45, 50, 49, 60, 70, 91],
+  }],
+  chartOptions: {
+    chart: { id: 'admin-sales-chart', toolbar: { show: false } },
+    xaxis: { categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'] },
+    colors: ['#0d6efd']
+  }
+});
+</script>
+
 <template>
   <div class="row">
     <div class="col-md-3">
@@ -30,22 +49,3 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref } from 'vue';
-import KpiCard from './KpiCard.vue';
-import PosStatusChart from './PosStatusChart.vue';
-import SalesChartCard from './SalesChartCard.vue';
-
-const salesChart = ref({
-  series: [{
-    name: '매출',
-    data: [30, 40, 45, 50, 49, 60, 70, 91],
-  }],
-  chartOptions: {
-    chart: { id: 'admin-sales-chart', toolbar: { show: false } },
-    xaxis: { categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'] },
-    colors: ['#0d6efd']
-  }
-});
-</script>

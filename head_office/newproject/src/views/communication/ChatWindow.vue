@@ -1,3 +1,23 @@
+<script setup>
+import { ref } from 'vue';
+import BaseCard from '@/components/BaseCard.vue';
+
+const props = defineProps({ 
+  currentUser: Object,
+  chatPartner: Object, 
+  messages: Array 
+});
+const emit = defineEmits(['send-message']);
+
+const newMessage = ref('');
+
+const onSend = () => {
+  if (!newMessage.value.trim()) return;
+  emit('send-message', newMessage.value);
+  newMessage.value = '';
+};
+</script>
+
 <template>
   <BaseCard class="d-flex flex-column h-100">
     <template #header><h5>{{ chatPartner?.name || '대화 상대를 선택하세요' }}</h5></template>
@@ -19,26 +39,6 @@
     </div>
   </BaseCard>
 </template>
-
-<script setup>
-import { ref } from 'vue';
-import BaseCard from '@/components/BaseCard.vue';
-
-const props = defineProps({ 
-  currentUser: Object,
-  chatPartner: Object, 
-  messages: Array 
-});
-const emit = defineEmits(['send-message']);
-
-const newMessage = ref('');
-
-const onSend = () => {
-  if (!newMessage.value.trim()) return;
-  emit('send-message', newMessage.value);
-  newMessage.value = '';
-};
-</script>
 
 <style scoped>
 .chat-body {
