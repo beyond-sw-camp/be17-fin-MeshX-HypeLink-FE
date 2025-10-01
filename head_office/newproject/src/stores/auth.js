@@ -7,10 +7,22 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Getters
   const isLoggedIn = computed(() => !!user.value);
-  const isSuperAdmin = computed(() => user.value?.role === 'super_admin');
-  const isSubAdmin = computed(() => user.value?.role === 'sub_admin');
-  const isAdmin = computed(() => isSuperAdmin.value || isSubAdmin.value);
-  const isStoreManager = computed(() => user.value?.role === 'store_manager');
+  const isSuperAdmin = computed(() => {
+    const result = user.value?.role === 'super_admin';
+    console.log("[Auth Store] isSuperAdmin computed:", result, "for user:", user.value?.role);
+    return result;
+  });
+  const isSubAdmin = computed(() => {
+    const result = user.value?.role === 'sub_admin';
+    console.log("[Auth Store] isSubAdmin computed:", result, "for user:", user.value?.role);
+    return result;
+  });
+  
+  const isStoreManager = computed(() => {
+    const result = user.value?.role === 'store_manager';
+    console.log("[Auth Store] isStoreManager computed:", result, "for user:", user.value?.role);
+    return result;
+  });
 
   // Actions
   function login(role) {

@@ -9,18 +9,12 @@ const modalRef = ref(null);
 let modalInstance = null; // Bootstrap Modal 인스턴스
 
 onMounted(() => {
-  // 컴포넌트 마운트 시 Bootstrap Modal 인스턴스 생성
   modalInstance = new Modal(modalRef.value);
 
   // Bootstrap 모달이 닫힐 때 Vue의 modelValue를 업데이트하기 위한 이벤트 리스너
   modalRef.value.addEventListener('hidden.bs.modal', () => {
     emit('update:modelValue', false);
   });
-
-  // 초기 로드 시 modelValue가 false이면 모달을 숨김
-  if (!props.modelValue) {
-    modalInstance.hide();
-  }
 });
 
 const closeModal = () => {
