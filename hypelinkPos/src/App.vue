@@ -4,7 +4,7 @@ import { RouterView } from 'vue-router'
 import Sidebar from './components/Sidebar.vue'
 import TopHeader from './components/TopHeader.vue'
 
-const isSidebarOpen = ref(true)
+const isSidebarOpen = ref(false)
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value

@@ -7,6 +7,7 @@ import { useMembershipStore } from '@/stores/membership'
 import { useCouponsStore } from '@/stores/coupons'
 import PaymentModal from '@/components/PaymentModal.vue'
 import NumberKeypad from '@/components/NumberKeypad.vue'
+import TextKeypad from '@/components/TextKeypad.vue'
 
 const productsStore = useProductsStore()
 const ordersStore = useOrdersStore()
@@ -119,6 +120,7 @@ const newMemberPhone = ref('')
 const newMemberBirthdate = ref('')
 const showPhoneKeypad = ref(false)
 const showRegisterPhoneKeypad = ref(false)
+const showNameKeypad = ref(false)
 
 const openPhoneKeypad = () => {
   showPhoneKeypad.value = true
@@ -170,6 +172,15 @@ const openRegisterPhoneKeypad = () => {
 const confirmRegisterPhone = (phone) => {
   newMemberPhone.value = phone
   showRegisterPhoneKeypad.value = false
+}
+
+const openNameKeypad = () => {
+  showNameKeypad.value = true
+}
+
+const confirmNameInput = (name) => {
+  newMemberName.value = name
+  showNameKeypad.value = false
 }
 
 const registerMember = () => {
@@ -766,7 +777,7 @@ onUnmounted(() => {
 
     <!-- Membership Register Modal -->
     <div v-if="showMembershipRegisterModal" class="modal-overlay">
-      <div class="modal-content" @click.stop>
+      <div class="membership-register-modal" @click.stop>
         <div class="modal-header">
           <h2>멤버십 가입</h2>
           <button class="close-btn" @click="showMembershipRegisterModal = false">✕</button>
@@ -780,6 +791,8 @@ onUnmounted(() => {
               type="text"
               placeholder="이름 입력"
               class="form-input"
+              readonly
+              @click="openNameKeypad"
             />
           </div>
 
@@ -802,7 +815,7 @@ onUnmounted(() => {
               v-model="newMemberBirthdate"
               type="date"
               placeholder="생년월일 선택"
-              class="form-input"
+              class="form-input date-input"
             />
           </div>
         </div>
@@ -936,6 +949,17 @@ onUnmounted(() => {
       :max-length="11"
       @confirm="confirmRegisterPhone"
       @close="showRegisterPhoneKeypad = false"
+    />
+
+    <!-- Name Input Keypad -->
+    <TextKeypad
+      v-if="showNameKeypad"
+      v-model="newMemberName"
+      title="이름 입력"
+      placeholder="이름을 입력하세요"
+      :max-length="20"
+      @confirm="confirmNameInput"
+      @close="showNameKeypad = false"
     />
   </div>
 </template>
@@ -1778,6 +1802,59 @@ onUnmounted(() => {
 .product-select-stock {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+/* Membership Register Modal */
+.membership-register-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.membership-register-modal .form-group {
+  margin-bottom: 20px;
+}
+
+.membership-register-modal .form-group label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.membership-register-modal .form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.membership-register-modal .form-input:focus {
+  border-color: var(--primary-color);
+}
+
+.membership-register-modal .form-input[readonly] {
+  background: var(--bg-gray);
+  cursor: pointer;
+}
+
+.membership-register-modal .date-input {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 14px 16px;
+  line-height: 1.5;
+}
+
+.membership-register-modal .date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
 }
 
 /* Price Setting Modal */
