@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseEmptyState from '@/components/BaseEmptyState.vue';
@@ -103,53 +103,56 @@ const deleteAnnouncement = async (id) => {
 </script>
 
 <template>
-  <BaseCard>
-    <template #header>
-      <div class="d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">공지사항 목록</h5>
-        <div class="d-flex">
-          <input type="text" class="form-control form-control-sm me-2" placeholder="제목/내용 검색" v-model="searchTerm">
-          <button v-if="authStore.isAdmin || authStore.isSubAdmin" class="btn btn-primary btn-sm" @click="openAddAnnouncementModal">+ 새 공지 작성</button>
+  <div>
+    <BaseCard>
+      <template #header>
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">공지사항 목록</h5>
+          <div class="d-flex">
+            <input type="text" class="form-control form-control-sm me-2" placeholder="제목/내용 검색" v-model="searchTerm">
+            <button v-if="authStore.isSuperAdmin || authStore.isSubAdmin" class="btn btn-primary btn-sm" @click="openAddAnnouncementModal">+ 새 공지 작성</button>
+          </div>
         </div>
-      </div>
-    </template>
+      </template>
     
-    <div v-if="paginatedAnnouncements && paginatedAnnouncements.length > 0">
-      <ul class="list-group list-group-flush">
-        <li v-for="announcement in paginatedAnnouncements" :key="announcement.id" class="list-group-item">
-          <div class="d-flex w-100 justify-content-between">
-            <router-link :to="`/announcements/${announcement.id}`" class="text-decoration-none">
-              <h6 class="mb-1">{{ announcement.title }}</h6>
-            </router-link>
-            <small>{{ announcement.date }}</small>
-          </div>
-          <p class="mb-1">{{ announcement.content }}</p>
-          <div class="d-flex justify-content-between align-items-center">
-            <small class="text-muted">작성자: {{ announcement.author }}</small>
-            <div v-if="authStore.isAdmin || authStore.isSubAdmin">
-              <button class="btn btn-link btn-sm text-secondary p-0 me-2" @click="openAddAnnouncementModal(announcement)">수정</button>
-              <button class="btn btn-link btn-sm text-danger p-0" @click="deleteAnnouncement(announcement.id)">삭제</button>
+      <div v-if="paginatedAnnouncements && paginatedAnnouncements.length > 0">
+        <ul class="list-group list-group-flush">
+          <li v-for="announcement in paginatedAnnouncements" :key="announcement.id" class="list-group-item">
+            <div class="d-flex w-100 justify-content-between">
+              <router-link :to="`/announcements/${announcement.id}`" class="text-decoration-none">
+                <h6 class="mb-1">{{ announcement.title }}</h6>
+              </router-link>
+              <small>{{ announcement.date }}</small>
             </div>
-          </div>
-        </li>
-      </ul>
-
-      <!-- 페이지네이션 -->
-      <nav v-if="totalPages > 1">
-        <ul class="pagination justify-content-center mt-3">
-          <li class="page-item" :class="{ disabled: currentPage === 1 }">
-            <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
-          </li>
-          <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
-            <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
-          </li>
-          <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-            <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
+            <p class="mb-1">{{ announcement.content }}</p>
+            <div class="d-flex justify-content-between align-items-center">
+              <small class="text-muted">작성자: {{ announcement.author }}</small>
+              <div v-if="authStore.isSuperAdmin || authStore.isSubAdmin">
+                <button class="btn btn-link btn-sm text-secondary p-0 me-2" @click="openAddAnnouncementModal(announcement)">수정</button>
+                <button class="btn btn-link btn-sm text-danger p-0" @click="deleteAnnouncement(announcement.id)">삭제</button>
+              </div>
+            </div>
           </li>
         </ul>
-      </nav>
-    </div>
-    <BaseEmptyState v-else message="조회된 공지사항이 없습니다." />
+
+        <!-- 페이지네이션 -->
+        <nav v-if="totalPages > 1">
+          <ul class="pagination justify-content-center mt-3">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }">
+              <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
+            </li>
+            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
+              <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+              <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+      <BaseEmptyState v-else message="조회된 공지사항이 없습니다." />
+
+    </BaseCard>
 
     <!-- 공지사항 등록/수정 모달 -->
     <BaseModal v-model="isModalOpen">
@@ -170,5 +173,14 @@ const deleteAnnouncement = async (id) => {
       </template>
     </BaseModal>
 
-  </BaseCard>
+  </div>
 </template>
+
+<style scoped>
+.modal {
+  z-index: 1055; /* Bootstrap 기본 z-index(1050)보다 높게 설정 */
+}
+.modal-backdrop {
+  z-index: 1050; /* Bootstrap 기본 z-index와 일치 */
+}
+</style>

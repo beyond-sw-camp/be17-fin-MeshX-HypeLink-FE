@@ -7,13 +7,13 @@ export const usePermissionStore = defineStore('permissions', () => {
     'dashboard', 'stores', 'my-store', 'inventory', 
     'sales', 'pos-support', 'promotions', 'tracking', 'customer-analytics', 
     'pos-health', 'drivers', 'users', 'roles', 'announcements', 'messenger',
-    'products', 'warehouse-inventory', 'purchase-orders', 'announcement-detail'
+    'products', 'warehouse-inventory', 'purchase-orders', 'announcement-detail', 'coupons'
   ];
 
   // 역할별 접근 가능한 라우트 이름 목록 (기본값)
   const permissions = ref({
     super_admin: [...allRoutes], // 모든 권한
-    sub_admin: ['dashboard', 'announcements', 'messenger', 'stores', 'inventory', 'sales', 'pos-support', 'promotions', 'tracking', 'customer-analytics', 'pos-health', 'drivers', 'products', 'warehouse-inventory', 'purchase-orders'], // 사용자 관리 제외
+    sub_admin: ['dashboard', 'announcements', 'messenger', 'stores', 'inventory', 'sales', 'pos-support', 'promotions', 'tracking', 'customer-analytics', 'pos-health', 'drivers', 'products', 'warehouse-inventory', 'purchase-orders', 'coupons'], // 사용자 관리 제외
     store_manager: ['dashboard', 'announcements', 'messenger', 'my-store', 'inventory', 'sales', 'pos-support', 'purchase-orders'],
   });
 

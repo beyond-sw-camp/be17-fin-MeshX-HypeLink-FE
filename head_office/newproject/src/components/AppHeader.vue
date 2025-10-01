@@ -68,9 +68,7 @@ const pageTitle = computed(() => {
             <li><a class="dropdown-item" @click="authStore.logout()">로그아웃</a></li>
           </template>
           <template v-else>
-            <li><a class="dropdown-item" @click="authStore.login('super_admin')">총괄 관리자로 로그인</a></li>
-            <li><a class="dropdown-item" @click="authStore.login('sub_admin')">부관리자로 로그인</a></li>
-            <li><a class="dropdown-item" @click="authStore.login('store_manager')">지점장으로 로그인</a></li>
+            <li><router-link to="/login" class="dropdown-item">로그인</router-link></li>
           </template>
         </ul>
       </div>
