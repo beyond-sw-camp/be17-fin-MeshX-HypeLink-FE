@@ -65,6 +65,7 @@ const sendMessage = (text) => {
 <template>
   <div class="row h-100">
     <div class="col-md-4 h-100">
+      <input type="text" class="form-control mb-3" v-model="searchTerm" placeholder="대화 상대 검색...">
       <UserListPanel :users="availableUsers" :selectedUserId="selectedUser?.id" @select-user="selectUser" />
     </div>
     <div class="col-md-8 h-100">
