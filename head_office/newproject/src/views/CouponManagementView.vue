@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
@@ -8,6 +8,9 @@ import { useCouponStore } from '@/stores/coupons';
 import { useToastStore } from '@/stores/toast';
 import { useModalStore } from '@/stores/modal';
 import { useAuthStore } from '@/stores/auth';
+import FlatPickr from 'vue-flatpickr-component';
+import 'flatpickr/dist/flatpickr.css';
+import { Korean } from 'flatpickr/dist/l10n/ko.js';
 
 const couponStore = useCouponStore();
 const toastStore = useToastStore();
@@ -22,8 +25,38 @@ const couponForm = reactive({
   name: '',
   type: 'Percentage',
   value: 0,
-  expiryDate: '',
+  period: '', // expiryDate 대신 period로 변경
 });
+
+// flatpickrConfig 정의 (매출 관리 코드와 유사, 범위 선택)
+const flatpickrConfig = ref({
+  mode: 'range', // 범위 선택
+  dateFormat: 'Y-m-d', // 출력 형식: YYYY-MM-DD
+  rangeSeparator: ' ~ ', // 구분자
+  altInput: true, // 사용자 친화적 입력
+  altFormat: 'Y년 m월 d일', // 표시 형식
+  clickOpens: true, // 클릭 시 달력 열림
+  inline: false, // 드롭다운 유지
+  enableTime: false, // 시간 선택 비활성화
+  locale: Korean, // 한국어 로케일
+  minDate: 'today', // 오늘 이후
+  maxDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1년 후
+  onChange: (selectedDates, dateStr) => {
+    console.log('Selected date range:', dateStr); // 디버깅
+    couponForm.period = dateStr;
+  },
+  onReady: (selectedDates, dateStr, instance) => {
+    console.log('Flatpickr initialized:', instance); // 초기화 확인
+  },
+});
+
+// period 변화 감지 (디버�инг용)
+watch(
+  () => couponForm.period,
+  (newValue) => {
+    console.log('couponForm.period updated:', newValue);
+  }
+);
 
 onMounted(() => {
   setTimeout(() => {
@@ -33,16 +66,31 @@ onMounted(() => {
 
 const openCouponModal = () => {
   formSubmitted.value = false;
-  Object.assign(couponForm, { name: '', type: 'Percentage', value: 0, expiryDate: '' });
+  Object.assign(couponForm, { name: '', type: 'Percentage', value: 0, period: '' });
   isModalOpen.value = true;
 };
 
 const saveCoupon = () => {
   formSubmitted.value = true;
-  if (!couponForm.name || !couponForm.value || !couponForm.expiryDate) {
+  if (!couponForm.name || !couponForm.value || !couponForm.period) {
     toastStore.showToast('모든 필드를 올바르게 입력해주세요.', 'danger');
     return;
   }
+
+  // 기간 검증
+  if (couponForm.period.includes(' ~ ')) {
+    const [start, end] = couponForm.period.split(' ~ ');
+    if (new Date(start) > new Date(end)) {
+      toastStore.showToast('시작 날짜가 종료 날짜보다 늦을 수 없습니다.', 'danger');
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    if (new Date(start) < new Date(today)) {
+      toastStore.showToast('시작 날짜는 오늘 이후로 설정해야 합니다.', 'danger');
+      return;
+    }
+  }
+
   couponStore.addCoupon(couponForm);
   toastStore.showToast('새 쿠폰이 등록되었습니다.', 'success');
   isModalOpen.value = false;
@@ -63,7 +111,6 @@ const deleteCoupon = async (id) => {
 const formatValue = (type, value) => {
   return type === 'Percentage' ? `${value}%` : `${value.toLocaleString()}원`;
 };
-
 </script>
 
 <template>
@@ -73,7 +120,13 @@ const formatValue = (type, value) => {
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0">쿠폰 관리</h5>
           <div class="d-flex">
-            <button v-if="authStore.isSuperAdmin || authStore.isSubAdmin" class="btn btn-primary btn-sm" @click="openCouponModal">+ 새 쿠폰 생성</button>
+            <button
+              v-if="authStore.isSuperAdmin || authStore.isSubAdmin"
+              class="btn btn-primary btn-sm"
+              @click="openCouponModal"
+            >
+              + 새 쿠폰 생성
+            </button>
           </div>
         </div>
       </template>
@@ -83,30 +136,35 @@ const formatValue = (type, value) => {
       <div v-else-if="couponStore.allCoupons.length > 0">
         <table class="table table-hover">
           <thead>
-            <tr>
-              <th>쿠폰명</th>
-              <th>타입</th>
-              <th>할인 값</th>
-              <th>만료일</th>
-              <th>관리</th>
-            </tr>
+          <tr>
+            <th>쿠폰명</th>
+            <th>타입</th>
+            <th>할인 값</th>
+            <th>유효 기간</th>
+            <th>관리</th>
+          </tr>
           </thead>
           <tbody>
-            <tr v-for="coupon in couponStore.allCoupons" :key="coupon.id">
-              <td>{{ coupon.name }}</td>
-              <td>{{ coupon.type }}</td>
-              <td>{{ formatValue(coupon.type, coupon.value) }}</td>
-              <td>{{ coupon.expiryDate }}</td>
-              <td>
-                <button v-if="authStore.isSuperAdmin || authStore.isSubAdmin" class="btn btn-sm btn-danger" @click="deleteCoupon(coupon.id)">삭제</button>
-              </td>
-            </tr>
+          <tr v-for="coupon in couponStore.allCoupons" :key="coupon.id">
+            <td>{{ coupon.name }}</td>
+            <td>{{ coupon.type }}</td>
+            <td>{{ formatValue(coupon.type, coupon.value) }}</td>
+            <td>{{ coupon.period }}</td>
+            <td>
+              <button
+                v-if="authStore.isSuperAdmin || authStore.isSubAdmin"
+                class="btn btn-sm btn-danger"
+                @click="deleteCoupon(coupon.id)"
+              >
+                삭제
+              </button>
+            </td>
+          </tr>
           </tbody>
         </table>
       </div>
 
       <BaseEmptyState v-else message="생성된 쿠폰이 없습니다." />
-
     </BaseCard>
 
     <!-- 쿠폰 생성 모달 -->
@@ -114,8 +172,16 @@ const formatValue = (type, value) => {
       <template #header><h5>새 쿠폰 생성</h5></template>
       <form @submit.prevent="saveCoupon">
         <div class="mb-3">
-          <label class="form-label">쿠폰명 <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" v-model="couponForm.name" :class="{ 'is-invalid': !couponForm.name && formSubmitted }">
+          <label class="form-label"
+          >쿠폰명 <span class="text-danger">*</span></label
+          >
+          <input
+            type="text"
+            class="form-control"
+            v-model="couponForm.name"
+            :class="{ 'is-invalid': !couponForm.name && formSubmitted }"
+          />
+          <div class="invalid-feedback">쿠폰명은 필수입니다.</div>
         </div>
         <div class="row">
           <div class="col-md-6 mb-3">
@@ -126,19 +192,58 @@ const formatValue = (type, value) => {
             </select>
           </div>
           <div class="col-md-6 mb-3">
-            <label class="form-label">할인 값 <span class="text-danger">*</span></label>
-            <input type="number" class="form-control" v-model.number="couponForm.value" :class="{ 'is-invalid': !couponForm.value && formSubmitted }">
+            <label class="form-label"
+            >할인 값 <span class="text-danger">*</span></label
+            >
+            <input
+              type="number"
+              class="form-control"
+              v-model.number="couponForm.value"
+              :class="{ 'is-invalid': !couponForm.value && formSubmitted }"
+            />
+            <div class="invalid-feedback">할인 값은 필수입니다.</div>
           </div>
         </div>
         <div class="mb-3">
-          <label class="form-label">만료일 <span class="text-danger">*</span></label>
-          <input type="date" class="form-control" v-model="couponForm.expiryDate" :class="{ 'is-invalid': !couponForm.expiryDate && formSubmitted }">
+          <label class="form-label"
+          >유효 기간 <span class="text-danger">*</span></label
+          >
+          <FlatPickr
+            v-model="couponForm.period"
+            :config="flatpickrConfig"
+            class="form-control"
+            placeholder="시작 날짜와 종료 날짜를 선택하세요"
+            :class="{ 'is-invalid': !couponForm.period && formSubmitted }"
+          />
+          <div class="invalid-feedback">유효 기간은 필수입니다.</div>
         </div>
       </form>
       <template #footer>
-        <button type="button" class="btn btn-secondary" @click="isModalOpen = false">취소</button>
-        <button type="button" class="btn btn-primary" @click="saveCoupon">저장</button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          @click="isModalOpen = false"
+        >
+          취소
+        </button>
+        <button type="button" class="btn btn-primary" @click="saveCoupon">
+          저장
+        </button>
       </template>
     </BaseModal>
   </div>
 </template>
+
+<style scoped>
+/* flatpickr 달력 z-index 및 스타일 충돌 방지 */
+.flatpickr-calendar {
+  z-index: 9999 !important;
+}
+.flatpickr-input {
+  width: 100%;
+}
+.flatpickr-input.active {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+</style>
