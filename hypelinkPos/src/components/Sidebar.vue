@@ -13,8 +13,7 @@ const menuItems = [
   { name: '멤버십', path: '/membership', icon: '👥' },
   { name: '리포트', path: '/reports', icon: '📊' },
   { name: '공지사항', path: '/notices', icon: '📢' },
-  { name: 'A/S 요청', path: '/service', icon: '🔧' },
-  { name: '고객화면', path: '/customer-display', icon: '📺' }
+  { name: 'A/S 요청', path: '/service', icon: '🔧' }
 ]
 
 const isActive = (path) => {

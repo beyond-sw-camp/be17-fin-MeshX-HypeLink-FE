@@ -50,12 +50,6 @@ const router = createRouter({
       name: 'service',
       component: () => import('@/views/ServiceView.vue'),
       meta: { requiresAuth: true }
-    },
-    {
-      path: '/customer-display',
-      name: 'customer-display',
-      component: () => import('@/views/CustomerDisplayView.vue'),
-      meta: { requiresAuth: true }
     }
   ]
 })
