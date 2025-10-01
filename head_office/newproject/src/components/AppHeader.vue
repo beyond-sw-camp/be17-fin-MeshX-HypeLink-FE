@@ -1,3 +1,27 @@
+<script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { useUiStore } from '../stores/ui';
+import { useAuthStore } from '../stores/auth';
+
+const route = useRoute();
+const uiStore = useUiStore();
+const authStore = useAuthStore();
+
+const pageTitle = computed(() => {
+  const name = route.name || 'dashboard';
+  if (name === 'my-store') return '내 점포';
+  if (name === 'customer-analytics') return '고객 분석';
+  if (name === 'tracking') return '배송 추적';
+  if (name === 'communication') return '공지/소통';
+  if (name === 'stores') return '매장 관리';
+  if (name === 'inventory') return '재고 관리';
+  if (name === 'sales') return '매출 관리';
+  if (name === 'users') return '사용자 관리';
+  return name.charAt(0).toUpperCase() + name.slice(1);
+});
+</script>
+
 <template>
   <header class="app-header d-flex justify-content-between align-items-center">
     <!-- 왼쪽: 햄버거 버튼 + 페이지 제목 -->
@@ -12,6 +36,7 @@
 
     <!-- 오른쪽 사용자 메뉴 -->
     <div class="d-flex align-items-center">
+      <div class="me-3 badge bg-secondary">Role: {{ authStore.user?.role || 'None' }}</div>
       <!-- 홈 버튼 -->
       <router-link to="/" class="me-3 text-dark">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-house-door-fill" viewBox="0 0 16 16">
@@ -53,30 +78,6 @@
     </div>
   </header>
 </template>
-
-<script setup>
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
-import { useUiStore } from '../stores/ui';
-import { useAuthStore } from '../stores/auth';
-
-const route = useRoute();
-const uiStore = useUiStore();
-const authStore = useAuthStore();
-
-const pageTitle = computed(() => {
-  const name = route.name || 'dashboard';
-  if (name === 'my-store') return '내 점포';
-  if (name === 'customer-analytics') return '고객 분석';
-  if (name === 'tracking') return '배송 추적';
-  if (name === 'communication') return '공지/소통';
-  if (name === 'stores') return '매장 관리';
-  if (name === 'inventory') return '재고 관리';
-  if (name === 'sales') return '매출 관리';
-  if (name === 'users') return '사용자 관리';
-  return name.charAt(0).toUpperCase() + name.slice(1);
-});
-</script>
 
 <style scoped lang="scss">
 .app-header {

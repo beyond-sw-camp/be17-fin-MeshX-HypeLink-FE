@@ -17,6 +17,7 @@ import posHealthRoutes from './routes/posHealthRoutes.js'
 import driverRoutes from './routes/driverRoutes.js'
 import roleRoutes from './routes/roleRoutes.js'
 import communicationRoutes from './routes/communicationRoutes.js'
+import couponRoutes from './routes/couponRoutes.js'
 
 // 스프레드 연산자(...)를 사용하여 모든 라우트를 하나의 배열로 합칩니다.
 const routes = [
@@ -35,7 +36,8 @@ const routes = [
   ...posHealthRoutes,
   ...driverRoutes,
   ...roleRoutes,
-  ...communicationRoutes
+  ...communicationRoutes,
+  ...couponRoutes
 ]
 
 const router = createRouter({

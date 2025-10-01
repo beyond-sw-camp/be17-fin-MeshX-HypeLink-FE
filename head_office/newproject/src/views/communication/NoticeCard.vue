@@ -1,3 +1,14 @@
+<script setup>
+import BaseCard from '@/components/BaseCard.vue';
+defineProps({ 
+  title: String, 
+  items: Array,
+  showAddButton: { type: Boolean, default: false },
+  showAdminControls: { type: Boolean, default: false }
+});
+const emit = defineEmits(['add-notice', 'edit-notice', 'delete-notice']);
+</script>
+
 <template>
   <BaseCard>
     <template #header>
@@ -24,13 +35,3 @@
     </ul>
   </BaseCard>
 </template>
-<script setup>
-import BaseCard from '@/components/BaseCard.vue';
-defineProps({ 
-  title: String, 
-  items: Array,
-  showAddButton: { type: Boolean, default: false },
-  showAdminControls: { type: Boolean, default: false }
-});
-const emit = defineEmits(['add-notice', 'edit-notice', 'delete-notice']);
-</script>

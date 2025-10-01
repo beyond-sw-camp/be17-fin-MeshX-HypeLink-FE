@@ -1,3 +1,13 @@
+<script setup>
+import AppHeader from './components/AppHeader.vue';
+import AppSidebar from './components/AppSidebar.vue';
+import BaseToast from './components/BaseToast.vue';
+import TheGlobalModal from './components/TheGlobalModal.vue';
+import { useUiStore } from './stores/ui';
+
+const uiStore = useUiStore();
+</script>
+
 <template>
   <div class="app-layout" :class="{ 'sidebar-collapsed': !uiStore.isSidebarOpen }">
     <AppSidebar />
@@ -11,16 +21,10 @@
         </router-view>
       </main>
     </div>
+    <BaseToast />
+    <TheGlobalModal />
   </div>
 </template>
-
-<script setup>
-import AppHeader from './components/AppHeader.vue';
-import AppSidebar from './components/AppSidebar.vue';
-import { useUiStore } from './stores/ui';
-
-const uiStore = useUiStore();
-</script>
 
 <style lang="scss">
 .app-layout {

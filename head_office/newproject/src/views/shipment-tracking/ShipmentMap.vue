@@ -1,9 +1,3 @@
-<template>
-  <BaseCard>
-    <template #header><h5>실시간 배송 현황</h5></template>
-    <div id="map-container" style="height: 600px;"></div>
-  </BaseCard>
-</template>
 <script setup>
 import { onMounted } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
@@ -20,3 +14,10 @@ onMounted(() => {
   });
 });
 </script>
+
+<template>
+  <BaseCard>
+    <template #header><h5>실시간 배송 현황</h5></template>
+    <div id="map-container" style="height: 600px;"></div>
+  </BaseCard>
+</template>

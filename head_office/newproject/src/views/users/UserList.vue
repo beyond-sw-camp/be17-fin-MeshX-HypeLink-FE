@@ -1,3 +1,19 @@
+<script setup>
+import { useAuthStore } from '@/stores/auth';
+import BaseCard from '@/components/BaseCard.vue';
+
+defineProps({ users: Array });
+const emit = defineEmits(['change-role', 'add-manager']);
+const authStore = useAuthStore();
+
+const roleClass = (role) => {
+  if (role === 'super_admin') return 'bg-danger';
+  if (role === 'sub_admin') return 'bg-primary';
+  if (role === 'store_manager') return 'bg-success';
+  return 'bg-secondary';
+};
+</script>
+
 <template>
   <BaseCard>
     <template #header>
@@ -37,19 +53,3 @@
     </table>
   </BaseCard>
 </template>
-
-<script setup>
-import { useAuthStore } from '@/stores/auth';
-import BaseCard from '@/components/BaseCard.vue';
-
-defineProps({ users: Array });
-const emit = defineEmits(['change-role', 'add-manager']);
-const authStore = useAuthStore();
-
-const roleClass = (role) => {
-  if (role === 'super_admin') return 'bg-danger';
-  if (role === 'sub_admin') return 'bg-primary';
-  if (role === 'store_manager') return 'bg-success';
-  return 'bg-secondary';
-};
-</script>

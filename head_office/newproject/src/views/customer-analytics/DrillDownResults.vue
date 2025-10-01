@@ -1,3 +1,10 @@
+<script setup>
+import BaseCard from '@/components/BaseCard.vue';
+
+defineProps({ drillDown: Object });
+const emit = defineEmits(['close']);
+</script>
+
 <template>
   <transition name="fade">
     <div v-if="drillDown.title">
@@ -18,10 +25,3 @@
     </div>
   </transition>
 </template>
-
-<script setup>
-import BaseCard from '@/components/BaseCard.vue';
-
-defineProps({ drillDown: Object });
-const emit = defineEmits(['close']);
-</script>

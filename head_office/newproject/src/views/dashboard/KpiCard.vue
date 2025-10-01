@@ -1,3 +1,8 @@
+<script setup>
+import BaseCard from '@/components/BaseCard.vue';
+defineProps({ title: String, value: String, color: String });
+</script>
+
 <template>
   <BaseCard>
     <div class="d-flex align-items-center">
@@ -11,8 +16,3 @@
     </div>
   </BaseCard>
 </template>
-
-<script setup>
-import BaseCard from '@/components/BaseCard.vue';
-defineProps({ title: String, value: String, color: String });
-</script>

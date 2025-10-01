@@ -13,17 +13,20 @@
     "apexcharts": "^4.0.0",
     "axios": "^1.7.2",
     "bootstrap": "^5.3.3",
-    "pinia": "^2.1.7",
-    "vue": "^3.4.21",
-    "vue-router": "^4.3.2",
-    "vue3-apexcharts": "^1.5.3",
+    "flatpickr": "^4.6.13",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-flatpickr-component": "^12.0.0",
+    "vue-router": "^4.3.2",
+    "vue3-apexcharts": "^1.5.3",
     "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
     "sass": "^1.77.2",
-    "vite": "^5.2.0"
+    "vite": "^5.2.0",
+    "vite-plugin-vue-devtools": "^7.7.7"
   }
 }

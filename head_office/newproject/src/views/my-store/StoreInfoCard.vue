@@ -1,3 +1,8 @@
+<script setup>
+import BaseCard from '@/components/BaseCard.vue';
+defineProps({ store: Object });
+</script>
+
 <template>
   <BaseCard>
     <template #header><h5>점포 기본 정보</h5></template>
@@ -8,7 +13,3 @@
     </ul>
   </BaseCard>
 </template>
-<script setup>
-import BaseCard from '@/components/BaseCard.vue';
-defineProps({ store: Object });
-</script>

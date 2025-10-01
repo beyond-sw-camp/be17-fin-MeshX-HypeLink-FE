@@ -1,10 +1,3 @@
-<template>
-  <BaseCard>
-    <template #header><h5>카테고리별 매출 비중 (차트 클릭)</h5></template>
-    <apexchart type="bar" height="350" :options="chartOptions" :series="series"></apexchart>
-  </BaseCard>
-</template>
-
 <script setup>
 import { computed } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
@@ -30,3 +23,10 @@ const chartOptions = computed(() => ({
   yaxis: { title: { text: '매출액 (억원)' } }
 }));
 </script>
+
+<template>
+  <BaseCard>
+    <template #header><h5>카테고리별 매출 비중 (차트 클릭)</h5></template>
+    <apexchart type="bar" height="350" :options="chartOptions" :series="series"></apexchart>
+  </BaseCard>
+</template>

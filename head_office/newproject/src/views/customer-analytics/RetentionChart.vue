@@ -1,10 +1,3 @@
-<template>
-  <BaseCard>
-    <template #header><h5>신규 / 재방문 고객 추이</h5></template>
-    <apexchart type="line" height="350" :options="chartOptions" :series="series"></apexchart>
-  </BaseCard>
-</template>
-
 <script setup>
 import { computed } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
@@ -19,3 +12,10 @@ const chartOptions = computed(() => ({
   xaxis: { categories: props.categories },
 }));
 </script>
+
+<template>
+  <BaseCard>
+    <template #header><h5>신규 / 재방문 고객 추이</h5></template>
+    <apexchart type="line" height="350" :options="chartOptions" :series="series"></apexchart>
+  </BaseCard>
+</template>

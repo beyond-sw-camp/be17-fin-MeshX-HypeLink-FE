@@ -1,3 +1,11 @@
+<script setup>
+import { useAuthStore } from '@/stores/auth';
+import BaseCard from '@/components/BaseCard.vue';
+defineProps({ inventory: Array });
+const emit = defineEmits(['send-shipment']);
+const authStore = useAuthStore();
+</script>
+
 <template>
   <BaseCard>
     <template #header>
@@ -32,10 +40,3 @@
     </table>
   </BaseCard>
 </template>
-<script setup>
-import { useAuthStore } from '@/stores/auth';
-import BaseCard from '@/components/BaseCard.vue';
-defineProps({ inventory: Array });
-const emit = defineEmits(['send-shipment']);
-const authStore = useAuthStore();
-</script>
