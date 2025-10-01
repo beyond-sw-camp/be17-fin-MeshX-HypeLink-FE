@@ -1,3 +1,42 @@
+<script setup>
+import { ref, reactive, watch } from 'vue';
+import BaseModal from '@/components/BaseModal.vue';
+import { useModalStore } from '@/stores/modal';
+
+const props = defineProps({ 
+  modelValue: Boolean, 
+  initialData: Object, 
+  isEditing: Boolean 
+});
+const emit = defineEmits(['update:modelValue', 'save']);
+
+const modalStore = useModalStore();
+const isModalOpen = ref(props.modelValue);
+const form = reactive({ title: '', content: '' });
+
+watch(() => props.modelValue, (newValue) => {
+  isModalOpen.value = newValue;
+  if (newValue && props.isEditing && props.initialData) {
+    Object.assign(form, props.initialData);
+  } else if (newValue && !props.isEditing) {
+    Object.assign(form, { title: '', content: '' });
+  }
+});
+
+watch(isModalOpen, (newValue) => {
+  emit('update:modelValue', newValue);
+});
+
+const saveAnnouncement = () => {
+  if (!form.title || !form.content) {
+    modalStore.show({ title: '입력 오류', message: '제목과 내용을 모두 입력해주세요.' });
+    return;
+  }
+  emit('save', { ...form });
+  isModalOpen.value = false;
+};
+</script>
+
 <template>
   <BaseModal v-model="isModalOpen">
     <template #header><h5>{{ isEditing ? '공지 수정' : '새 공지 작성' }}</h5></template>
@@ -17,40 +56,3 @@
     </template>
   </BaseModal>
 </template>
-
-<script setup>
-import { ref, reactive, watch } from 'vue';
-import BaseModal from '@/components/BaseModal.vue';
-
-const props = defineProps({ 
-  modelValue: Boolean, 
-  initialData: Object, 
-  isEditing: Boolean 
-});
-const emit = defineEmits(['update:modelValue', 'save']);
-
-const isModalOpen = ref(props.modelValue);
-const form = reactive({ title: '', content: '' });
-
-watch(() => props.modelValue, (newValue) => {
-  isModalOpen.value = newValue;
-  if (newValue && props.isEditing && props.initialData) {
-    Object.assign(form, props.initialData);
-  } else if (newValue && !props.isEditing) {
-    Object.assign(form, { title: '', content: '' });
-  }
-});
-
-watch(isModalOpen, (newValue) => {
-  emit('update:modelValue', newValue);
-});
-
-const saveAnnouncement = () => {
-  if (!form.title || !form.content) {
-    alert('제목과 내용을 모두 입력해주세요.');
-    return;
-  }
-  emit('save', { ...form });
-  isModalOpen.value = false;
-};
-</script>

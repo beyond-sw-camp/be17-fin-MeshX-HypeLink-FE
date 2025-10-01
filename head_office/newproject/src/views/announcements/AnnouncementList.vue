@@ -1,3 +1,13 @@
+<script setup>
+import BaseCard from '@/components/BaseCard.vue';
+import { useAuthStore } from '@/stores/auth';
+
+const authStore = useAuthStore();
+
+defineProps({ announcements: Array });
+const emit = defineEmits(['add-announcement', 'edit-announcement', 'delete-announcement']);
+</script>
+
 <template>
   <BaseCard>
     <template #header>
@@ -24,13 +34,3 @@
     </ul>
   </BaseCard>
 </template>
-
-<script setup>
-import BaseCard from '@/components/BaseCard.vue';
-import { useAuthStore } from '@/stores/auth';
-
-const authStore = useAuthStore();
-
-defineProps({ announcements: Array });
-const emit = defineEmits(['add-announcement', 'edit-announcement', 'delete-announcement']);
-</script>

@@ -25,5 +25,10 @@ export const useProductStore = defineStore('products', () => {
     allProducts.value = allProducts.value.filter(p => p.id !== id);
   };
 
-  return { allProducts, addProduct, updateProduct, deleteProduct };
+  const deleteMultipleProducts = (ids) => {
+    const idSet = new Set(ids);
+    allProducts.value = allProducts.value.filter(p => !idSet.has(p.id));
+  };
+
+  return { allProducts, addProduct, updateProduct, deleteProduct, deleteMultipleProducts };
 });

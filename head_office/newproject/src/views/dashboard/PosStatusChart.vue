@@ -1,10 +1,3 @@
-<template>
-  <BaseCard>
-    <template #header><h5>POS 기기 상태</h5></template>
-    <apexchart type="donut" height="300" :options="chartOptions" :series="series"></apexchart>
-  </BaseCard>
-</template>
-
 <script setup>
 import { ref } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
@@ -20,3 +13,10 @@ const chartOptions = ref({
   legend: { position: 'bottom' }
 });
 </script>
+
+<template>
+  <BaseCard>
+    <template #header><h5>POS 기기 상태</h5></template>
+    <apexchart type="donut" height="300" :options="chartOptions" :series="series"></apexchart>
+  </BaseCard>
+</template>

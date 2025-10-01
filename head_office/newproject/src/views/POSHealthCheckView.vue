@@ -1,3 +1,21 @@
+<script setup>
+import { ref } from 'vue';
+import BaseCard from '../components/BaseCard.vue';
+
+const devices = ref([
+  { id: 1, storeName: 'HypeLink 강남점', posId: 'POS-A01', status: 'Online', cpu: 34, memory: 55, lastSync: '1분 전' },
+  { id: 2, storeName: 'HypeLink 홍대점', posId: 'POS-B01', status: 'Online', cpu: 25, memory: 40, lastSync: '3분 전' },
+  { id: 3, storeName: 'HypeLink 부산점', posId: 'POS-C01', status: 'Error', cpu: 95, memory: 80, lastSync: '30분 전' },
+  { id: 4, storeName: 'HypeLink 제주점', posId: 'POS-D01', status: 'Offline', cpu: 0, memory: 0, lastSync: '2시간 전' },
+]);
+
+const statusClass = (status) => {
+  if (status === 'Online') return 'bg-success';
+  if (status === 'Error') return 'bg-danger';
+  return 'bg-secondary';
+};
+</script>
+
 <template>
   <BaseCard>
     <template #header><h5>전체 POS 기기 헬스체크</h5></template>
@@ -35,21 +53,3 @@
     </table>
   </BaseCard>
 </template>
-
-<script setup>
-import { ref } from 'vue';
-import BaseCard from '../components/BaseCard.vue';
-
-const devices = ref([
-  { id: 1, storeName: 'HypeLink 강남점', posId: 'POS-A01', status: 'Online', cpu: 34, memory: 55, lastSync: '1분 전' },
-  { id: 2, storeName: 'HypeLink 홍대점', posId: 'POS-B01', status: 'Online', cpu: 25, memory: 40, lastSync: '3분 전' },
-  { id: 3, storeName: 'HypeLink 부산점', posId: 'POS-C01', status: 'Error', cpu: 95, memory: 80, lastSync: '30분 전' },
-  { id: 4, storeName: 'HypeLink 제주점', posId: 'POS-D01', status: 'Offline', cpu: 0, memory: 0, lastSync: '2시간 전' },
-]);
-
-const statusClass = (status) => {
-  if (status === 'Online') return 'bg-success';
-  if (status === 'Error') return 'bg-danger';
-  return 'bg-secondary';
-};
-</script>

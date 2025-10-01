@@ -1,12 +1,142 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useToastStore } from '@/stores/toast';
+import { usePosReportStore } from '@/stores/pos-reports';
+import POSReportForm from './pos-support/POSReportForm.vue';
+import POSReportList from './pos-support/POSReportList.vue';
+import BaseModal from '@/components/BaseModal.vue';
+import BaseSpinner from '@/components/BaseSpinner.vue';
+
+const authStore = useAuthStore();
+const toastStore = useToastStore();
+const posReportStore = usePosReportStore();
+
+const isLoading = ref(true);
+
+// 모달 및 폼 상태
+const isTechModalOpen = ref(false);
+const selectedReport = ref(null);
+
+// 검색, 필터, 정렬, 페이지네이션 상태
+const searchTerm = ref('');
+const filterStatus = ref('all');
+const sortKey = ref('id');
+const sortOrder = ref('asc');
+const currentPage = ref(1);
+const itemsPerPage = ref(5);
+
+// --- 데이터 로딩 시뮬레이션 ---
+onMounted(() => {
+  setTimeout(() => {
+    isLoading.value = false;
+  }, 500);
+});
+
+// --- 검색, 필터링, 정렬 로직 ---
+const filteredAndSortedReports = computed(() => {
+  let reports = [...posReportStore.allReports];
+
+  if (authStore.isStoreManager) {
+    reports = reports.filter(report => report.storeName === authStore.user.name);
+  }
+
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase();
+    reports = reports.filter(report => 
+      report.issueType.toLowerCase().includes(term) || 
+      report.storeName.toLowerCase().includes(term) ||
+      report.technician?.toLowerCase().includes(term)
+    );
+  }
+
+  if (filterStatus.value !== 'all') {
+    reports = reports.filter(report => report.status === filterStatus.value);
+  }
+
+  if (sortKey.value) {
+    reports.sort((a, b) => {
+      const valA = a[sortKey.value];
+      const valB = b[sortKey.value];
+      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  return reports;
+});
+
+// --- 페이지네이션 로직 ---
+const paginatedReports = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredAndSortedReports.value.slice(start, end);
+});
+
+const totalPages = computed(() => Math.ceil(filteredAndSortedReports.value.length / itemsPerPage.value));
+
+// --- 이벤트 핸들러 ---
+const updateSearchTerm = (term) => { searchTerm.value = term; currentPage.value = 1; };
+const updateFilterStatus = (status) => { filterStatus.value = status; currentPage.value = 1; };
+const updateSort = (key) => {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortKey.value = key;
+    sortOrder.value = 'asc';
+  }
+  currentPage.value = 1;
+};
+const updatePage = (page) => { currentPage.value = page; };
+
+const handleSubmitReport = (formData) => {
+  posReportStore.submitReport({ ...formData, storeName: authStore.user.name });
+  toastStore.showToast('신고가 접수되었습니다.', 'success');
+};
+
+const openTechModal = (reportId) => {
+  selectedReport.value = posReportStore.allReports.find(r => r.id === reportId);
+  isTechModalOpen.value = true;
+};
+
+const handleAssignTechnician = (techName) => {
+  if (selectedReport.value) {
+    posReportStore.assignTechnician(selectedReport.value.id, techName);
+    toastStore.showToast(`${selectedReport.value.storeName} ${selectedReport.value.issueType} 건에 ${techName} 기사가 배정되었습니다.`, 'success');
+  }
+  isTechModalOpen.value = false;
+};
+
+const handleChangeReportStatus = ({ id, status }) => {
+  posReportStore.changeReportStatus(id, status);
+  toastStore.showToast(`신고 #${id} 상태가 ${status}(으)로 변경되었습니다.`, 'success');
+};
+</script>
+
 <template>
   <div>
     <!-- 점주용 화면 -->
-    <div v-if="authStore.isStoreOwner" class="row">
+    <div v-if="authStore.isStoreManager" class="row">
       <div class="col-lg-5">
-        <POSReportForm :storeName="authStore.user.name" @submit-report="submitReport" />
+        <POSReportForm :storeName="authStore.user.name" @submit-report="handleSubmitReport" />
       </div>
       <div class="col-lg-7">
-        <POSReportList title="내 접수 현황" :reports="myReports" :is-admin="false" />
+        <POSReportList 
+          title="내 접수 현황" 
+          :reports="paginatedReports"
+          :totalReports="filteredAndSortedReports.length"
+          :currentPage="currentPage"
+          :itemsPerPage="itemsPerPage"
+          :sortKey="sortKey"
+          :sortOrder="sortOrder"
+          :searchTerm="searchTerm"
+          :filterStatus="filterStatus"
+          @update:search-term="updateSearchTerm"
+          @update:filter-status="updateFilterStatus"
+          @update:sort="updateSort"
+          @update:page="updatePage"
+        />
       </div>
     </div>
 
@@ -14,10 +144,20 @@
     <div v-if="authStore.isSuperAdmin || authStore.isSubAdmin">
       <POSReportList 
         title="전체 POS 신고 접수 현황" 
-        :reports="reports" 
-        :is-admin="true"
+        :reports="paginatedReports"
+        :totalReports="filteredAndSortedReports.length"
+        :currentPage="currentPage"
+        :itemsPerPage="itemsPerPage"
+        :sortKey="sortKey"
+        :sortOrder="sortOrder"
+        :searchTerm="searchTerm"
+        :filterStatus="filterStatus"
         @assign-tech="openTechModal"
-        @change-status="changeReportStatus"
+        @change-status="handleChangeReportStatus"
+        @update:search-term="updateSearchTerm"
+        @update:filter-status="updateFilterStatus"
+        @update:sort="updateSort"
+        @update:page="updatePage"
       />
     </div>
 
@@ -29,9 +169,9 @@
         <a 
           href="#" 
           class="list-group-item list-group-item-action" 
-          v-for="tech in technicians" 
+          v-for="tech in posReportStore.technicians" 
           :key="tech.id"
-          @click.prevent="assignTechnician(tech.name)"
+          @click.prevent="handleAssignTechnician(tech.name)"
         >
           {{ tech.name }} - {{ tech.specialty }}
         </a>
@@ -40,74 +180,7 @@
         <button type="button" class="btn btn-secondary" @click="isTechModalOpen = false">취소</button>
       </template>
     </BaseModal>
+
+    <BaseSpinner v-if="isLoading" height="200px" />
   </div>
 </template>
-
-<script setup>
-import { ref, reactive, computed } from 'vue';
-import { useAuthStore } from '@/stores/auth';
-import POSReportForm from './pos-support/POSReportForm.vue';
-import POSReportList from './pos-support/POSReportList.vue';
-import BaseModal from '@/components/BaseModal.vue';
-
-const authStore = useAuthStore();
-
-// --- 데이터 --- 
-const reports = ref([
-  { id: 3, storeName: 'HypeLink 부산점', issueType: '기타', date: '2025-09-28', status: '처리완료', technician: '김기술' },
-  { id: 2, storeName: 'HypeLink 홍대점', issueType: '화면 안 켜짐', date: '2025-09-29', status: '처리중', technician: '이전문' },
-  { id: 1, storeName: 'HypeLink 강남점', issueType: '결제 오류', date: '2025-09-29', status: '접수완료', technician: null },
-]);
-
-const technicians = ref([
-  { id: 1, name: '김기술', specialty: '네트워크/결제' },
-  { id: 2, name: '이전문', specialty: '하드웨어/전원' },
-  { id: 3, name: '박프로', specialty: '소프트웨어' },
-]);
-
-// --- 점주 로직 ---
-const myReports = computed(() => 
-  reports.value.filter(r => r.storeName === authStore.user?.name)
-);
-
-const submitReport = (formData) => {
-  if (!formData.issueType || !formData.description) {
-    alert('모든 항목을 입력해주세요.');
-    return;
-  }
-  const newReport = {
-    id: reports.value.length + 10,
-    storeName: authStore.user.name,
-    ...formData,
-    date: new Date().toISOString().slice(0, 10),
-    status: '접수완료',
-    technician: null
-  };
-  reports.value.unshift(newReport);
-};
-
-// --- 관리자 로직 ---
-const isTechModalOpen = ref(false);
-const selectedReport = ref(null);
-
-const openTechModal = (reportId) => {
-  selectedReport.value = reports.value.find(r => r.id === reportId);
-  isTechModalOpen.value = true;
-};
-
-const assignTechnician = (techName) => {
-  if (selectedReport.value) {
-    selectedReport.value.technician = techName;
-    selectedReport.value.status = '처리중'; // 담당자 배정 시 상태 자동 변경
-  }
-  isTechModalOpen.value = false;
-};
-
-const changeReportStatus = ({ id, status }) => {
-  const report = reports.value.find(r => r.id === id);
-  if (report) {
-    report.status = status;
-  }
-};
-
-</script>

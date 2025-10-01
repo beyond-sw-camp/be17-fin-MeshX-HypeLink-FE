@@ -1,3 +1,14 @@
+<script setup>
+import BaseCard from '@/components/BaseCard.vue';
+defineProps({ shipments: Array });
+const statusClass = (status) => {
+  if (status === '배송중') return 'bg-primary';
+  if (status === '지연') return 'bg-danger';
+  if (status === '완료') return 'bg-success';
+  return 'bg-secondary';
+};
+</script>
+
 <template>
   <BaseCard>
     <template #header><h5>배송 목록</h5></template>
@@ -12,13 +23,3 @@
     </ul>
   </BaseCard>
 </template>
-<script setup>
-import BaseCard from '@/components/BaseCard.vue';
-defineProps({ shipments: Array });
-const statusClass = (status) => {
-  if (status === '배송중') return 'bg-primary';
-  if (status === '지연') return 'bg-danger';
-  if (status === '완료') return 'bg-success';
-  return 'bg-secondary';
-};
-</script>

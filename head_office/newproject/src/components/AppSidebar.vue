@@ -1,3 +1,15 @@
+<script setup>
+import { useAuthStore } from '@/stores/auth';
+import { usePermissionStore } from '@/stores/permissions';
+
+const authStore = useAuthStore();
+const permissionStore = usePermissionStore();
+
+const canAccess = (routeName) => {
+  return permissionStore.canAccess(authStore.user?.role, routeName);
+};
+</script>
+
 <template>
   <aside class="sidebar" v-if="authStore.isLoggedIn">
     <router-link to="/" class="sidebar-header text-decoration-none">
@@ -47,7 +59,7 @@
         <span>프로모션 관리</span>
       </router-link>
       <router-link v-if="canAccess('products')" to="/products" class="nav-link">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-box-seam-fill" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15.528 2.973a.75.75 0 0 1 .472.676V4.5a.75.75 0 0 1-.75.75H14h-1.5a.75.75 0 0 1-.75-.75V3.643a.905.905 0 0 0-.277-.492L10.92 2.283A1.5 1.5 0 0 0 9.176 2H7.5a.75.75 0 0 1-.75-.75V1A.75.75 0 0 1 7.5 0h1.824a1.5 1.5 0 0 1 1.003.328l1.535 1.31a.905.905 0 0 1 .277.492v1.134h1.25V2.973a.75.75 0 0 1 .472-.676zM1.185 9.954a.25.25 0 0 0-.143.235l.296 1.767c.112.67.618 1.2 1.28 1.415l.97.323a1.5 1.5 0 0 0 1.119 0l.97-.323c.662-.215 1.167-.745 1.28-1.415l.296-1.767a.25.25 0 0 0-.143-.235L5.5 8.6l-4.315 1.354zM14.815 9.954a.25.25 0 0 1 .143.235l-.296 1.767c-.112.67-.618 1.2-1.28 1.415l-.97.323a1.5 1.5 0 0 1-1.119 0l-.97-.323c-.662-.215-1.167-.745-1.28-1.415l-.296-1.767a.25.25 0 0 1 .143-.235l4.315 1.354zM6.5 7.5v6.5h3V7.5h-3zM1.5 7.5v6.5h3V7.5h-3zM11 7.5v6.5h3V7.5h-3z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-box-seam-fill" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15.528 2.973a.75.75 0 0 1 .472.676V4.5a.75.75 0 0 1-.75.75H14h-1.5a.75.75 0 0 1-.75-.75V3.643a.905.905 0 0 0-.277-.492L10.92 2.283A1.5 1.5 0 0 0 9.176 2H7.5a.75.75 0 0 1-.75-.75V1A.75.75 0 0 1 7.5 0h1.824a1.5 1.5 0 0 1 1.003.328l1.535 1.31a.905.905 0 0 1 .277.492v1.134h1.25V2.973a.75.75 0 0 1 .472-.676zM1.185 9.954a.25.25 0 0 0-.143.235l.296 1.767c.112.67.618 1.2 1.28 1.415l.97.323a1.5 1.5 0 0 0 1.119 0l.97-.323c.662-.215-1.167-.745-1.28-1.415l.296-1.767a.25.25 0 0 0-.143-.235L5.5 8.6l-4.315 1.354zM14.815 9.954a.25.25 0 0 1 .143.235l-.296 1.767c-.112.67-.618 1.2-1.28 1.415l-.97.323a1.5 1.5 0 0 1-1.119 0l-.97-.323c-.662-.215-1.167-.745-1.28-1.415l-.296-1.767a.25.25 0 0 1 .143-.235l4.315 1.354zM6.5 7.5v6.5h3V7.5h-3zM1.5 7.5v6.5h3V7.5h-3zM11 7.5v6.5h3V7.5h-3z"/></svg>
         <span>상품 관리</span>
       </router-link>
       <router-link v-if="canAccess('warehouse-inventory')" to="/warehouse-inventory" class="nav-link">
@@ -80,29 +92,21 @@
           <span>드라이버 관리</span>
         </router-link>
         <router-link v-if="canAccess('users')" to="/users" class="nav-link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-people" viewBox="0 0 16 16"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.274.274H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-people" viewBox="0 0 16 16"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.274.274H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0 4z"/></svg>
           <span>사용자 관리</span>
         </router-link>
         <router-link v-if="canAccess('roles')" to="/roles" class="nav-link">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-person-check-fill" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L12.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
           <span>권한 관리</span>
         </router-link>
+        <router-link v-if="canAccess('coupons')" to="/coupons" class="nav-link">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-ticket-percent-fill" viewBox="0 0 16 16"><path d="M0 4.5A1.5 1.5 0 0 1 1.5 3h13A1.5 1.5 0 0 1 16 4.5V6a.5.5 0 0 1-.5.5 1.5 1.5 0 0 0 0 3 .5.5 0 0 1 .5.5v1.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 11.5V10a.5.5 0 0 1 .5-.5 1.5 1.5 0 1 0 0-3A.5.5 0 0 1 0 6V4.5ZM4.5 6a.5.5 0 0 0 0 1h7a.5.5 0 0 0 0-1h-7Zm.854 5.854a.5.5 0 0 0 .708 0L8 9.207l1.938 1.938a.5.5 0 0 0 .708 0l2.146-2.147a.5.5 0 0 0 0-.708L10.646 8l2.147-2.146a.5.5 0 0 0-.708-.708L8 7.293 6.062 5.354a.5.5 0 0 0-.708 0L3.208 7.5a.5.5 0 0 0 0 .708l2.146 2.146Z"/></svg>
+          <span>쿠폰 관리</span>
+        </router-link>
       </template>
     </nav>
   </aside>
 </template>
-
-<script setup>
-import { useAuthStore } from '@/stores/auth';
-import { usePermissionStore } from '@/stores/permissions';
-
-const authStore = useAuthStore();
-const permissionStore = usePermissionStore();
-
-const canAccess = (routeName) => {
-  return permissionStore.canAccess(authStore.user?.role, routeName);
-};
-</script>
 
 <style lang="scss" scoped>
 .sidebar {

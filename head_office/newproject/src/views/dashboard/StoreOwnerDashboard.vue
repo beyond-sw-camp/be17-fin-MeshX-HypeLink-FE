@@ -1,3 +1,9 @@
+<script setup>
+import BaseCard from '@/components/BaseCard.vue';
+import { useAuthStore } from '@/stores/auth';
+const authStore = useAuthStore();
+</script>
+
 <template>
   <BaseCard>
     <template #header><h5>{{ authStore.user.name }}님, 환영합니다.</h5></template>
@@ -5,9 +11,3 @@
     <router-link to="/my-store" class="btn btn-primary">내 점포 관리 바로가기</router-link>
   </BaseCard>
 </template>
-
-<script setup>
-import BaseCard from '@/components/BaseCard.vue';
-import { useAuthStore } from '@/stores/auth';
-const authStore = useAuthStore();
-</script>
