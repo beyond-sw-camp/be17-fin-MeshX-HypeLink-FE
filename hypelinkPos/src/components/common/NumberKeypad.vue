@@ -12,9 +12,12 @@ const props = defineProps({
     default: '번호를 입력하세요'
   },
   maxLength: {
-
     type: Number,
     default: 11
+  },
+  showDoubleZero: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -36,6 +39,13 @@ const appendNumber = (num) => {
 const deleteLastDigit = () => {
   inputValue.value = inputValue.value.slice(0, -1)
   emit('update:modelValue', inputValue.value)
+}
+
+const appendDoubleZero = () => {
+  if (inputValue.value.length <= props.maxLength - 2) {
+    inputValue.value += '00'
+    emit('update:modelValue', inputValue.value)
+  }
 }
 
 const clear = () => {
@@ -81,7 +91,8 @@ const cancel = () => {
           <button class="key-btn" @click="appendNumber(7)">7</button>
           <button class="key-btn" @click="appendNumber(8)">8</button>
           <button class="key-btn" @click="appendNumber(9)">9</button>
-          <button class="key-btn clear-btn" @click="clear">C</button>
+          <button v-if="showDoubleZero" class="key-btn" @click="appendDoubleZero">00</button>
+          <button v-else class="key-btn clear-btn" @click="clear">C</button>
           <button class="key-btn" @click="appendNumber(0)">0</button>
           <button class="key-btn delete-btn" @click="deleteLastDigit">⌫</button>
         </div>

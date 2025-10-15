@@ -1,8 +1,8 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterView } from 'vue-router'
-import Sidebar from './components/Sidebar.vue'
-import TopHeader from './components/TopHeader.vue'
+import Sidebar from './components/common/Sidebar.vue'
+import TopHeader from './components/common/TopHeader.vue'
 
 const isSidebarOpen = ref(false)
 

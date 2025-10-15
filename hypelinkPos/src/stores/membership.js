@@ -85,44 +85,11 @@ export const useMembershipStore = defineStore('membership', () => {
     return { success: false, message: '포인트가 부족합니다.' }
   }
 
-  // 멤버 정보 수정
-  const updateMember = (memberId, updates) => {
-    const member = members.value.find(m => m.id === memberId)
-    if (member) {
-      Object.assign(member, updates)
-      return { success: true }
-    }
-    return { success: false }
-  }
-
-  // 멤버 삭제
-  const deleteMember = (memberId) => {
-    const index = members.value.findIndex(m => m.id === memberId)
-    if (index !== -1) {
-      members.value.splice(index, 1)
-      return { success: true }
-    }
-    return { success: false }
-  }
-
-  const totalMembers = computed(() => members.value.length)
-  const activeMembers = computed(() => {
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    return members.value.filter(m =>
-      m.lastVisit && new Date(m.lastVisit) >= thirtyDaysAgo
-    ).length
-  })
-
   return {
     members,
-    totalMembers,
-    activeMembers,
     findMemberByPhone,
     registerMember,
     earnPoints,
-    usePoints,
-    updateMember,
-    deleteMember
+    usePoints
   }
 })
