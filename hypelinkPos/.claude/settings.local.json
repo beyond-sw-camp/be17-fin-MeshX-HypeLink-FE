@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Read(//c/Users/user/Desktop/HypeLink/be17-fin-MeshX-HypeLink-BE/**)",
+      "Read(//c/Users/user/Desktop/HypeLink/be17-fin-MeshX-HypeLink-FE/**)",
+      "mcp__ide__getDiagnostics",
+      "Bash(tree:*)",
+      "Bash(xargs ls:*)",
+      "Bash(gradlew.bat build:*)",
+      "WebSearch",
+      "WebFetch(domain:javadoc.io)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
