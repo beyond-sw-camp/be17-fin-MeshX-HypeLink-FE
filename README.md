@@ -143,7 +143,7 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 <a href="https://www.figma.com/design/apT7cRFWE4TS6WcdayD1Tn/HypeLink?node-id=0-1&p=f&t=s8E79kwSqskjhKOT-0">피그마 주소</a>
 
 
-<a href="https://www.figma.com/design/apT7cRFWE4TS6WcdayD1Tn/HypeLink?node-id=0-1&p=f&t=s8E79kwSqskjhKOT-0">피그마 보기</a>
+<a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/blob/main/doc/Fiqma.png">피그마 보기</a>
 
 ---
 
