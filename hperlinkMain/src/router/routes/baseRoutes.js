@@ -8,7 +8,7 @@ const baseRoutes = [
     path: '/my-store',
     name: 'my-store',
     component: () => import('@/views/MyStoreView.vue'),
-    meta: { roles: ['super_admin', 'sub_admin', 'store_manager'] }
+    meta: { roles: ['ADMIN', 'MANAGER', 'BRANCH_MANAGER'] }
   }
 ];
 

@@ -34,7 +34,7 @@ const filteredAndSortedRoles = computed(() => {
   let roles = Object.keys(allRolesData.value).map(key => ({ roleName: key, routes: allRolesData.value[key] }));
 
   // 총괄 관리자는 UI에서 직접 수정하지 않으므로 제외
-  roles = roles.filter(role => role.roleName !== 'super_admin');
+  roles = roles.filter(role => role.roleName !== 'ADMIN');
 
   // 검색
   if (searchTerm.value) {
@@ -95,7 +95,7 @@ const updatePermission = (roleName, route, isChecked) => {
 const savePermissions = () => {
   // 스토어의 액션을 호출하여 권한 업데이트
   Object.keys(allRolesData.value).forEach(roleName => {
-    if (roleName !== 'super_admin') { // 총괄 관리자는 UI에서 수정하지 않음
+    if (roleName !== 'ADMIN') { // 총괄 관리자는 UI에서 수정하지 않음
       permissionStore.updatePermissions(roleName, allRolesData.value[roleName]);
     }
   });
@@ -103,9 +103,9 @@ const savePermissions = () => {
 };
 
 const roleText = (role) => {
-  if (role === 'super_admin') return '총괄 관리자';
-  if (role === 'sub_admin') return '부관리자';
-  if (role === 'store_manager') return '지점장';
+  if (role === 'ADMIN') return '총괄 관리자';
+  if (role === 'MANAGER') return '중간 관리자';
+  if (role === 'BRANCH_MANAGER') return '지점장';
   return role;
 };
 
@@ -148,12 +148,12 @@ const routeText = (route) => {
           </div>
         </div>
       </template>
-      <p class="text-muted">총괄 관리자(super_admin)는 시스템의 모든 권한을 가집니다.</p>
+      <p class="text-muted">총괄 관리자(ADMIN)는 시스템의 모든 권한을 가집니다.</p>
       <hr>
       
       <div v-if="Object.keys(paginatedRoles).length > 0">
         <div v-for="(roleData, roleName) in paginatedRoles" :key="roleName" class="mb-4">
-          <div v-if="roleName !== 'super_admin'">
+          <div v-if="roleName !== 'ADMIN'">
             <h4>'{{ roleText(roleName) }}' 역할의 권한</h4>
             <div class="row">
               <div v-for="route in permissionStore.allRoutes" :key="route" class="col-md-4 col-sm-6">
