@@ -14,4 +14,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    // host: "0.0.0.0",
+    proxy: {
+      // API 요청을 백엔드 서버로 프록시
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  }
 })

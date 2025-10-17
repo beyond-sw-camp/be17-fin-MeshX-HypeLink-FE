@@ -1,49 +1,34 @@
 <script setup>
-import { ref, reactive } from 'vue';
+import { reactive, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseCard from '@/components/BaseCard.vue';
 import { useAuthStore } from '@/stores/auth';
-import { useToastStore } from '@/stores/toast';
 
 const authStore = useAuthStore();
-const toastStore = useToastStore();
 const router = useRouter();
 
 const loginForm = reactive({
-  username: '',
+  email: '',
   password: '',
 });
 
-const formSubmitted = ref(false);
-
-const handleLogin = async (role = null) => {
-  formSubmitted.value = true;
-  if (!loginForm.username || !loginForm.password) {
-    toastStore.showToast('아이디와 비밀번호를 입력해주세요.', 'danger');
+const handleLogin = async () => {
+  if (!loginForm.email || !loginForm.password) {
+    // authStore가 이미 토스트 메시지를 처리합니다.
+    console.warn('Email and password are required');
     return;
   }
 
-  // 실제 백엔드 연동 시에는 이 부분에서 API 호출
-  // 현재는 개발용 역할 선택 로그인으로 대체
-  if (role) {
-    authStore.login(role);
-  } else {
-    // 일반 로그인 시도 (목업)
-    if (loginForm.username === 'admin' && loginForm.password === 'admin123') {
-      authStore.login('super_admin');
-    } else if (loginForm.username === 'subadmin' && loginForm.password === 'subadmin123') {
-      authStore.login('sub_admin');
-    } else if (loginForm.username === 'gangnam' && loginForm.password === 'gangnam123') {
-      authStore.login('store_manager');
-    } else {
-      toastStore.showToast('아이디 또는 비밀번호가 올바르지 않습니다.', 'danger');
-      return;
+  try {
+    await authStore.login(loginForm);
+    // Vue의 반응형 상태가 업데이트될 때까지 기다린 후 페이지 이동
+    await nextTick();
+    if (authStore.isLoggedIn) {
+      router.push('/');
     }
-  }
-
-  if (authStore.isLoggedIn) {
-    toastStore.showToast(`${authStore.user.name}님 환영합니다!`, 'success');
-    router.push('/'); // 로그인 성공 시 대시보드로 이동
+  } catch (error) {
+    // authStore에서 이미 에러 토스트를 표시하므로, 여기서는 콘솔에만 기록합니다.
+    console.error('Login failed from component:', error.message);
   }
 };
 </script>
@@ -51,28 +36,20 @@ const handleLogin = async (role = null) => {
 <template>
   <div class="d-flex justify-content-center align-items-center vh-100">
     <BaseCard style="width: 400px;">
-      <template #header><h5>로그인</h5></template>
-      <form @submit.prevent="handleLogin()">
+      <template #header><h5>HypeLink 통합 관리 시스템</h5></template>
+      <form @submit.prevent="handleLogin">
         <div class="mb-3">
-          <label for="username" class="form-label">아이디</label>
-          <input type="text" class="form-control" id="username" v-model="loginForm.username" :class="{ 'is-invalid': !loginForm.username && formSubmitted }">
-          <div class="invalid-feedback">아이디를 입력해주세요.</div>
+          <label for="email" class="form-label">이메일</label>
+          <input type="email" class="form-control" id="email" v-model="loginForm.email">
         </div>
         <div class="mb-3">
           <label for="password" class="form-label">비밀번호</label>
-          <input type="password" class="form-control" id="password" v-model="loginForm.password" :class="{ 'is-invalid': !loginForm.password && formSubmitted }">
-          <div class="invalid-feedback">비밀번호를 입력해주세요.</div>
+          <input type="password" class="form-control" id="password" v-model="loginForm.password">
         </div>
         <div class="d-grid gap-2">
           <button type="submit" class="btn btn-primary">로그인</button>
         </div>
       </form>
-      <hr class="my-4">
-      <div class="d-grid gap-2">
-        <button class="btn btn-outline-secondary" @click="handleLogin('super_admin')">총괄 관리자로 로그인 (개발용)</button>
-        <button class="btn btn-outline-secondary" @click="handleLogin('sub_admin')">부관리자로 로그인 (개발용)</button>
-        <button class="btn btn-outline-secondary" @click="handleLogin('store_manager')">지점장으로 로그인 (개발용)</button>
-      </div>
     </BaseCard>
   </div>
 </template>

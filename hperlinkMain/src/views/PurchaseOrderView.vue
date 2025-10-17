@@ -40,7 +40,7 @@ onMounted(() => {
 const filteredAndSortedOrders = computed(() => {
   let orders = [...orderStore.allOrders];
 
-  if (authStore.isStoreManager) {
+  if (authStore.isBranchManager) {
     orders = orders.filter(order => order.storeName === authStore.user.name);
   }
 
@@ -156,7 +156,7 @@ const orderStatusClass = (status) => {
               <option value="완료">완료</option>
               <option value="취소">취소</option>
             </select>
-            <button v-if="authStore.isStoreManager" class="btn btn-primary btn-sm" @click="openOrderModal()">+ 새 발주서 작성</button>
+            <button v-if="authStore.isBranchManager" class="btn btn-primary btn-sm" @click="openOrderModal()">+ 새 발주서 작성</button>
           </div>
         </div>
       </template>
@@ -166,23 +166,23 @@ const orderStatusClass = (status) => {
           <thead>
             <tr>
               <th @click="updateSort('id')" class="sortable">발주 번호 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="id" /></th>
-              <th v-if="authStore.isAdmin || authStore.isSubAdmin" @click="updateSort('storeName')" class="sortable">요청 매장 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="storeName" /></th>
+              <th v-if="authStore.isAdmin || authStore.isManager" @click="updateSort('storeName')" class="sortable">요청 매장 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="storeName" /></th>
               <th @click="updateSort('productName')" class="sortable">상품명 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="productName" /></th>
               <th @click="updateSort('quantity')" class="sortable">수량 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="quantity" /></th>
               <th @click="updateSort('requestDate')" class="sortable">요청일 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="requestDate" /></th>
               <th @click="updateSort('status')" class="sortable">상태 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="status" /></th>
-              <th v-if="authStore.isAdmin || authStore.isSubAdmin">관리</th>
+              <th v-if="authStore.isAdmin || authStore.isManager">관리</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="order in paginatedOrders" :key="order.id">
               <td>{{ order.id }}</td>
-              <td v-if="authStore.isAdmin || authStore.isSubAdmin">{{ order.storeName }}</td>
+              <td v-if="authStore.isAdmin || authStore.isManager">{{ order.storeName }}</td>
               <td>{{ order.productName }}</td>
               <td>{{ order.quantity }}</td>
               <td>{{ order.requestDate }}</td>
               <td><span class="badge" :class="orderStatusClass(order.status)">{{ order.status }}</span></td>
-              <td v-if="authStore.isAdmin || authStore.isSubAdmin">
+              <td v-if="authStore.isAdmin || authStore.isManager">
                 <button class="btn btn-sm btn-success" @click="handleUpdateOrderStatus(order.id, '처리중')">처리</button>
                 <button class="btn btn-sm btn-danger ms-2" @click="handleUpdateOrderStatus(order.id, '취소')">취소</button>
               </td>

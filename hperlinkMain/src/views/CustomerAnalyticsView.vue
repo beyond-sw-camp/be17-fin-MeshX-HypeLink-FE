@@ -187,7 +187,7 @@ const issueCoupon = async () => {
             </div>
           </template>
           
-          <div v-if="authStore.isSuperAdmin || authStore.isSubAdmin" v-show="selectedCustomers.size > 0" class="coupon-issue-section alert alert-info">
+          <div v-if="authStore.isAdmin || authStore.isManager" v-show="selectedCustomers.size > 0" class="coupon-issue-section alert alert-info">
             <div class="d-flex justify-content-between align-items-center">
               <span><strong>{{ selectedCustomers.size }}</strong>명의 고객 선택됨</span>
               <div class="d-flex align-items-center">
