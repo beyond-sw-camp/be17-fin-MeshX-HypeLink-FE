@@ -73,7 +73,7 @@ const roleText = (role) => {
                 <option value="store_manager">지점장</option>
               </select>
             </div>
-            <button v-if="authStore.isSuperAdmin" class="btn btn-primary btn-sm" @click="emit('add-manager')">+ 지점장 추가</button>
+            <button v-if="authStore.isAdmin" class="btn btn-primary btn-sm" @click="emit('add-manager')">+ 지점장 추가</button>
           </div>
         </div>
       </template>
@@ -85,7 +85,7 @@ const roleText = (role) => {
               <th @click="emit('update:sort', 'name')" class="sortable">이름 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="name" /></th>
               <th @click="emit('update:sort', 'role')" class="sortable">역할 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="role" /></th>
               <th @click="emit('update:sort', 'joinDate')" class="sortable">가입일 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="joinDate" /></th>
-              <th v-if="authStore.isSuperAdmin">권한 변경</th>
+              <th v-if="authStore.isAdmin">권한 변경</th>
             </tr>
           </thead>
           <tbody>
@@ -95,7 +95,7 @@ const roleText = (role) => {
                 <span class="badge" :class="roleClass(user.role)">{{ roleText(user.role) }}</span>
               </td>
               <td>{{ user.joinDate }}</td>
-              <td v-if="authStore.isSuperAdmin">
+              <td v-if="authStore.isAdmin">
                 <div class="dropdown" v-if="user.id !== authStore.user.id">
                   <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">변경</button>
                   <ul class="dropdown-menu">

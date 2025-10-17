@@ -126,7 +126,7 @@ const handleSubmitHeadOfficeOrder = () => {
                 <option value="기타">기타</option>
               </select>
             </div>
-            <button v-if="authStore.isSuperAdmin || authStore.isSubAdmin" class="btn btn-primary btn-sm" @click="isOrderModalOpen = true">+ 본사 발주</button>
+            <button v-if="authStore.isAdmin || authStore.isManager" class="btn btn-primary btn-sm" @click="isOrderModalOpen = true">+ 본사 발주</button>
           </div>
         </div>
       </template>

@@ -57,7 +57,7 @@ const filteredAndSortedSalesData = computed(() => {
   let sales = [...allSalesData.value];
 
   // 역할에 따른 필터링 (점주는 자신의 매장 매출만)
-  if (authStore.isStoreManager) {
+  if (authStore.isBranchManager) {
     sales = sales.filter(sale => sale.storeName === authStore.user.name);
   }
 
@@ -145,7 +145,7 @@ const salesData = {
 // 역할에 따라 보여줄 메인 차트 데이터
 const mainChart = computed(() => {
   let dataKey = '전체';
-  if (authStore.isStoreManager) {
+  if (authStore.isBranchManager) {
     dataKey = authStore.user.name;
   }
   const sales = salesData[dataKey] || salesData['전체'];
@@ -180,7 +180,7 @@ const lookupChart = computed(() => {
     <BaseCard>
       <template #header>
         <div class="d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">{{ authStore.isStoreManager ? '내 매장 매출' : '전체 매출 현황' }}</h5>
+          <h5 class="mb-0">{{ authStore.isBranchManager ? '내 매장 매출' : '전체 매출 현황' }}</h5>
           <div class="d-flex align-items-center">
             <div class="me-2">
               <input type="text" class="form-control form-control-sm" placeholder="매장명 검색" v-model="searchTerm">
@@ -236,7 +236,7 @@ const lookupChart = computed(() => {
     </BaseCard>
 
     <!-- 타 매장 매출 조회 (점주 전용) -->
-    <div v-if="authStore.isStoreManager" class="mt-4">
+    <div v-if="authStore.isBranchManager" class="mt-4">
       <BaseCard>
         <template #header><h5>타 매장 매출 조회</h5></template>
         <div class="row">

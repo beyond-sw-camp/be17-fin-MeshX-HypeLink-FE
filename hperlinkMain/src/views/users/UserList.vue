@@ -19,7 +19,7 @@ const roleClass = (role) => {
     <template #header>
       <div class="d-flex justify-content-between align-items-center">
         <h5 class="mb-0">사용자 관리</h5>
-        <button v-if="authStore.isSuperAdmin" class="btn btn-primary btn-sm" @click="emit('add-manager')">+ 지점장 추가</button>
+        <button v-if="authStore.isAdmin" class="btn btn-primary btn-sm" @click="emit('add-manager')">+ 지점장 추가</button>
       </div>
     </template>
     <table class="table table-hover">
@@ -28,7 +28,7 @@ const roleClass = (role) => {
           <th>이름</th>
           <th>역할</th>
           <th>가입일</th>
-          <th v-if="authStore.isSuperAdmin">권한 변경</th>
+          <th v-if="authStore.isAdmin">권한 변경</th>
         </tr>
       </thead>
       <tbody>
@@ -38,7 +38,7 @@ const roleClass = (role) => {
             <span class="badge" :class="roleClass(user.role)">{{ user.role }}</span>
           </td>
           <td>{{ user.joinDate }}</td>
-          <td v-if="authStore.isSuperAdmin">
+          <td v-if="authStore.isAdmin">
             <div class="dropdown" v-if="user.id !== authStore.user.id">
               <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">변경</button>
               <ul class="dropdown-menu">
