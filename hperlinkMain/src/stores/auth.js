@@ -29,7 +29,6 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       const accessToken = data.accessToken;
-      console.log('[Login Success] New Access Token Issued:', accessToken);
       const userData = { name: data.name, role: data.role };
 
       // 메모리에만 토큰과 사용자 정보 저장
