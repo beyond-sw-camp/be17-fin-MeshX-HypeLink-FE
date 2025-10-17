@@ -37,7 +37,7 @@ onMounted(() => {
 const filteredAndSortedReports = computed(() => {
   let reports = [...posReportStore.allReports];
 
-  if (authStore.isStoreManager) {
+  if (authStore.isBranchManager) {
     reports = reports.filter(report => report.storeName === authStore.user.name);
   }
 
@@ -117,7 +117,7 @@ const handleChangeReportStatus = ({ id, status }) => {
 <template>
   <div>
     <!-- 점주용 화면 -->
-    <div v-if="authStore.isStoreManager" class="row">
+    <div v-if="authStore.isBranchManager" class="row">
       <div class="col-lg-5">
         <POSReportForm :storeName="authStore.user.name" @submit-report="handleSubmitReport" />
       </div>
@@ -141,7 +141,7 @@ const handleChangeReportStatus = ({ id, status }) => {
     </div>
 
     <!-- 관리자용 화면 -->
-    <div v-if="authStore.isSuperAdmin || authStore.isSubAdmin">
+    <div v-if="authStore.isAdmin || authStore.isManager">
       <POSReportList 
         title="전체 POS 신고 접수 현황" 
         :reports="paginatedReports"

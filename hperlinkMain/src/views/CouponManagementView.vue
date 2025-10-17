@@ -121,7 +121,7 @@ const formatValue = (type, value) => {
           <h5 class="mb-0">쿠폰 관리</h5>
           <div class="d-flex">
             <button
-              v-if="authStore.isSuperAdmin || authStore.isSubAdmin"
+              v-if="authStore.isAdmin || authStore.isManager"
               class="btn btn-primary btn-sm"
               @click="openCouponModal"
             >
@@ -152,7 +152,7 @@ const formatValue = (type, value) => {
             <td>{{ coupon.period }}</td>
             <td>
               <button
-                v-if="authStore.isSuperAdmin || authStore.isSubAdmin"
+                v-if="authStore.isAdmin || authStore.isManager"
                 class="btn btn-sm btn-danger"
                 @click="deleteCoupon(coupon.id)"
               >

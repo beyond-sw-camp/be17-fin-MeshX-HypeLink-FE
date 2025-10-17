@@ -110,7 +110,7 @@ const deleteAnnouncement = async (id) => {
           <h5 class="mb-0">공지사항 목록</h5>
           <div class="d-flex">
             <input type="text" class="form-control form-control-sm me-2" placeholder="제목/내용 검색" v-model="searchTerm">
-            <button v-if="authStore.isSuperAdmin || authStore.isSubAdmin" class="btn btn-primary btn-sm" @click="openAddAnnouncementModal">+ 새 공지 작성</button>
+            <button v-if="authStore.isAdmin || authStore.isManager" class="btn btn-primary btn-sm" @click="openAddAnnouncementModal">+ 새 공지 작성</button>
           </div>
         </div>
       </template>
@@ -127,7 +127,7 @@ const deleteAnnouncement = async (id) => {
             <p class="mb-1">{{ announcement.content }}</p>
             <div class="d-flex justify-content-between align-items-center">
               <small class="text-muted">작성자: {{ announcement.author }}</small>
-              <div v-if="authStore.isSuperAdmin || authStore.isSubAdmin">
+              <div v-if="authStore.isAdmin || authStore.isManager">
                 <button class="btn btn-link btn-sm text-secondary p-0 me-2" @click="openAddAnnouncementModal(announcement)">수정</button>
                 <button class="btn btn-link btn-sm text-danger p-0" @click="deleteAnnouncement(announcement.id)">삭제</button>
               </div>

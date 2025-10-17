@@ -72,7 +72,7 @@ const canAccess = (routeName) => {
       </router-link>
 
       <!-- ===== 관리자 전용 메뉴 ===== -->
-      <template v-if="authStore.isSuperAdmin || authStore.isSubAdmin">
+      <template v-if="authStore.isAdmin || authStore.isManager">
         <hr class="text-secondary my-2 bg-secondary" style="opacity: 0.1">
         <h6 class="text-secondary ps-3">시스템 관리</h6>
         <router-link v-if="canAccess('tracking')" to="/tracking" class="nav-link">

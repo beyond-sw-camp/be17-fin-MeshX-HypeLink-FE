@@ -3,7 +3,7 @@ const inventoryRoutes = [
     path: '/inventory',
     name: 'inventory',
     component: () => import('@/views/InventoryManagementView.vue'),
-    meta: { roles: ['super_admin', 'sub_admin', 'store_manager'] }
+    meta: { roles: ['ADMIN', 'MANAGER', 'BRANCH_MANAGER'] }
   }
 ];
 
