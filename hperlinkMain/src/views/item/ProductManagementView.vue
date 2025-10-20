@@ -50,25 +50,42 @@ onMounted(() => {
 // --- 검색, 필터링, 정렬 로직 ---
 const filteredAndSortedProducts = computed(() => {
   let products = [...allProducts.value];
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase();
-    products = products.filter(product => 
-      product.name.toLowerCase().includes(term) || 
-      product.code.toLowerCase().includes(term)
+
+  // 검색 (koName / enName / itemCode / itemDetailCode)
+  const term = (searchTerm.value || '').trim().toLowerCase();
+  if (term) {
+    products = products.filter(p =>
+        p.koName?.toLowerCase().includes(term) ||
+        p.enName?.toLowerCase().includes(term) ||
+        p.itemCode?.toLowerCase().includes(term) ||
+        p.itemDetailCode?.toLowerCase().includes(term)
     );
   }
+
+  // 카테고리 필터
   if (filterCategory.value !== 'all') {
-    products = products.filter(product => product.category === filterCategory.value);
+    products = products.filter(p => p.category === filterCategory.value);
   }
+
+  // 정렬 (안전 비교)
   if (sortKey.value) {
+    const dir = sortOrder.value === 'asc' ? 1 : -1;
     products.sort((a, b) => {
-      const valA = a[sortKey.value];
-      const valB = b[sortKey.value];
-      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
-      return 0;
+      const A = a?.[sortKey.value];
+      const B = b?.[sortKey.value];
+
+      // 숫자/문자 혼용 대비
+      if (A == null && B == null) return 0;
+      if (A == null) return -1 * dir;
+      if (B == null) return  1 * dir;
+
+      if (typeof A === 'number' && typeof B === 'number') {
+        return (A - B) * dir;
+      }
+      return String(A).localeCompare(String(B)) * dir;
     });
   }
+
   return products;
 });
 
@@ -235,11 +252,9 @@ const loadItems = async (page = 1) => {
 };
 
 // === 페이지 이동 ===
-const updatePage = (page) => {
-  if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page;
-    loadItems(page);
-  }
+const updatePage = async (page) => {
+  if (page < 1 || page > totalPages.value) return;
+  await loadItems(page);
 };
 
 </script>
@@ -269,7 +284,7 @@ const updatePage = (page) => {
         </div>
       </template>
       
-      <div v-if="paginatedProducts.length > 0">
+      <div v-if="allProducts.length > 0">
         <table class="table table-hover text-center align-middle">
           <thead class="table-light">
           <tr>
