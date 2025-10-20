@@ -29,6 +29,14 @@ const searchTerm = ref('');
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
 
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const month = date.getMonth() + 1; // JS에서 month는 0부터 시작
+  const day = date.getDate();
+  return `${month}월 ${day}일`;
+};
+
 //화면이 처음 뜰 때 실행: 전체 공지 목록을 서버에서 받아오기
 onMounted(async () => {
   loading.value = true;
@@ -183,7 +191,7 @@ const deleteAnnouncement = async (id) => {
                 <h6 class="mb-1">{{ announcement.title }}</h6>
               </router-link>
               <!-- 날짜(있으면) 표시 -->
-              <small>{{ announcement.date }}</small>
+              <small>{{  formatDate(announcement.date) }}</small>
             </div>
             <p class="mb-1">{{ announcement.contents }}</p>
             <div class="d-flex justify-content-between align-items-center">
