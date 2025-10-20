@@ -1,33 +1,27 @@
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { usePosManagementStore } from '@/stores/store';
 import { useToastStore } from '@/stores/toast';
+import { useModalStore } from '@/stores/modal';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 
 const posStore = usePosManagementStore();
 const toastStore = useToastStore();
+const modalStore = useModalStore();
 
 const isModalOpen = ref(false);
 const formSubmitted = ref(false);
 
 // --- Data Model for New POS ---
-const newPosDefaults = { posCode: '' };
+const newPosDefaults = { posCode: '', name: '' };
 const newPos = reactive({ ...newPosDefaults });
 
 // --- Lifecycle Hooks ---
 onMounted(async () => {
-  await posStore.fetchSelectableStores();
-});
-
-// Watch for store selection changes
-watch(() => posStore.selectedStoreId, (newStoreId) => {
-  if (newStoreId) {
-    posStore.fetchPosDevices(newStoreId);
-  } else {
-    posStore.posDevices = []; // Clear list if no store is selected
-  }
+  // Fetch all data once when the component mounts
+  await posStore.fetchData();
 });
 
 // --- Methods ---
@@ -39,17 +33,18 @@ const openAddPosModal = () => {
 
 const handleAddPos = async () => {
   formSubmitted.value = true;
-  if (!newPos.posCode) {
-    toastStore.showToast('POS 코드를 입력해주세요.', 'danger');
+  if (!newPos.posCode || !newPos.name) {
+    toastStore.showToast('이름과 POS 코드를 모두 입력해주세요.', 'danger');
     return;
   }
 
-  // Backend will auto-generate email, password, name etc.
   const payload = {
+    name: newPos.name,
     posCode: newPos.posCode,
     role: 'POS_MEMBER',
     storeId: posStore.selectedStoreId,
-    region: posStore.selectedStore.region // Pass region from selected store
+    // Region can be derived from the selected store in the backend or here
+    region: posStore.selectedStore.region 
   };
 
   const success = await posStore.addPosDevice(payload);
@@ -59,6 +54,23 @@ const handleAddPos = async () => {
     isModalOpen.value = false;
   } else {
     toastStore.showToast('POS 기기 등록에 실패했습니다.', 'danger');
+  }
+};
+
+const handleDeletePos = async (pos) => {
+  const confirmed = await modalStore.show({
+    title: 'POS 삭제 확인',
+    message: `정말 \'${pos.name}\' POS 기기를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+    isConfirmation: true,
+  });
+
+  if (confirmed) {
+    const success = await posStore.deletePosDevice(pos.id);
+    if (success) {
+      toastStore.showToast('POS 기기가 삭제되었습니다.', 'success');
+    } else {
+      toastStore.showToast('POS 기기 삭제에 실패했습니다.', 'danger');
+    }
   }
 };
 
@@ -100,12 +112,16 @@ const handleAddPos = async () => {
               <tr>
                 <th>이름</th>
                 <th>POS 코드</th>
+                <th>관리</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="pos in posStore.posDevices" :key="pos.id">
                 <td>{{ pos.name }}</td>
                 <td>{{ pos.posCode }}</td>
+                <td>
+                  <button class="btn btn-danger btn-sm" @click="handleDeletePos(pos)">삭제</button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -122,6 +138,10 @@ const handleAddPos = async () => {
     <BaseModal v-model="isModalOpen">
       <template #header><h5>새 POS 기기 등록</h5></template>
       <form @submit.prevent="handleAddPos">
+        <div class="mb-3">
+          <label class="form-label">이름 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" v-model="newPos.name" :class="{ 'is-invalid': formSubmitted && !newPos.name }" placeholder="예: 카운터 POS">
+        </div>
         <div class="mb-3">
           <label class="form-label">POS 코드 <span class="text-danger">*</span></label>
           <input type="text" class="form-control" v-model="newPos.posCode" :class="{ 'is-invalid': formSubmitted && !newPos.posCode }" placeholder="예: 01, 02">
