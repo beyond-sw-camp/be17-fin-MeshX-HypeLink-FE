@@ -1,94 +1,88 @@
 import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
-import { useAuthStore } from './auth'; // To get user role
+import { useAuthStore } from './auth';
+import storeApi from '@/api/store'; // Import the new store API
+import posApi from '@/api/pos';
 
 // For Admins/Managers
 export const usePosManagementStore = defineStore('pos-management', () => {
   // --- STATE ---
-  const selectableStores = ref([]);
+  const allData = ref([]); // Holds the entire list of stores with nested POS devices
   const selectedStoreId = ref(null);
-  const posDevices = ref([]);
   const isLoading = ref(false);
 
-  const selectedStore = computed(() => {
-    return selectableStores.value.find(s => s.id === selectedStoreId.value) || null;
+  // --- COMPUTED PROPERTIES ---
+
+  // The list of stores for the dropdown selector
+  const selectableStores = computed(() => {
+    return allData.value.map(store => ({ id: store.id, name: store.name }));
   });
 
-  // --- MOCK DATA ---
-  const mockAllStores = [
-    { id: 101, name: 'HypeLink 강남점', region: 'SEOUL_GYEONGGI' },
-    { id: 102, name: 'HypeLink 홍대점', region: 'SEOUL_GYEONGGI' },
-    { id: 103, name: 'HypeLink 부산점', region: 'GYEONGSANG' },
-  ];
+  // The currently selected store object
+  const selectedStore = computed(() => {
+    return allData.value.find(s => s.id === selectedStoreId.value) || null;
+  });
 
-  const mockPosDataByStore = {
-    101: [
-      { id: 'p01', name: '강남점-POS1', posCode: 'S101P01' },
-      { id: 'p02', name: '강남점-POS2', posCode: 'S101P02' },
-    ],
-    102: [
-      { id: 'p03', name: '홍대점-POS1', posCode: 'S102P01' },
-    ],
-    103: [],
-  };
+  // The list of POS devices for the currently selected store
+  const posDevices = computed(() => {
+    return selectedStore.value ? selectedStore.value.posDevices : [];
+  });
 
   // --- ACTIONS ---
 
-  const fetchSelectableStores = async () => {
+  const fetchData = async () => {
     isLoading.value = true;
-    const authStore = useAuthStore();
-    console.log('Fetching selectable stores for role:', authStore.user?.role);
-
-    // Simulate API call based on role
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    if (authStore.isBranchManager) {
-      // Branch Manager sees only their own store
-      selectableStores.value = mockAllStores.slice(0, 1); 
+    const response = await storeApi.getStoresWithPos();
+    if (response.success) {
+      allData.value = response.data;
     } else {
-      // Admin/Manager sees all stores
-      selectableStores.value = mockAllStores;
+      console.error("Failed to fetch store and POS data:", response.message);
+      allData.value = []; // Clear data on failure
     }
-    isLoading.value = false;
-  };
-
-  const fetchPosDevices = async (storeId) => {
-    if (!storeId) return;
-    isLoading.value = true;
-    console.log(`Fetching POS devices for storeId: ${storeId}`);
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 400));
-    posDevices.value = mockPosDataByStore[storeId] || [];
     isLoading.value = false;
   };
 
   const addPosDevice = async (newPosData) => {
     if (!selectedStoreId.value) return false;
-    console.log(`Adding new POS device to store ${selectedStoreId.value}:`, newPosData);
     
-    // This will call the actual API: POST /api/auth/register
-    // For now, just add to the mock data array
+    // When connected to a real API, we would call a register API
+    // and then refresh the data for the selected store.
+    // For now, we just add it locally to the mock data for UI testing.
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    const newDevice = {
-      ...newPosData,
-      id: `p${Date.now()}`,
-      name: `${selectedStore.value.name}-POS${posDevices.value.length + 1}`
-    };
-    posDevices.value.push(newDevice);
+    if (selectedStore.value) {
+        const newDevice = {
+          ...newPosData,
+          id: `p${Date.now()}`,
+          name: newPosData.name || `${selectedStore.value.name}-POS${selectedStore.value.posDevices.length + 1}`
+        };
+        selectedStore.value.posDevices.push(newDevice);
+    }
     return true; // Simulate success
   };
 
+  const deletePosDevice = async (posId) => {
+    const response = await posApi.deletePos(posId);
+    if (response.success && selectedStore.value) {
+      // Remove from the local array
+      const index = selectedStore.value.posDevices.findIndex(p => p.id === posId);
+      if (index > -1) {
+        selectedStore.value.posDevices.splice(index, 1);
+      }
+      return true;
+    }
+    return false;
+  };
+
   return {
-    selectableStores,
     selectedStoreId,
-    posDevices,
     isLoading,
+    selectableStores,
     selectedStore,
-    fetchSelectableStores,
-    fetchPosDevices,
+    posDevices,
+    fetchData,
     addPosDevice,
+    deletePosDevice,
   };
 });
 
