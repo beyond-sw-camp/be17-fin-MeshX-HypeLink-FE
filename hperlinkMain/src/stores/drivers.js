@@ -1,13 +1,9 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import driverApi from '@/api/driver';
 
 export const useDriverStore = defineStore('drivers', () => {
-  const allDrivers = ref([
-    { id: 1, name: '김기사', phone: '010-1111-1111', region: '서울/경기' },
-    { id: 2, name: '이기사', phone: '010-2222-2222', region: '서울/경기' },
-    { id: 3, name: '박기사', phone: '010-3333-3333', region: '부산/경남' },
-    { id: 4, name: '최기사', phone: '010-4444-4444', region: '제주' },
-  ]);
+  const allDrivers = ref([]); // Mock data removed, starts empty
 
   const stores = ref([
     { id: 1, name: 'HypeLink 강남점', address: '서울시 강남구 테헤란로', drivers: [] },
@@ -15,6 +11,18 @@ export const useDriverStore = defineStore('drivers', () => {
     { id: 3, name: 'HypeLink 부산점', address: '부산시 해운대구', drivers: [] },
     { id: 4, name: 'HypeLink 제주점', address: '제주시 첨단로', drivers: [] },
   ]);
+
+  // Fetches drivers from the backend
+  const fetchDrivers = async () => {
+    const response = await driverApi.getDrivers();
+    if (response.success) {
+      // The backend provides macAddress which is a unique identifier. Use it for the ID.
+      allDrivers.value = response.data.map(driver => ({ ...driver, id: driver.macAddress }));
+    } else {
+      console.error("Failed to fetch drivers:", response.message);
+      // Optionally, show a toast message to the user
+    }
+  };
 
   const addDriver = (driver) => {
     allDrivers.value.push({ id: Date.now(), ...driver });
@@ -59,5 +67,5 @@ export const useDriverStore = defineStore('drivers', () => {
   };
 
 
-  return { allDrivers, stores, addDriver, deleteDriver, assignDriverToStore, unassignDriver };
+  return { allDrivers, stores, fetchDrivers, addDriver, deleteDriver, assignDriverToStore, unassignDriver };
 });
