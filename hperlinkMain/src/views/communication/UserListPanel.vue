@@ -5,9 +5,9 @@ defineProps({ users: Array, selectedUserId: Number });
 const emit = defineEmits(['select-user']);
 
 const roleClass = (role) => {
-  if (role === 'super_admin') return 'bg-danger';
-  if (role === 'sub_admin') return 'bg-primary';
-  if (role === 'store_manager') return 'bg-success';
+  if (role === 'ADMIN') return 'bg-danger';
+  if (role === 'MANAGER') return 'bg-primary';
+  if (role === 'BRANCH_MANAGER') return 'bg-success';
   return 'bg-secondary';
 };
 </script>

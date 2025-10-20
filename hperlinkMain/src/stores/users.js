@@ -1,21 +1,35 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import { registerUser } from '@/api/auth';
+import { getUsers } from '@/api/users'; // Add this import
 
 export const useUserStore = defineStore('users', () => {
-  const allUsers = ref([
-    { id: 1, name: '총괄 관리자', role: 'super_admin', joinDate: '2024-01-01', username: 'admin', password: 'admin123' },
-    { id: 2, name: '부관리자', role: 'sub_admin', joinDate: '2024-01-02', username: 'subadmin', password: 'subadmin123' },
-    { id: 3, name: 'HypeLink 강남점', role: 'store_manager', joinDate: '2024-02-15', username: 'gangnam', password: 'gangnam123' },
-    { id: 4, name: 'HypeLink 홍대점', role: 'store_manager', joinDate: '2025-03-10', username: 'hongdae', password: 'hongdae123' },
-    { id: 5, name: 'HypeLink 부산점', role: 'store_manager', joinDate: '2025-04-05', username: 'busan', password: 'busan123' },
-  ]);
+  // 모의 데이터 (나중에 백엔드 API 호출로 대체)
+  const allUsers = ref([]);
 
-  const addManager = (manager) => {
-    allUsers.value.push({ 
-      id: allUsers.value.length + 1, 
-      ...manager, 
-      role: 'store_manager' 
-    });
+  // 사용자 목록을 백엔드에서 가져오는 액션
+  const fetchUsers = async () => {
+    const response = await getUsers();
+    if (response.success) {
+      allUsers.value = response.users; // Assuming response.users contains List<UserListItemDto>
+    } else {
+      // 에러 처리 (예: 토스트 메시지)
+      console.error('Failed to fetch users:', response.message);
+      // toastStore.showToast(response.message || '사용자 목록을 가져오는데 실패했습니다.', 'danger');
+    }
+  };
+
+  const addManager = async (manager) => {
+    const response = await registerUser(manager);
+
+    if (response.success) {
+      // 등록 성공 후, 전체 사용자 목록을 다시 불러옵니다.
+      await fetchUsers(); 
+      return true; // 성공을 알림
+    } else {
+      // API 호출 실패 시 에러를 발생시켜 컴포넌트에서 처리할 수 있도록 합니다.
+      throw new Error(response.message || '사용자 등록에 실패했습니다.');
+    }
   };
 
   const changeUserRole = (userId, role) => {
@@ -25,5 +39,5 @@ export const useUserStore = defineStore('users', () => {
     }
   };
 
-  return { allUsers, addManager, changeUserRole };
+  return { allUsers, fetchUsers, addManager, changeUserRole };
 });
