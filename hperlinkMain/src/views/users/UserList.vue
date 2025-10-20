@@ -7,9 +7,9 @@ const emit = defineEmits(['change-role', 'add-manager']);
 const authStore = useAuthStore();
 
 const roleClass = (role) => {
-  if (role === 'super_admin') return 'bg-danger';
-  if (role === 'sub_admin') return 'bg-primary';
-  if (role === 'store_manager') return 'bg-success';
+  if (role === 'ADMIN') return 'bg-danger';
+  if (role === 'MANAGER') return 'bg-primary';
+  if (role === 'BRANCH_MANAGER') return 'bg-success';
   return 'bg-secondary';
 };
 </script>
@@ -42,9 +42,9 @@ const roleClass = (role) => {
             <div class="dropdown" v-if="user.id !== authStore.user.id">
               <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">변경</button>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'super_admin' })">총괄 관리자</a></li>
-                <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'sub_admin' })">부관리자</a></li>
-                <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'store_manager' })">지점장</a></li>
+                <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'ADMIN' })">총괄 관리자</a></li>
+                <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'MANAGER' })">부관리자</a></li>
+                <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'BRANCH_MANAGER' })">지점장</a></li>
               </ul>
             </div>
           </td>

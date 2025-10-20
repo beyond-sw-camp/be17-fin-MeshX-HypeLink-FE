@@ -19,10 +19,10 @@ const isLoading = ref(true);
 onMounted(() => {
   setTimeout(() => {
     allUsers.value = [
-      { id: 1, name: '총괄 관리자', role: 'super_admin' },
-      { id: 2, name: '부관리자', role: 'sub_admin' },
-      { id: 3, name: 'HypeLink 강남점', role: 'store_manager' },
-      { id: 4, name: 'HypeLink 홍대점', role: 'store_manager' },
+      { id: 1, name: '총괄 관리자', role: 'ADMIN' },
+      { id: 2, name: '부관리자', role: 'MANAGER' },
+      { id: 3, name: 'HypeLink 강남점', role: 'BRANCH_MANAGER' },
+      { id: 4, name: 'HypeLink 홍대점', role: 'BRANCH_MANAGER' },
     ];
     isLoading.value = false;
   }, 1000);

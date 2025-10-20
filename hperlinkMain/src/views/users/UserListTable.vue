@@ -41,16 +41,18 @@ const filterRoleModel = computed({
 const totalPages = computed(() => Math.ceil(props.totalUsers / props.itemsPerPage));
 
 const roleClass = (role) => {
-  if (role === 'super_admin') return 'bg-danger';
-  if (role === 'sub_admin') return 'bg-primary';
-  if (role === 'store_manager') return 'bg-success';
+  if (role === 'ADMIN') return 'bg-danger';
+  if (role === 'MANAGER') return 'bg-primary';
+  if (role === 'BRANCH_MANAGER') return 'bg-success';
+  if (role === 'DRIVER') return 'bg-info';
   return 'bg-secondary';
 };
 
 const roleText = (role) => {
-  if (role === 'super_admin') return '총괄 관리자';
-  if (role === 'sub_admin') return '부관리자';
-  if (role === 'store_manager') return '지점장';
+  if (role === 'ADMIN') return '총괄 관리자';
+  if (role === 'MANAGER') return '중간 관리자';
+  if (role === 'BRANCH_MANAGER') return '지점장';
+  if (role === 'DRIVER') return '기사';
   return role;
 };
 </script>
@@ -63,17 +65,18 @@ const roleText = (role) => {
           <h5 class="mb-0">사용자 목록</h5>
           <div class="d-flex">
             <div class="me-2">
-              <input type="text" class="form-control form-control-sm" placeholder="이름/아이디 검색" v-model="searchTermModel">
+              <input type="text" class="form-control form-control-sm" placeholder="이름/이메일 검색" v-model="searchTermModel">
             </div>
             <div class="me-2">
               <select class="form-select form-select-sm" v-model="filterRoleModel">
                 <option value="all">전체 역할</option>
-                <option value="super_admin">총괄 관리자</option>
-                <option value="sub_admin">부관리자</option>
-                <option value="store_manager">지점장</option>
+                <option value="ADMIN">총괄 관리자</option>
+                <option value="MANAGER">중간 관리자</option>
+                <option value="BRANCH_MANAGER">지점장</option>
+                <option value="DRIVER">기사</option>
               </select>
             </div>
-            <button v-if="authStore.isAdmin" class="btn btn-primary btn-sm" @click="emit('add-manager')">+ 지점장 추가</button>
+            <button v-if="authStore.isAdmin" class="btn btn-primary btn-sm" @click="emit('add-manager')">+ 사용자 추가</button>
           </div>
         </div>
       </template>
@@ -83,25 +86,30 @@ const roleText = (role) => {
           <thead>
             <tr>
               <th @click="emit('update:sort', 'name')" class="sortable">이름 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="name" /></th>
+              <th @click="emit('update:sort', 'email')" class="sortable">이메일 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="email" /></th>
               <th @click="emit('update:sort', 'role')" class="sortable">역할 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="role" /></th>
-              <th @click="emit('update:sort', 'joinDate')" class="sortable">가입일 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="joinDate" /></th>
+              <th @click="emit('update:sort', 'region')" class="sortable">지역 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="region" /></th>
+              
               <th v-if="authStore.isAdmin">권한 변경</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="user in users" :key="user.id">
               <td>{{ user.name }}</td>
+              <td>{{ user.email }}</td>
               <td>
                 <span class="badge" :class="roleClass(user.role)">{{ roleText(user.role) }}</span>
               </td>
-              <td>{{ user.joinDate }}</td>
+              <td>{{ user.region }}</td>
+              
               <td v-if="authStore.isAdmin">
                 <div class="dropdown" v-if="user.id !== authStore.user.id">
                   <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">변경</button>
                   <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'super_admin' })">총괄 관리자</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'sub_admin' })">부관리자</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'store_manager' })">지점장</a></li>
+                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'ADMIN' })">총괄 관리자</a></li>
+                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'MANAGER' })">중간 관리자</a></li>
+                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'BRANCH_MANAGER' })">지점장</a></li>
+                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'DRIVER' })">기사</a></li>
                   </ul>
                 </div>
               </td>
