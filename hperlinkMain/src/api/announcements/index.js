@@ -69,6 +69,20 @@ export const deleteAnnouncement = async (id) => {
   return data;
 };
 
+export const updateAnnouncement = async (id, payload) => {
+  const requestUrl = `/api/notice/update/${id}`;
+  let data = {};
+  await api
+    .patch(requestUrl, payload)
+    .then((response) => {
+      data = response.data;
+    })
+    .catch((error) => {
+      data = error.response?.data || error.message;
+    });
+  return data;
+};
+
 
 export default {
     createAnnouncement,
@@ -76,4 +90,5 @@ export default {
     getPagedAnnouncements,
     getAnnouncementDetail,
     deleteAnnouncement,
+    updateAnnouncement
 }
