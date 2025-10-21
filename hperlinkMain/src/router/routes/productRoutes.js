@@ -2,7 +2,7 @@ const productRoutes = [
   {
     path: '/products',
     name: 'products',
-    component: () => import('@/views/ProductManagementView.vue'),
+    component: () => import('@/views/item/ProductManagementView.vue'),
     meta: { roles: ['ADMIN', 'MANAGER'] }
   }
 ];
