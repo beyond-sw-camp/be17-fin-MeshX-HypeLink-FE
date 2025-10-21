@@ -41,6 +41,15 @@ const filterStatusModel = computed({
 
 const totalPages = computed(() => Math.ceil(props.totalStores / props.itemsPerPage));
 
+const statusClass = (status) => {
+  switch (status) {
+    case '영업 중': return 'bg-success';
+    case '영업 종료': return 'bg-danger';
+    case '휴점': return 'bg-warning';
+    default: return 'bg-secondary';
+  }
+};
+
 </script>
 
 <template>
@@ -71,7 +80,6 @@ const totalPages = computed(() => Math.ceil(props.totalStores / props.itemsPerPa
             <tr>
               <th @click="emit('update:sort', 'name')" class="sortable">매장명 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="name" /></th>
               <th @click="emit('update:sort', 'address')" class="sortable">주소 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="address" /></th>
-              <th @click="emit('update:sort', 'owner')" class="sortable">점주 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="owner" /></th>
               <th>연락처</th>
               <th @click="emit('update:sort', 'status')" class="sortable">상태 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="status" /></th>
               <th v-if="authStore.isAdmin">관리</th>
@@ -81,9 +89,8 @@ const totalPages = computed(() => Math.ceil(props.totalStores / props.itemsPerPa
             <tr v-for="store in stores" :key="store.id">
               <td>{{ store.name }}</td>
               <td>{{ store.address }}</td>
-              <td>{{ store.owner }}</td>
               <td>{{ store.phone }}</td>
-              <td><span class="badge" :class="store.status === '운영중' ? 'bg-success' : 'bg-danger'">{{ store.status }}</span></td>
+              <td><span class="badge" :class="statusClass(store.status)">{{ store.status }}</span></td>
               <td v-if="authStore.isAdmin">
                 <button class="btn btn-sm btn-outline-secondary me-2" @click="emit('add-store', store)">수정</button>
                 <button class="btn btn-sm btn-danger" @click="emit('delete-store', store.id)">삭제</button>

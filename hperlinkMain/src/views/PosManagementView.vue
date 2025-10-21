@@ -15,7 +15,7 @@ const isModalOpen = ref(false);
 const formSubmitted = ref(false);
 
 // --- Data Model for New POS ---
-const newPosDefaults = { posCode: '', name: '' };
+const newPosDefaults = { email: '', password: '', posCode: '', name: '' };
 const newPos = reactive({ ...newPosDefaults });
 
 // --- Lifecycle Hooks ---
@@ -33,18 +33,19 @@ const openAddPosModal = () => {
 
 const handleAddPos = async () => {
   formSubmitted.value = true;
-  if (!newPos.posCode || !newPos.name) {
-    toastStore.showToast('이름과 POS 코드를 모두 입력해주세요.', 'danger');
+  if (!newPos.email || !newPos.password || !newPos.posCode || !newPos.name) {
+    toastStore.showToast('이메일, 비밀번호, 이름, POS 코드를 모두 입력해주세요.', 'danger');
     return;
   }
 
   const payload = {
+    email: newPos.email,
+    password: newPos.password,
     name: newPos.name,
-    posCode: newPos.posCode,
+    posCode: newPos.posCode, // Assuming RegisterReqDto can carry posCode
     role: 'POS_MEMBER',
     storeId: posStore.selectedStoreId,
-    // Region can be derived from the selected store in the backend or here
-    region: posStore.selectedStore.region 
+    // Region will be derived from the selected store's manager in the backend
   };
 
   const success = await posStore.addPosDevice(payload);
@@ -139,12 +140,20 @@ const handleDeletePos = async (pos) => {
       <template #header><h5>새 POS 기기 등록</h5></template>
       <form @submit.prevent="handleAddPos">
         <div class="mb-3">
+          <label class="form-label">이메일 <span class="text-danger">*</span></label>
+          <input type="email" class="form-control" id="posEmail" v-model="newPos.email" :class="{ 'is-invalid': formSubmitted && !newPos.email }" placeholder="예: pos01@example.com">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">비밀번호 <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" id="posPassword" v-model="newPos.password" :class="{ 'is-invalid': formSubmitted && !newPos.password }" placeholder="비밀번호">
+        </div>
+        <div class="mb-3">
           <label class="form-label">이름 <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" v-model="newPos.name" :class="{ 'is-invalid': formSubmitted && !newPos.name }" placeholder="예: 카운터 POS">
+          <input type="text" class="form-control" id="posName" v-model="newPos.name" :class="{ 'is-invalid': formSubmitted && !newPos.name }" placeholder="예: 카운터 POS">
         </div>
         <div class="mb-3">
           <label class="form-label">POS 코드 <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" v-model="newPos.posCode" :class="{ 'is-invalid': formSubmitted && !newPos.posCode }" placeholder="예: 01, 02">
+          <input type="text" class="form-control" id="posCode" v-model="newPos.posCode" :class="{ 'is-invalid': formSubmitted && !newPos.posCode }" placeholder="예: 01, 02">
           <div class="form-text">해당 지점 내에서 사용할 고유한 코드를 입력하세요. (예: 01)</div>
         </div>
       </form>

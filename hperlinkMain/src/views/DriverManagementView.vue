@@ -44,6 +44,7 @@ const itemsPerPage = ref(5);
 onMounted(async () => {
   try {
     await driverStore.fetchDrivers();
+    await driverStore.fetchStores(); // Add this line
   } finally {
     isLoading.value = false;
   }
@@ -197,7 +198,7 @@ const deleteDriver = async (id) => {
           <div class="list-group">
             <div v-for="store in driverStore.stores" :key="store.id" class="list-group-item">
               <h6 class="mb-1">{{ store.name }}</h6>
-              <small class="text-muted">{{ store.address }}</small>
+              <small class="text-muted">{{ store.address }} / {{ store.phone }}</small>
               <draggable
                 :list="store.drivers"
                 group="drivers"

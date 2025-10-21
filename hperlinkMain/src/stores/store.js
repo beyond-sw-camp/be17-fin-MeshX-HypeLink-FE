@@ -1,8 +1,9 @@
 import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 import { useAuthStore } from './auth';
-import storeApi from '@/api/store'; // Import the new store API
+import usersApi from '@/api/users';
 import posApi from '@/api/pos';
+import authApi from '@/api/auth'; // Add authApi
 
 // For Admins/Managers
 export const usePosManagementStore = defineStore('pos-management', () => {
@@ -32,7 +33,7 @@ export const usePosManagementStore = defineStore('pos-management', () => {
 
   const fetchData = async () => {
     isLoading.value = true;
-    const response = await storeApi.getStoresWithPos();
+    const response = await usersApi.getStoresWithPos();
     if (response.success) {
       allData.value = response.data;
     } else {
@@ -43,22 +44,22 @@ export const usePosManagementStore = defineStore('pos-management', () => {
   };
 
   const addPosDevice = async (newPosData) => {
-    if (!selectedStoreId.value) return false;
-    
-    // When connected to a real API, we would call a register API
-    // and then refresh the data for the selected store.
-    // For now, we just add it locally to the mock data for UI testing.
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    if (selectedStore.value) {
-        const newDevice = {
-          ...newPosData,
-          id: `p${Date.now()}`,
-          name: newPosData.name || `${selectedStore.value.name}-POS${selectedStore.value.posDevices.length + 1}`
-        };
-        selectedStore.value.posDevices.push(newDevice);
+    if (!selectedStoreId.value) {
+      console.error("No store selected for POS registration.");
+      return false;
     }
-    return true; // Simulate success
+
+    // Call the backend API for POS registration (which is handled by registerUser)
+    const response = await authApi.registerUser(newPosData);
+
+    if (response.success) {
+      // Refresh data after successful registration
+      await fetchData();
+      return true;
+    } else {
+      console.error("POS registration failed:", response.message);
+      return false;
+    }
   };
 
   const deletePosDevice = async (posId) => {

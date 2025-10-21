@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
+import Particles from "vue3-particles";
 
 // Bootstrap CSS 및 JS import
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -19,6 +20,7 @@ if (import.meta.env.DEV) {
 
 app.use(createPinia()); // 1. Pinia를 먼저 등록
 app.use(router);      // 2. 그 다음 Router를 등록
+app.use(Particles);   // 3. 파티클 플러그인 등록
 
 // --- 최종 네비게이션 가드 ---
 // 이 함수는 페이지 이동이 발생할 때마다 실행됩니다.
