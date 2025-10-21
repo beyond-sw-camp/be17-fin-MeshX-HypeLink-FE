@@ -29,8 +29,6 @@ const itemForm = reactive({
   images: [] // 실제 파일 객체들
 });
 
-// 이미지 미리보기 저장
-const imagePreviews = ref([]);
 // 검색, 필터, 정렬, 페이지네이션 상태
 const searchTerm = ref('');
 const filterCategory = ref('all');
@@ -89,13 +87,6 @@ const filteredAndSortedProducts = computed(() => {
   return products;
 });
 
-// --- 페이지네이션 로직 ---
-const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedProducts.value.slice(start, end);
-});
-
 const updateSort = (key) => {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
@@ -115,7 +106,7 @@ const submitItem = async () => {
 
 const updateItem = async () => {
   try {
-    if (!originalItem.itemDetailCode) {
+    if (!originalItem.itemCode) {
       alert('상품 상세 코드(itemDetailCode)가 없습니다.');
       return;
     }
@@ -143,7 +134,7 @@ const updateItem = async () => {
     // 각 필드별 PATCH 요청 순차 실행
     for (const field of changedFields) {
       const payload = {
-        itemDetailCode: originalItem.itemDetailCode,
+        itemCode: originalItem.itemCode,
         [field.key]: itemForm[field.key],
       };
       const result = await field.api(payload);
