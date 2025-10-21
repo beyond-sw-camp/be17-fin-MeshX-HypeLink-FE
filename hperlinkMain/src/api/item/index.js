@@ -93,6 +93,19 @@ export const updateAmount = async (updateForm) => {
     return data
 }
 
+export const updateUnitPrice = async (updateForm) => {
+    const requestUrl = `/api/item/unit_price`
+    let data = {}
+    await api.patch(requestUrl, updateForm)
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
 export const updateCompany = async (updateForm) => {
     const requestUrl = `/api/item/company`
     let data = {}
@@ -134,5 +147,5 @@ export const updateImages = async (updateForm) => {
 
 export default {
     saveNewItem, getItems, updateContent, updateStock, updateEnName, updateKoName, updateAmount,
-    updateCompany, updateCategory, updateImages
+    updateCompany, updateCategory, updateImages, updateUnitPrice
 }

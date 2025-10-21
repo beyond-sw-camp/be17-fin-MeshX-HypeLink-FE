@@ -26,6 +26,11 @@ const imagePreviews = ref([]);
     </div>
 
     <div class="mb-3">
+      <label class="form-label">원가 *</label>
+      <input type="number" class="form-control" v-model.number="itemForm.unitPrice" required/>
+    </div>
+
+    <div class="mb-3">
       <label class="form-label">카테고리</label>
       <select class="form-select" v-model="itemForm.category">
         <option>상의</option>

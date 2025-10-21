@@ -25,6 +25,7 @@ const itemForm = reactive({
   itemCode: '',
   content: '',
   company: '',
+  unitPrice: 0,
   itemDetailList: [],
   images: [] // 실제 파일 객체들
 });
@@ -125,6 +126,8 @@ const updateItem = async () => {
       changedFields.push({ key: 'category', api: itemApi.updateCategory });
     if (itemForm.content !== originalItem.content)
       changedFields.push({ key: 'content', api: itemApi.updateContent });
+    if (itemForm.unitPrice !== originalItem.unitPrice)
+      changedFields.push({ key: 'unitPrice', api: itemApi.updateUnitPrice });
 
     if (changedFields.length === 0) {
       alert('변경된 항목이 없습니다.');
@@ -167,10 +170,10 @@ const saveItem = async () => {
     if (!itemForm.itemDetailList || itemForm.itemDetailList.length === 0) {
       itemForm.itemDetailList = [
         {
-          size: 'Free',
-          color: 'Default',
+          size: 'M',
+          color: '화이트',
           stock: 0,
-          itemDetailCode: `${itemForm.itemCode}-DF`
+          itemDetailCode: `${itemForm.itemCode}-M-WH`
         }
       ];
     }
@@ -183,6 +186,7 @@ const saveItem = async () => {
       category: itemForm.category,
       itemCode: itemForm.itemCode,
       content: itemForm.content,
+      unitPrice: itemForm.unitPrice,
       company: itemForm.company,
       itemDetailList: itemForm.itemDetailList
     };
@@ -211,7 +215,7 @@ const openProductModal = (product = null) => {
     originalItem = { ...product };
   } else {
     isEditing.value = false;
-    Object.assign(itemForm, { id: null, code: '', name: '', category: '상의', price: 0 });
+    Object.assign(itemForm, { id: null, code: '', name: '', category: '상의', price: 0, unitPrice: 0 });
   }
   isModalOpen.value = true;
 };
@@ -313,6 +317,10 @@ const updatePage = async (page) => {
               가격
               <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="amount" />
             </th>
+            <th @click="updateSort('unitPrice')" class="sortable">
+              원가
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="unitPrice" />
+            </th>
             <th> 재고 </th>
             <th>관리</th>
           </tr>
@@ -335,8 +343,9 @@ const updatePage = async (page) => {
           </span>
             </td>
             <td>{{ product.size }}</td>
-            <td>{{ product.amount }}원</td>
-            <td>{{ product.stock }}개</td>
+            <td>{{ product.amount.toLocaleString() }}원</td>
+            <td>{{ product.unitPrice.toLocaleString() }}원</td>
+            <td>{{ product.stock.toLocaleString() }}개</td>
             <td>
               <button class="btn btn-sm btn-outline-secondary" @click="openProductModal(product)">
                 수정
