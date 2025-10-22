@@ -2,7 +2,7 @@ import api from "@/plugins/axiosinterceptor";
 
 export const getUsers = async () => {
     let data = {};
-    await api.get('/api/member/list') // 백엔드 컨트롤러 엔드포인트에 맞춰 수정
+    await api.get('/api/member/member/list') // 백엔드 컨트롤러 엔드포인트에 맞춰 수정
         .then((response) => {
             data = response.data.data; // 성공 시 BaseResponse의 data 필드
             data.success = true; // 성공 플래그 추가

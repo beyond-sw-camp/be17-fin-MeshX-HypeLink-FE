@@ -22,7 +22,16 @@ const regions = ref([
 
 const isAddDriverModalOpen = ref(false);
 const formSubmitted = ref(false);
-const newDriver = reactive({ name: '', phone: '', region: '' });
+
+const newDriverDefaults = {
+  name: '',
+  phone: '',
+  region: '',
+  email: '',
+  password: '',
+  carNumber: ''
+};
+const newDriver = reactive({ ...newDriverDefaults });
 
 // 검색, 필터, 정렬, 페이지네이션 상태
 const searchTerm = ref('');
@@ -31,11 +40,13 @@ const sortOrder = ref('asc');
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
 
-// --- 데이터 로딩 시뮬레이션 ---
-onMounted(() => {
-  setTimeout(() => {
+// --- 데이터 로딩 ---
+onMounted(async () => {
+  try {
+    await driverStore.fetchDrivers();
+  } finally {
     isLoading.value = false;
-  }, 500);
+  }
 });
 
 // --- 검색, 필터링, 정렬 로직 ---
@@ -98,13 +109,13 @@ const unassignDriver = (store, driver) => {
 
 const addDriver = () => {
   formSubmitted.value = true;
-  if (!newDriver.name || !newDriver.phone || !newDriver.region) {
-    toastStore.showToast('이름, 연락처, 담당 지역은 필수입니다.', 'danger');
+  if (!newDriver.name || !newDriver.phone || !newDriver.region || !newDriver.email || !newDriver.password || !newDriver.carNumber) {
+    toastStore.showToast('모든 필드를 입력해주세요.', 'danger');
     return;
   }
   driverStore.addDriver(newDriver);
   toastStore.showToast('새 기사가 추가되었습니다.', 'success');
-  Object.assign(newDriver, { name: '', phone: '', region: '' });
+  Object.assign(newDriver, newDriverDefaults);
   isAddDriverModalOpen.value = false;
 };
 
@@ -150,7 +161,7 @@ const deleteDriver = async (id) => {
                 <div class="list-group-item d-flex justify-content-between align-items-center" :data-id="element.id">
                   <div>
                     <h6 class="mb-0">{{ element.name }}</h6>
-                    <small class="text-muted">{{ element.phone }}</small>
+                    <small class="text-muted">{{ element.phone }} / {{ element.carNumber }}</small>
                   </div>
                   <div>
                     <span class="badge bg-primary rounded-pill me-2">{{ element.region }}</span>
@@ -199,8 +210,14 @@ const deleteDriver = async (id) => {
                 </template>
                 <template #item="{element}">
                   <div class="assigned-driver bg-white border rounded p-2 d-flex justify-content-between align-items-center">
-                    <span>{{ element.name }}</span>
-                    <button class="btn btn-sm btn-danger py-0 px-1" @click="unassignDriver(store, element)">X</button>
+                    <div>
+                      <span class="fw-bold">{{ element.name }}</span>
+                      <small class="text-muted ms-2">{{ element.phone }} / {{ element.carNumber }}</small>
+                    </div>
+                    <div>
+                      <span class="badge bg-secondary rounded-pill me-2">{{ element.region }}</span>
+                      <button class="btn btn-sm btn-danger py-0 px-1" @click="unassignDriver(store, element)">X</button>
+                    </div>
                   </div>
                 </template>
               </draggable>
@@ -217,12 +234,22 @@ const deleteDriver = async (id) => {
         <div class="mb-3">
           <label class="form-label">이름 <span class="text-danger">*</span></label>
           <input type="text" class="form-control" v-model="newDriver.name" :class="{ 'is-invalid': !newDriver.name && formSubmitted }">
-          <div class="invalid-feedback">이름은 필수입니다.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">이메일 <span class="text-danger">*</span></label>
+          <input type="email" class="form-control" v-model="newDriver.email" :class="{ 'is-invalid': !newDriver.email && formSubmitted }">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">비밀번호 <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" v-model="newDriver.password" :class="{ 'is-invalid': !newDriver.password && formSubmitted }">
         </div>
         <div class="mb-3">
           <label class="form-label">연락처 <span class="text-danger">*</span></label>
           <input type="text" class="form-control" v-model="newDriver.phone" :class="{ 'is-invalid': !newDriver.phone && formSubmitted }">
-          <div class="invalid-feedback">연락처는 필수입니다.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">차량 번호 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" v-model="newDriver.carNumber" :class="{ 'is-invalid': !newDriver.carNumber && formSubmitted }">
         </div>
         <div class="mb-3">
           <label class="form-label">담당 지역 <span class="text-danger">*</span></label>
@@ -230,7 +257,6 @@ const deleteDriver = async (id) => {
             <option disabled value="">지역 선택</option>
             <option v-for="region in regions" :key="region" :value="region">{{ region }}</option>
           </select>
-          <div class="invalid-feedback">담당 지역을 선택해주세요.</div>
         </div>
       </form>
       <template #footer>

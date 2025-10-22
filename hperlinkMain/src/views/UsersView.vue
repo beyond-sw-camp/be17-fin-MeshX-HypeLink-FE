@@ -6,14 +6,12 @@ import BaseSpinner from '@/components/BaseSpinner.vue';
 import { useToastStore } from '@/stores/toast';
 import { useModalStore } from '@/stores/modal';
 import { useUserStore } from '@/stores/users';
-import { geocodeAddress } from '@/api/navermaps';
 
 const toastStore = useToastStore();
 const modalStore = useModalStore();
 const userStore = useUserStore();
 
 const isLoading = ref(true);
-const isGeocoding = ref(false);
 
 const isAddManagerModalOpen = ref(false);
 const formSubmitted = ref(false);
@@ -26,8 +24,6 @@ const newManagerDefaults = {
   phone: '',
   address: '',
   region: 'SEOUL_GYEONGGI',
-  lat: null,
-  lon: null,
   posCount: 0,
   storeNumber: ''
 };
@@ -41,30 +37,6 @@ const regionOptions = {
   GYEONGSANG: "경상",
   JEOLLA: "전라",
   JEJU: "제주"
-};
-
-const handleGeocode = async () => {
-  if (!newManager.address) {
-    toastStore.showToast('주소를 먼저 입력해주세요.', 'warning');
-    return;
-  }
-  isGeocoding.value = true;
-  try {
-    const result = await geocodeAddress(newManager.address);
-    if (result.success) {
-      newManager.lat = result.coords.lat;
-      newManager.lon = result.coords.lon;
-      toastStore.showToast('좌표가 성공적으로 변환되었습니다.', 'success');
-    } else {
-      newManager.lat = null;
-      newManager.lon = null;
-      toastStore.showToast(result.message, 'danger');
-    }
-  } catch (error) {
-    toastStore.showToast('좌표 변환 중 오류가 발생했습니다.', 'danger');
-  } finally {
-    isGeocoding.value = false;
-  }
 };
 
 const openPostcodeSearch = () => {
@@ -84,7 +56,6 @@ const openPostcodeSearch = () => {
       }
 
       newManager.address = fullAddress;
-      handleGeocode(); // 주소 선택 후 자동으로 좌표 변환 실행
     },
   }).open();
 };
@@ -206,8 +177,8 @@ const addManager = async () => {
 
   // 지점장일 경우 추가 유효성 검사
   if (newManager.role === 'BRANCH_MANAGER') {
-    if (newManager.lat === null || newManager.lon === null || newManager.posCount === null || !newManager.storeNumber) {
-      toastStore.showToast('지점장 정보(위도, 경도, POS 수, 가게 번호)를 모두 입력해주세요.', 'danger');
+    if (newManager.posCount === null || !newManager.storeNumber) {
+      toastStore.showToast('지점장 정보(POS 수, 가게 번호)를 모두 입력해주세요.', 'danger');
       return;
     }
   }
@@ -216,8 +187,6 @@ const addManager = async () => {
     // 서버에 보낼 데이터 정제
     const payload = { ...newManager };
     if (payload.role !== 'BRANCH_MANAGER') {
-      delete payload.lat;
-      delete payload.lon;
       delete payload.posCount;
       delete payload.storeNumber;
     }
@@ -312,16 +281,7 @@ const changeUserRole = async ({ userId, role }) => {
         <div v-if="newManager.role === 'BRANCH_MANAGER'">
           <hr/>
           <h6 class="mb-3">지점장 정보</h6>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">위도 (Lat) <span class="text-danger">*</span></label>
-              <input type="number" step="any" class="form-control" v-model.number="newManager.lat" :class="{ 'is-invalid': newManager.lat === null && formSubmitted }" readonly>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">경도 (Lon) <span class="text-danger">*</span></label>
-              <input type="number" step="any" class="form-control" v-model.number="newManager.lon" :class="{ 'is-invalid': newManager.lon === null && formSubmitted }" readonly>
-            </div>
-          </div>
+          
           <div class="mb-3">
             <label class="form-label">가게 번호 <span class="text-danger">*</span></label>
             <input type="text" class="form-control" v-model="newManager.storeNumber" :class="{ 'is-invalid': !newManager.storeNumber && formSubmitted }">
@@ -338,6 +298,6 @@ const changeUserRole = async ({ userId, role }) => {
       </template>
     </BaseModal>
 
-    <BaseSpinner v-if="isLoading || isGeocoding" height="200px" />
+    <BaseSpinner v-if="isLoading" height="200px" />
   </div>
 </template>
