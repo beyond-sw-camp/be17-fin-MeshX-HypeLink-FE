@@ -2,7 +2,8 @@ const baseRoutes = [
   {
     path: '/',
     name: 'dashboard',
-    component: () => import('@/views/DashboardView.vue') // 대시보드는 모든 역할이 접근 가능
+    component: () => import('@/views/DashboardView.vue'), // 대시보드는 모든 역할이 접근 가능
+    meta: { requiresAuth: false }
   },
   {
     path: '/my-store',

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
@@ -10,7 +10,6 @@ import { useToastStore } from '@/stores/toast';
 const route = useRoute();
 const router = useRouter();
 const toastStore = useToastStore();
-
 
 const announcement = ref(null);
 const isLoading = ref(true);
@@ -55,7 +54,17 @@ const formatDate = (dateString) => {
           <small class="text-muted">{{ formatDate(announcement.date) }} by {{ announcement.author }}</small>
         </div>
       </template>
-      <p>{{ announcement.contents }}</p>
+
+      <!-- 본문 내용 -->
+      <p style="white-space: pre-wrap; word-break: break-all; min-height: 100px;">{{ announcement.contents }}</p>
+
+      <!-- 이미지 영역 -->
+      <div v-if="announcement.images && announcement.images.length > 0" class="mt-4">
+        <div v-for="image in announcement.images" :key="image.id" class="mb-4 text-center">
+          <img :src="image.imageUrl" :alt="image.originalName" class="img-fluid rounded shadow-sm" style="border: 1px solid #eee;">
+        </div>
+      </div>
+
       <template #footer>
         <button class="btn btn-secondary" @click="router.back()">목록으로</button>
       </template>
@@ -63,3 +72,10 @@ const formatDate = (dateString) => {
     <BaseEmptyState v-else message="공지사항을 찾을 수 없습니다." />
   </div>
 </template>
+
+<style scoped>
+.img-fluid {
+  max-width: 100%;
+  height: auto;
+}
+</style>

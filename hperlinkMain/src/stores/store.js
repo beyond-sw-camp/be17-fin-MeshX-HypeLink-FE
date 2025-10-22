@@ -1,118 +1,121 @@
 import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
-import { useAuthStore } from './auth'; // To get user role
+import usersApi from '@/api/users';
+import posApi from '@/api/pos';
+import authApi from '@/api/auth';
 
-// For Admins/Managers
+// For Admins/Managers (Restored)
 export const usePosManagementStore = defineStore('pos-management', () => {
   // --- STATE ---
-  const selectableStores = ref([]);
+  const allData = ref([]); // Holds the entire list of stores with nested POS devices
   const selectedStoreId = ref(null);
-  const posDevices = ref([]);
   const isLoading = ref(false);
 
-  const selectedStore = computed(() => {
-    return selectableStores.value.find(s => s.id === selectedStoreId.value) || null;
+  // --- COMPUTED PROPERTIES ---
+
+  // The list of stores for the dropdown selector
+  const selectableStores = computed(() => {
+    return allData.value.map(store => ({ id: store.id, name: store.name }));
   });
 
-  // --- MOCK DATA ---
-  const mockAllStores = [
-    { id: 101, name: 'HypeLink 강남점', region: 'SEOUL_GYEONGGI' },
-    { id: 102, name: 'HypeLink 홍대점', region: 'SEOUL_GYEONGGI' },
-    { id: 103, name: 'HypeLink 부산점', region: 'GYEONGSANG' },
-  ];
+  // The currently selected store object
+  const selectedStore = computed(() => {
+    return allData.value.find(s => s.id === selectedStoreId.value) || null;
+  });
 
-  const mockPosDataByStore = {
-    101: [
-      { id: 'p01', name: '강남점-POS1', posCode: 'S101P01' },
-      { id: 'p02', name: '강남점-POS2', posCode: 'S101P02' },
-    ],
-    102: [
-      { id: 'p03', name: '홍대점-POS1', posCode: 'S102P01' },
-    ],
-    103: [],
-  };
+  // The list of POS devices for the currently selected store
+  const posDevices = computed(() => {
+    return selectedStore.value ? selectedStore.value.posDevices : [];
+  });
 
   // --- ACTIONS ---
 
-  const fetchSelectableStores = async () => {
+  const fetchData = async () => {
     isLoading.value = true;
-    const authStore = useAuthStore();
-    console.log('Fetching selectable stores for role:', authStore.user?.role);
-
-    // Simulate API call based on role
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    if (authStore.isBranchManager) {
-      // Branch Manager sees only their own store
-      selectableStores.value = mockAllStores.slice(0, 1); 
-    } else {
-      // Admin/Manager sees all stores
-      selectableStores.value = mockAllStores;
+    try {
+      const response = await usersApi.getStoresWithPos();
+      if (response.success) {
+        allData.value = response.data;
+      } else {
+        console.error("Failed to fetch store and POS data:", response.message);
+        allData.value = []; // Clear data on failure
+      }
+    } catch (error) {
+      console.error("Error fetching store and POS data:", error);
+    } finally {
+      isLoading.value = false;
     }
-    isLoading.value = false;
-  };
-
-  const fetchPosDevices = async (storeId) => {
-    if (!storeId) return;
-    isLoading.value = true;
-    console.log(`Fetching POS devices for storeId: ${storeId}`);
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 400));
-    posDevices.value = mockPosDataByStore[storeId] || [];
-    isLoading.value = false;
   };
 
   const addPosDevice = async (newPosData) => {
-    if (!selectedStoreId.value) return false;
-    console.log(`Adding new POS device to store ${selectedStoreId.value}:`, newPosData);
-    
-    // This will call the actual API: POST /api/auth/register
-    // For now, just add to the mock data array
-    await new Promise(resolve => setTimeout(resolve, 300));
+    if (!selectedStoreId.value) {
+      console.error("No store selected for POS registration.");
+      return false;
+    }
 
-    const newDevice = {
-      ...newPosData,
-      id: `p${Date.now()}`,
-      name: `${selectedStore.value.name}-POS${posDevices.value.length + 1}`
-    };
-    posDevices.value.push(newDevice);
-    return true; // Simulate success
+    const response = await authApi.registerUser(newPosData);
+
+    if (response.success) {
+      await fetchData(); // Refresh data after successful registration
+      return true;
+    } else {
+      console.error("POS registration failed:", response.message);
+      return false;
+    }
+  };
+
+  const deletePosDevice = async (posId) => {
+    const response = await posApi.deletePos(posId);
+    if (response.success && selectedStore.value) {
+      const index = selectedStore.value.posDevices.findIndex(p => p.id === posId);
+      if (index > -1) {
+        selectedStore.value.posDevices.splice(index, 1);
+      }
+      return true;
+    }
+    return false;
   };
 
   return {
-    selectableStores,
     selectedStoreId,
-    posDevices,
     isLoading,
+    selectableStores,
     selectedStore,
-    fetchSelectableStores,
-    fetchPosDevices,
+    posDevices,
+    fetchData,
     addPosDevice,
+    deletePosDevice,
   };
 });
 
-// For Branch Managers
+// For Branch Managers & Admin Store Detail View
 export const useMyStore = defineStore('my-store-view', () => {
   const storeDetails = ref(null);
   const posDevices = ref([]);
   const isLoading = ref(false);
 
-  const mockData = {
-    storeDetails: { id: 101, name: 'HypeLink 강남점', address: '서울시 강남구 테헤란로 123', storeNumber: '123-45-67890', region: 'SEOUL_GYEONGGI' },
-    posDevices: [
-      { id: 'p01', name: '강남점-POS1', email: 'pos1@gangnam.com', phone: '02-111-1111', posCode: 'S101P01' },
-      { id: 'p02', name: '강남점-POS2', email: 'pos2@gangnam.com', phone: '02-111-1112', posCode: 'S101P02' },
-    ]
-  };
-
-  const fetchMyStoreData = async () => {
+  const fetchMyStoreData = async (storeId = null) => {
     isLoading.value = true;
-    // Simulate API call to GET /api/store/mystore
-    await new Promise(resolve => setTimeout(resolve, 500));
-    storeDetails.value = mockData.storeDetails;
-    posDevices.value = mockData.posDevices;
-    isLoading.value = false;
+    storeDetails.value = null; // 데이터 초기화
+    posDevices.value = [];
+
+    try {
+      // storeId가 있으면 관리자용 API, 없으면 점주용 API 호출
+      const response = storeId 
+        ? await usersApi.getStoreById(storeId) 
+        : await usersApi.getMyStore();
+
+      if (response.success && response.data) { // response.data가 null이 아닌지 확인
+        storeDetails.value = response.data;
+        posDevices.value = response.data.posDevices || [];
+      } else {
+        console.error("Failed to fetch store data:", response.message);
+      }
+    } catch (error) {
+      console.error("Error fetching store data:", error);
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   return {

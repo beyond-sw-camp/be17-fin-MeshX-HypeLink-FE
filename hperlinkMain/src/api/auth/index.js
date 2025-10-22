@@ -33,8 +33,23 @@ import api from "@/plugins/axiosinterceptor";
   return response.data; // 재발급 시에는 BaseResponse로 감싸지 않으므로 data 직접 반환
 };
 
+export const logoutUser = async () => {
+  let data = {};
+  await api.post('/api/auth/logout')
+    .then((response) => {
+      data = response.data;
+      data.success = true;
+    })
+    .catch((error) => {
+      data = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+      data.success = false;
+    });
+  return data;
+};
+
 export default {
     loginUser,
     reissueToken,
     registerUser,
+    logoutUser,
 };

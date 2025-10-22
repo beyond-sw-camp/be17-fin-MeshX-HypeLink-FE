@@ -22,6 +22,15 @@ const storeRoutes = [
       title: '내 점포 관리',
       roles: ['BRANCH_MANAGER'] 
     }
+  },
+  {
+    path: '/store-detail/:id',
+    name: 'store-detail',
+    component: () => import('@/views/MyStoreView.vue'),
+    meta: { 
+      title: '점포 상세 정보',
+      roles: ['ADMIN', 'MANAGER'] 
+    }
   }
 ];
 

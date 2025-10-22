@@ -6,6 +6,8 @@ import BaseSpinner from '@/components/BaseSpinner.vue';
 import { useToastStore } from '@/stores/toast';
 import { useModalStore } from '@/stores/modal';
 import { useStoreStore } from '@/stores/stores';
+import authApi from '@/api/auth'; 
+import usersApi from '@/api/users'; // usersApi import 추가
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { nanumGothic } from '@/utils/NanumGothic-normal.js';
@@ -23,9 +25,12 @@ const newStore = reactive({
   id: null,
   name: '',
   address: '',
-  owner: '',
+  email: '',
+  password: '',
+  member_name: '',
   phone: '',
-  status: '운영중'
+  region: 'SEOUL_GYEONGGI',
+  storeNumber: ''
 });
 
 // 검색, 필터, 정렬, 페이지네이션 상태
@@ -36,11 +41,17 @@ const sortOrder = ref('asc');
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
 
-// --- 데이터 로딩 시뮬레이션 ---
-onMounted(() => {
-  setTimeout(() => {
+// --- 데이터 로딩 ---
+onMounted(async () => {
+  isLoading.value = true;
+  try {
+    await storeStore.fetchStores();
+  } catch (error) {
+    console.error('Failed to fetch stores on mount:', error);
+    toastStore.showToast('매장 목록을 불러오는 데 실패했습니다.', 'danger');
+  } finally {
     isLoading.value = false;
-  }, 500); // 데이터가 store에 이미 있으므로 로딩 시간을 줄임
+  }
 });
 
 // --- 검색, 필터링, 정렬 로직 ---
@@ -51,7 +62,7 @@ const filteredAndSortedStores = computed(() => {
     const term = searchTerm.value.toLowerCase();
     stores = stores.filter(store => 
       store.name.toLowerCase().includes(term) || 
-      store.address.toLowerCase().includes(term)
+            store.member.address.toLowerCase().includes(term)
     );
   }
 
@@ -95,34 +106,99 @@ const updateSort = (key) => {
 };
 const updatePage = (page) => { currentPage.value = page; };
 
-const openAddStoreModal = (store = null) => {
+const openAddStoreModal = async (store = null) => {
   formSubmitted.value = false;
   if (store) {
     isEditing.value = true;
-    Object.assign(newStore, store);
+    // API 호출하여 최신 상세 정보 가져오기
+    const response = await usersApi.getStoreInfoForEdit(store.id);
+    if (response.success && response.data) {
+      Object.assign(newStore, {
+        id: store.id, // ID는 URL에서 가져온 store.id 사용
+        name: response.data.name || '',
+        address: response.data.address || '',
+        email: '', // 이메일은 수정 불가이므로 비워둠
+        password: '', // 비밀번호는 수정 불가이므로 비워둠
+        member_name: '', // 이름은 수정 불가이므로 비워둠
+        phone: response.data.phone || '',
+        region: response.data.region || 'SEOUL_GYEONGGI',
+        storeNumber: response.data.storeNumber || '',
+      });
+    } else {
+      toastStore.showToast(response.message || '매장 상세 정보를 불러오는데 실패했습니다.', 'danger');
+      isModalOpen.value = false; // 실패 시 모달 닫기
+      return;
+    }
   } else {
     isEditing.value = false;
-    Object.assign(newStore, { id: null, name: '', address: '', owner: '', phone: '', status: '운영중' });
+    Object.assign(newStore, {
+      id: null,
+      name: '',
+      address: '',
+      email: '',
+      password: '',
+      member_name: '',
+      phone: '',
+      region: 'SEOUL_GYEONGGI',
+      storeNumber: '',
+    });
   }
   isModalOpen.value = true;
 };
 
-const saveStore = () => {
+const saveStore = async () => {
   formSubmitted.value = true;
-  if (!newStore.name || !newStore.address) {
-    toastStore.showToast('매장명과 주소는 필수입니다.', 'danger');
-    return;
-  }
 
   if (isEditing.value) {
-    storeStore.updateStore(newStore);
-    toastStore.showToast('매장 정보가 수정되었습니다.', 'success');
+    // [수정 모드] 매장명, 주소, 연락처, 지역, 매장 번호만 검증
+    if (!newStore.name || !newStore.address || !newStore.phone || !newStore.region || !newStore.storeNumber) {
+      toastStore.showToast('매장명, 주소, 점주 연락처, 지역, 매장 번호는 필수입니다.', 'danger');
+      return;
+    }
+
+    // TODO: 사용자가 백엔드에 매장 정보 수정 API를 구현해야 합니다.
+    const response = await usersApi.updateStoreInfo(newStore.id, newStore);
+    if (response.success) {
+      toastStore.showToast('매장 정보가 성공적으로 수정되었습니다.', 'success');
+      await storeStore.fetchStores(); // 목록 새로고침
+    } else {
+      toastStore.showToast(response.message || '매장 정보 수정에 실패했습니다.', 'danger');
+    }
+
   } else {
-    storeStore.addStore(newStore);
-    toastStore.showToast('새 매장이 등록되었습니다.', 'success');
+    // [생성 모드] 모든 필수 필드 검증
+    if (!newStore.name || !newStore.address || !newStore.email || !newStore.password || !newStore.member_name || !newStore.phone || !newStore.region || !newStore.storeNumber) {
+      toastStore.showToast('모든 필수 항목을 입력해주세요.', 'danger');
+      return;
+    }
+
+    const payload = {
+      email: newStore.email,
+      password: newStore.password,
+      name: newStore.member_name, // Member's name
+      phone: newStore.phone,
+      address: newStore.address,
+      role: 'BRANCH_MANAGER', // Hardcoded role
+      region: newStore.region,
+      storeNumber: newStore.storeNumber,
+    };
+
+    try {
+      const response = await authApi.registerUser(payload);
+      if (response.success) {
+        toastStore.showToast('새 매장(지점장)이 등록되었습니다.', 'success');
+        await storeStore.fetchStores(); // Refresh store list
+      } else {
+        toastStore.showToast(response.message || '매장 등록에 실패했습니다.', 'danger');
+      }
+    } catch (error) {
+      toastStore.showToast('매장 등록 중 오류가 발생했습니다.', 'danger');
+      console.error('Store registration error:', error);
+    }
   }
+
   isModalOpen.value = false;
-  Object.assign(newStore, { id: null, name: '', address: '', owner: '', phone: '', status: '운영중' });
+  Object.assign(newStore, newStoreDefaults);
 };
 
 const deleteStore = async (id) => {
@@ -143,14 +219,14 @@ const downloadPdf = () => {
   doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal');
   doc.setFont('NanumGothic');
   doc.text("전체 매장 목록", 14, 16);
-  const tableColumn = ["ID", "매장명", "주소", "점주", "연락처", "상태"];
+  const tableColumn = ["ID", "매장명", "주소", "점주 이름", "연락처", "상태"];
   const tableRows = [];
   storeStore.allStores.forEach(store => {
     const storeData = [
       store.id,
       store.name,
-      store.address,
-      store.owner,
+      store.member.address,
+      store.member_name,
       store.phone,
       store.status
     ];
@@ -200,20 +276,38 @@ const downloadPdf = () => {
           <input type="text" class="form-control" id="newStoreAddress" v-model="newStore.address" :class="{ 'is-invalid': !newStore.address && formSubmitted }">
           <div class="invalid-feedback">주소는 필수입니다.</div>
         </div>
-        <div class="mb-3">
-          <label for="newStoreOwner" class="form-label">점주</label>
-          <input type="text" class="form-control" id="newStoreOwner" v-model="newStore.owner">
+        <div v-if="!isEditing">
+          <div class="mb-3">
+            <label for="newStoreEmail" class="form-label">이메일 <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="newStoreEmail" v-model="newStore.email" :class="{ 'is-invalid': !newStore.email && formSubmitted }">
+          </div>
+          <div class="mb-3">
+            <label for="newStorePassword" class="form-label">비밀번호 <span class="text-danger">*</span></label>
+            <input type="password" class="form-control" id="newStorePassword" v-model="newStore.password" :class="{ 'is-invalid': !newStore.password && formSubmitted }">
+          </div>
+          <div class="mb-3">
+            <label for="newStoreMemberName" class="form-label">이름 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="newStoreMemberName" v-model="newStore.member_name" :class="{ 'is-invalid': !newStore.member_name && formSubmitted }">
+          </div>
         </div>
         <div class="mb-3">
-          <label for="newStorePhone" class="form-label">연락처</label>
-          <input type="text" class="form-control" id="newStorePhone" v-model="newStore.phone">
+          <label for="newStorePhone" class="form-label">점주 연락처 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="newStorePhone" v-model="newStore.phone" :class="{ 'is-invalid': !newStore.phone && formSubmitted }">
         </div>
-        <div class="mb-3" v-if="isEditing">
-          <label for="newStoreStatus" class="form-label">상태</label>
-          <select class="form-select" id="newStoreStatus" v-model="newStore.status">
-            <option>운영중</option>
-            <option>휴점</option>
+        <div class="mb-3">
+          <label for="newStoreRegion" class="form-label">지역 <span class="text-danger">*</span></label>
+          <select class="form-select" id="newStoreRegion" v-model="newStore.region" :class="{ 'is-invalid': !newStore.region && formSubmitted }">
+            <option value="SEOUL_GYEONGGI">서울/경기</option>
+            <option value="GANGWON">강원</option>
+            <option value="CHUNGCHEONG">충청</option>
+            <option value="GYEONGSANG">경상</option>
+            <option value="JEOLLA">전라</option>
+            <option value="JEJU">제주</option>
           </select>
+        </div>
+        <div class="mb-3">
+          <label for="newStoreNumber" class="form-label">매장 번호 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="newStoreNumber" v-model="newStore.storeNumber" :class="{ 'is-invalid': !newStore.storeNumber && formSubmitted }">
         </div>
       </form>
 
