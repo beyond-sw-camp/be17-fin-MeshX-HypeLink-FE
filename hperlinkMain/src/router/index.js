@@ -12,6 +12,7 @@ import productRoutes from './routes/productRoutes.js'
 import warehouseInventoryRoutes from './routes/warehouseInventoryRoutes.js'
 import purchaseOrderRoutes from './routes/purchaseOrderRoutes.js'
 import trackingRoutes from './routes/trackingRoutes.js'
+
 import customerAnalyticsRoutes from './routes/customerAnalyticsRoutes.js'
 import posHealthRoutes from './routes/posHealthRoutes.js'
 import driverRoutes from './routes/driverRoutes.js'

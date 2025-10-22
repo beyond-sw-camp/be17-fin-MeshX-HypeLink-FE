@@ -1,12 +1,16 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useUiStore } from '../stores/ui';
 import { useAuthStore } from '../stores/auth';
+import BaseModal from '@/components/BaseModal.vue';
 
 const route = useRoute();
 const uiStore = useUiStore();
 const authStore = useAuthStore();
+
+// State for controlling the logout modal
+const showLogoutModal = ref(false);
 
 const pageTitle = computed(() => {
   const name = route.name || 'dashboard';
@@ -20,6 +24,12 @@ const pageTitle = computed(() => {
   if (name === 'users') return '사용자 관리';
   return name.charAt(0).toUpperCase() + name.slice(1);
 });
+
+// Handles the actual logout process
+const handleLogout = () => {
+  authStore.logout();
+  showLogoutModal.value = false;
+};
 </script>
 
 <template>
@@ -65,7 +75,7 @@ const pageTitle = computed(() => {
             <li v-if="authStore.isStoreOwner"><router-link to="/my-store" class="dropdown-item">내 점포 보기</router-link></li>
             <li><a class="dropdown-item" href="#">계정 설정</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" @click="authStore.logout()">로그아웃</a></li>
+            <li><a class="dropdown-item" href="#" @click.prevent="showLogoutModal = true">로그아웃</a></li>
           </template>
           <template v-else>
             <li><router-link to="/login" class="dropdown-item">로그인</router-link></li>
@@ -75,6 +85,18 @@ const pageTitle = computed(() => {
 
     </div>
   </header>
+
+  <!-- Logout Confirmation Modal -->
+  <BaseModal v-model="showLogoutModal" size="sm">
+    <template #header>
+      <h5 class="modal-title">로그아웃 확인</h5>
+    </template>
+    <p>정말로 로그아웃 하시겠습니까?</p>
+    <template #footer>
+      <button type="button" class="btn btn-secondary" @click="showLogoutModal = false">취소</button>
+      <button type="button" class="btn btn-primary" @click="handleLogout">로그아웃</button>
+    </template>
+  </BaseModal>
 </template>
 
 <style scoped lang="scss">

@@ -24,7 +24,6 @@ const newManagerDefaults = {
   phone: '',
   address: '',
   region: 'SEOUL_GYEONGGI',
-  posCount: 0,
   storeNumber: ''
 };
 
@@ -177,8 +176,8 @@ const addManager = async () => {
 
   // 지점장일 경우 추가 유효성 검사
   if (newManager.role === 'BRANCH_MANAGER') {
-    if (newManager.posCount === null || !newManager.storeNumber) {
-      toastStore.showToast('지점장 정보(POS 수, 가게 번호)를 모두 입력해주세요.', 'danger');
+    if (!newManager.storeNumber) {
+      toastStore.showToast('지점장 정보(가게 번호)를 모두 입력해주세요.', 'danger');
       return;
     }
   }
@@ -187,7 +186,6 @@ const addManager = async () => {
     // 서버에 보낼 데이터 정제
     const payload = { ...newManager };
     if (payload.role !== 'BRANCH_MANAGER') {
-      delete payload.posCount;
       delete payload.storeNumber;
     }
 
@@ -286,10 +284,7 @@ const changeUserRole = async ({ userId, role }) => {
             <label class="form-label">가게 번호 <span class="text-danger">*</span></label>
             <input type="text" class="form-control" v-model="newManager.storeNumber" :class="{ 'is-invalid': !newManager.storeNumber && formSubmitted }">
           </div>
-          <div class="mb-3">
-            <label class="form-label">POS 수 <span class="text-danger">*</span></label>
-            <input type="number" class="form-control" v-model.number="newManager.posCount" :class="{ 'is-invalid': newManager.posCount === null && formSubmitted }">
-          </div>
+          
         </div>
       </form>
       <template #footer>

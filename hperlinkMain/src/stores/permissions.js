@@ -4,16 +4,16 @@ import { defineStore } from 'pinia';
 export const usePermissionStore = defineStore('permissions', () => {
   // 시스템에 존재하는 모든 라우트(페이지)의 이름
   const allRoutes = [
-    'dashboard', 'stores', 'pos-management', 'my-store', 'inventory', 
-    'sales', 'pos-support', 'promotions', 'tracking', 'customer-analytics', 
+    'dashboard', 'stores', 'pos-management', 'my-store', 'store-detail', 
+    'inventory', 'sales', 'pos-support', 'promotions', 'tracking', 'customer-analytics', 
     'pos-health', 'drivers', 'users', 'roles', 'announcements', 'messenger',
     'products', 'warehouse-inventory', 'purchase-orders', 'announcement-detail', 'coupons'
   ];
 
   // 역할별 접근 가능한 라우트 이름 목록 (기본값)
   const permissions = ref({
-    ADMIN: [...allRoutes], // 모든 권한
-    MANAGER: ['dashboard', 'announcements', 'announcement-detail', 'messenger', 'stores', 'inventory', 'sales', 'pos-support', 'promotions', 'tracking', 'customer-analytics', 'pos-health', 'drivers', 'products', 'warehouse-inventory', 'purchase-orders', 'coupons', 'pos-management'],
+    ADMIN: allRoutes.filter(route => route !== 'my-store'), // 'my-store' 제외
+    MANAGER: ['dashboard', 'announcements', 'announcement-detail', 'messenger', 'stores', 'inventory', 'sales', 'pos-support', 'promotions', 'tracking', 'customer-analytics', 'pos-health', 'drivers', 'products', 'warehouse-inventory', 'purchase-orders', 'coupons', 'pos-management', 'store-detail'],
     BRANCH_MANAGER: ['dashboard', 'announcements', 'announcement-detail', 'messenger', 'my-store', 'pos-management', 'inventory', 'sales', 'pos-support', 'purchase-orders'],
   });
 

@@ -1,20 +1,30 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import driverApi from '@/api/driver';
+import usersApi from '@/api/users';
 
 export const useDriverStore = defineStore('drivers', () => {
-  const allDrivers = ref([]); // Mock data removed, starts empty
+  const allDrivers = ref([]);
+  const stores = ref([]); // Initialize as empty array
 
-  const stores = ref([
-    { id: 1, name: 'HypeLink 강남점', address: '서울시 강남구 테헤란로', drivers: [] },
-    { id: 2, name: 'HypeLink 홍대점', address: '서울시 마포구 양화로', drivers: [] },
-    { id: 3, name: 'HypeLink 부산점', address: '부산시 해운대구', drivers: [] },
-    { id: 4, name: 'HypeLink 제주점', address: '제주시 첨단로', drivers: [] },
-  ]);
+  // Fetches stores from the backend
+  const fetchStores = async () => {
+    const response = await usersApi.getStoresList();
+    if (response.success) {
+      stores.value = response.data.map(store => ({ 
+        id: store.storeId, 
+        name: store.storeName, 
+        address: store.storeAddress, 
+        phone: store.storePhone, 
+        drivers: [] // Initialize drivers array for each store
+      }));
+    } else {
+      console.error("Failed to fetch stores:", response.message);
+    }
+  };
 
   // Fetches drivers from the backend
   const fetchDrivers = async () => {
-    const response = await driverApi.getDrivers();
+    const response = await usersApi.getDrivers();
     if (response.success) {
       // The backend provides macAddress which is a unique identifier. Use it for the ID.
       allDrivers.value = response.data.map(driver => ({ ...driver, id: driver.macAddress }));
@@ -31,7 +41,7 @@ export const useDriverStore = defineStore('drivers', () => {
   const deleteDriver = (id) => {
     allDrivers.value = allDrivers.value.filter(driver => driver.id !== id);
     stores.value.forEach(store => {
-      store.drivers = store.drivers.filter(driver => driver.id !== id);
+      store.drivers = store.drivers.filter(d => d.id !== id);
     });
   };
 
@@ -67,5 +77,5 @@ export const useDriverStore = defineStore('drivers', () => {
   };
 
 
-  return { allDrivers, stores, fetchDrivers, addDriver, deleteDriver, assignDriverToStore, unassignDriver };
+  return { allDrivers, stores, fetchDrivers, addDriver, deleteDriver, assignDriverToStore, unassignDriver, fetchStores };
 });

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useToastStore } from '@/stores/toast';
 import authApi from '@/api/auth';
 import { setAuthHeader, clearAuthHeader } from '@/plugins/axiosinterceptor';
+import router from '@/router';
 
 export const useAuthStore = defineStore('auth', () => {
   // State - Access token is stored in memory. Refresh token is in a secure HttpOnly cookie.
@@ -44,10 +45,10 @@ export const useAuthStore = defineStore('auth', () => {
 
       // The response body contains the access token and user info.
       // The refresh token is handled by a secure cookie.
-      const { accessToken: newAccessToken, name, role } = data;
+      const { accessToken: newAccessToken, id, name, role } = data; // Extract id
       
       accessToken.value = newAccessToken;
-      user.value = { name, role };
+      user.value = { id, name, role }; // Store id
       setAuthHeader(newAccessToken);
       
       toastStore.showToast('로그인에 성공했습니다.', 'success');
@@ -59,15 +60,28 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Logs out the user, clears local state.
+   * Logs out the user by calling the API, clearing local state, and redirecting to home.
    */
-  function logout() {
-    accessToken.value = null;
-    user.value = null;
-    clearAuthHeader();
-    
-    // The backend is responsible for clearing the refresh token cookie upon a logout API call if needed.
-    toastStore.showToast('로그아웃 되었습니다.', 'info');
+  async function logout() {
+    try {
+      const response = await authApi.logoutUser();
+      if (!response.success) {
+        // Log an error if the API call fails, but still proceed with local logout
+        console.error("Logout API call failed:", response.message);
+      }
+    } catch (error) {
+      console.error("Error during logout API call:", error);
+    } finally {
+      // Ensure local state is always cleared
+      accessToken.value = null;
+      user.value = null;
+      clearAuthHeader();
+      
+      toastStore.showToast('로그아웃 되었습니다.', 'info');
+      
+      // Redirect to the login page
+      await router.push('/');
+    }
   }
 
   return { 
