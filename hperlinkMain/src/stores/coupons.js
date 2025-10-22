@@ -11,9 +11,9 @@ export const useCouponStore = defineStore('coupons', () => {
     isLoading.value = true;
     try {
       const response = await getAllCoupons();
-      if (response.data && response.data.coupons) {
+      if (response.data) {
         // 백엔드 응답 형식을 프론트 형식으로 변환
-        allCoupons.value = response.data.coupons.map(coupon => ({
+        allCoupons.value = response.data.map(coupon => ({
           id: coupon.id,
           name: coupon.name,
           type: coupon.type, // PERCENTAGE -> Percentage 변환은 뷰에서 처리
