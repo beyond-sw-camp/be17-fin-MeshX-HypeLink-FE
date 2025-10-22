@@ -45,10 +45,10 @@ export const useAuthStore = defineStore('auth', () => {
 
       // The response body contains the access token and user info.
       // The refresh token is handled by a secure cookie.
-      const { accessToken: newAccessToken, name, role } = data;
+      const { accessToken: newAccessToken, id, name, role } = data; // Extract id
       
       accessToken.value = newAccessToken;
-      user.value = { name, role };
+      user.value = { id, name, role }; // Store id
       setAuthHeader(newAccessToken);
       
       toastStore.showToast('로그인에 성공했습니다.', 'success');

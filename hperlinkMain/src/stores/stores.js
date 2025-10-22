@@ -13,11 +13,11 @@ export const useStoreStore = defineStore('stores', () => {
         name: store.storeName,
         address: store.storeAddress,
         phone: store.storePhone,
-        status: mapStoreStateToDescription(store.storeState), // Map enum to description
-        // owner: store.owner // Assuming owner comes from API or will be derived
+        status: mapStoreStateToDescription(store.storeState),
       }));
     } else {
-      console.error("Failed to fetch stores:", response.message);
+      // 에러를 다시 던져서 인터셉터의 에러 처리 로직이 동작하도록 함
+      throw new Error(response.message || "Failed to fetch stores.");
     }
   };
 

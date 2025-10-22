@@ -1,14 +1,27 @@
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useMyStore } from '@/stores/store';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 
 const myStore = useMyStore();
+const route = useRoute();
+
+const fetchDataForRoute = (id) => {
+  myStore.fetchMyStoreData(id);
+};
 
 // --- Lifecycle Hooks ---
-onMounted(async () => {
-  await myStore.fetchMyStoreData();
+onMounted(() => {
+  fetchDataForRoute(route.params.id);
+});
+
+// Watch for route changes to refetch data if the user navigates between different store detail pages
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId !== oldId) {
+    fetchDataForRoute(newId);
+  }
 });
 
 </script>
@@ -20,14 +33,13 @@ onMounted(async () => {
     <div v-else>
       <!-- Store Details Card -->
       <BaseCard v-if="myStore.storeDetails" class="mb-4">
-        <template #header><h5>내 점포 정보</h5></template>
+        <template #header><h5>점포 정보</h5></template>
         <div class="row">
           <div class="col-md-6">
             <p><strong>가게명:</strong> {{ myStore.storeDetails.name }}</p>
             <p><strong>주소:</strong> {{ myStore.storeDetails.address }}</p>
           </div>
           <div class="col-md-6">
-            <p><strong>사업자 번호:</strong> {{ myStore.storeDetails.storeNumber }}</p>
             <p><strong>지역:</strong> {{ myStore.storeDetails.region }}</p>
           </div>
         </div>
@@ -47,7 +59,6 @@ onMounted(async () => {
               <tr>
                 <th>이름</th>
                 <th>이메일</th>
-                <th>연락처</th>
                 <th>POS 코드</th>
               </tr>
             </thead>
@@ -55,7 +66,6 @@ onMounted(async () => {
               <tr v-for="pos in myStore.posDevices" :key="pos.id">
                 <td>{{ pos.name }}</td>
                 <td>{{ pos.email }}</td>
-                <td>{{ pos.phone }}</td>
                 <td>{{ pos.posCode }}</td>
               </tr>
             </tbody>

@@ -112,6 +112,7 @@ const handleDeletePos = async (pos) => {
             <thead>
               <tr>
                 <th>이름</th>
+                <th>이메일</th>
                 <th>POS 코드</th>
                 <th>관리</th>
               </tr>
@@ -119,6 +120,7 @@ const handleDeletePos = async (pos) => {
             <tbody>
               <tr v-for="pos in posStore.posDevices" :key="pos.id">
                 <td>{{ pos.name }}</td>
+                <td>{{ pos.email }}</td>
                 <td>{{ pos.posCode }}</td>
                 <td>
                   <button class="btn btn-danger btn-sm" @click="handleDeletePos(pos)">삭제</button>

@@ -84,6 +84,9 @@ api.interceptors.response.use(
                 // 스토어와 헤더에 새 토큰 설정
                 authStore.setNewAccessToken(newAccessToken);
                 
+                // 원래 요청의 헤더에 새 토큰 설정
+                originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
+
                 // 대기열에 있던 모든 요청들을 새 토큰으로 재시도
                 processQueue(null, newAccessToken);
 

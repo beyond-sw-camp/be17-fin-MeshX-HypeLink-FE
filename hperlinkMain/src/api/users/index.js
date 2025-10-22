@@ -59,10 +59,58 @@ export const getStoresList = async () => {
     }
 };
 
+export const getMyStore = async () => {
+    try {
+        const response = await api.get('/api/member/mystore/read');
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const getStoreById = async (id) => {
+    try {
+        const response = await api.get(`/api/member/otherstore/read/${id}`);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const getStoreInfoForEdit = async (id) => {
+    try {
+        const response = await api.get(`/api/member/storeinfo/read/${id}`);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const updateStoreInfo = async (id, dto) => {
+    try {
+        const response = await api.patch(`/api/member/store/${id}`, dto);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
 export default {
     getDrivers,
     getStoresWithPos,
     getUsers,
     getMessageUsers,
     getStoresList,
+    getMyStore,
+    getStoreById,
+    getStoreInfoForEdit,
+    updateStoreInfo,
 };

@@ -79,15 +79,15 @@ const statusClass = (status) => {
           <thead>
             <tr>
               <th @click="emit('update:sort', 'name')" class="sortable">매장명 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="name" /></th>
-              <th @click="emit('update:sort', 'address')" class="sortable">주소 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="address" /></th>
-              <th>연락처</th>
+              <th @click="emit('update:sort', 'member.address')" class="sortable">주소 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="member.address" /></th>
+              <th>매장 연락처</th>
               <th @click="emit('update:sort', 'status')" class="sortable">상태 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="status" /></th>
               <th v-if="authStore.isAdmin">관리</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="store in stores" :key="store.id">
-              <td>{{ store.name }}</td>
+              <td><router-link :to="`/store-detail/${store.id}`">{{ store.name }}</router-link></td>
               <td>{{ store.address }}</td>
               <td>{{ store.phone }}</td>
               <td><span class="badge" :class="statusClass(store.status)">{{ store.status }}</span></td>
