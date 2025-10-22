@@ -13,6 +13,7 @@ export const saveNewItem = async (itemForm) => {
     return data
 }
 
+// dto 수정되었을수도?
 export const getItems = async (page = 0, size = 10, sort = 'id,desc') => {
     const requestUrl = `/api/item/list`
     let data = {}
@@ -42,7 +43,7 @@ export const updateContent = async (updateForm) => {
 }
 
 export const updateStock = async (updateForm) => {
-    const requestUrl = `/api/item/stock`
+    const requestUrl = `/api/item/detail/stock`
     let data = {}
     await api.patch(requestUrl, updateForm)
         .then((response) => {
