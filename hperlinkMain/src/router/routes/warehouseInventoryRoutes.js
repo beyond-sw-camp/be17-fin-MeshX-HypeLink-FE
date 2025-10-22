@@ -2,7 +2,7 @@ const warehouseInventoryRoutes = [
   {
     path: '/warehouse-inventory',
     name: 'warehouse-inventory',
-    component: () => import('@/views/WarehouseInventoryView.vue'),
+    component: () => import('@/views/HeadPurchaseOrderView.vue'),
     meta: { roles: ['ADMIN', 'MANAGER'] }
   }
 ];
