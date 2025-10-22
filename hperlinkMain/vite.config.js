@@ -22,6 +22,16 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false
+      },
+      // 이미지 요청을 S3로 프록시
+      '/images': {
+        target: 'https://kbw-s3.s3.ap-northeast-2.amazonaws.com',
+        changeOrigin: true,
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log(`[프록시] 이미지 요청 확인: ${req.method} ${req.url}`);
+          });
+        }
       }
     }
   }

@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useModalStore } from '@/stores/modal';
 import { useToastStore } from '@/stores/toast';
 import {getAllAnnouncementsList, createAnnouncement, deleteAnnouncement as deleteAnnouncementApi, getAnnouncementDetail, updateAnnouncement} from '@/api/announcements';
+import { uploadNoticeImage } from '@/api/image';
 
 const announcements = ref([]);   // 기존 allAnnouncements 대체
 const loading = ref(false);
@@ -22,7 +23,12 @@ const isLoading = ref(true);
 const isModalOpen = ref(false);
 const isEditing = ref(false); //수정 모드인지 새로 작성인지
 const formSubmitted = ref(false); //유효성 표시용
-const announcementForm = reactive({ id: null, title: '', contents: '' });
+const announcementForm = reactive({ id: null, title: '', contents: '', images: [] });
+
+// 이미지 관련 상태
+const selectedFiles = ref([]);  // 선택된 파일들
+const imagePreviewUrls = ref([]);  // 미리보기 URL
+const isUploading = ref(false);  // 업로드 중 상태
 
 // 검색, 필터, 정렬, 페이지네이션 상태
 const searchTerm = ref('');
@@ -81,20 +87,45 @@ const updatePage = (page) => {
   }
 };
 
-// “새 공지 작성” 또는 “수정” 버튼 눌렀을 때 모달 열기
+// "새 공지 작성" 또는 "수정" 버튼 눌렀을 때 모달 열기
 const openAddAnnouncementModal = (announcement = null) => {
   formSubmitted.value = false;
-   Object.assign(announcementForm, { id: null, title: '', contents: '' });
-   if (announcement && announcement.id) {
+  selectedFiles.value = [];
+  imagePreviewUrls.value = [];
+
+  Object.assign(announcementForm, { id: null, title: '', contents: '', images: [] });
+
+  if (announcement && announcement.id) {
     // 수정 모드
     isEditing.value = true;
     Object.assign(announcementForm, announcement);
+    // 기존 이미지가 있으면 미리보기에 표시
+    if (announcement.images && announcement.images.length > 0) {
+      imagePreviewUrls.value = announcement.images.map(img => img.imageUrl);
+      announcementForm.images = announcement.images;
+    }
   } else {
     // 새 공지 작성 모드
     isEditing.value = false;
   }
 
   isModalOpen.value = true;
+};
+
+// 이미지 파일 선택 핸들러
+const handleImageSelect = (event) => {
+  const files = Array.from(event.target.files);
+  selectedFiles.value = files;
+
+  // 미리보기 URL 생성
+  imagePreviewUrls.value = files.map(file => URL.createObjectURL(file));
+};
+
+// 이미지 제거
+const removeImage = (index) => {
+  selectedFiles.value.splice(index, 1);
+  URL.revokeObjectURL(imagePreviewUrls.value[index]);
+  imagePreviewUrls.value.splice(index, 1);
 };
 
 //저장 버튼 눌렀을 때
@@ -106,21 +137,52 @@ const saveAnnouncement = async () => {
   }
 
   try {
-    if (isEditing.value) { 
-      await updateAnnouncement(announcementForm.id, {
-        title: announcementForm.title,
-        contents: announcementForm.contents,
-        isOpen: true,
-        author: authStore.user?.name || '관리자'
-      });
+    isUploading.value = true;
+
+    // 이미지 업로드 처리
+    let uploadedImages = [];
+    if (selectedFiles.value.length > 0) {
+      toastStore.showToast('이미지 업로드 중...', 'info');
+
+      for (const file of selectedFiles.value) {
+        try {
+          const imageData = await uploadNoticeImage(file);
+          uploadedImages.push(imageData);
+        } catch (error) {
+          console.error('이미지 업로드 실패:', error);
+          toastStore.showToast(`이미지 업로드 실패: ${file.name}`, 'warning');
+        }
+      }
+    }
+
+    // 기존 이미지 유지 또는 변환
+    let finalImages;
+    if (isEditing.value) {
+      if (selectedFiles.value.length > 0) {
+        // 수정 모드에서 새 이미지를 선택한 경우
+        finalImages = uploadedImages;
+      } else {
+        // 수정 모드에서 새 이미지를 선택하지 않은 경우, 기존 이미지 정보를 변환
+        finalImages = announcementForm.images.map(img => ({ id: img.id, originalName: img.originalName }));
+      }
+    } else {
+      // 생성 모드
+      finalImages = uploadedImages;
+    }
+
+    const payload = {
+      title: announcementForm.title,
+      contents: announcementForm.contents,
+      isOpen: true,
+      author: authStore.user?.name || '관리자',
+      images: finalImages
+    };
+
+    if (isEditing.value) {
+      await updateAnnouncement(announcementForm.id, payload);
       toastStore.showToast('공지사항이 수정되었습니다.', 'success');
     } else {
-      await createAnnouncement({
-        title: announcementForm.title,
-        contents: announcementForm.contents,
-        isOpen: true,
-        author: authStore.user?.name || '관리자'
-      });
+      await createAnnouncement(payload);
       toastStore.showToast('새 공지사항이 등록되었습니다.', 'success');
     }
 
@@ -129,10 +191,14 @@ const saveAnnouncement = async () => {
     announcements.value = res?.data?.notices || [];
 
     isModalOpen.value = false;
-    Object.assign(announcementForm, { id: null, title: '', contents: '' });
+    selectedFiles.value = [];
+    imagePreviewUrls.value = [];
+    Object.assign(announcementForm, { id: null, title: '', contents: '', images: [] });
   } catch (err) {
     console.error(err);
     toastStore.showToast('공지 저장 중 오류 발생', 'danger');
+  } finally {
+    isUploading.value = false;
   }
 };
 
@@ -194,7 +260,8 @@ const deleteAnnouncement = async (id) => {
               <small>{{  formatDate(announcement.date) }}</small>
             </div>
             <p class="mb-1">{{ announcement.contents }}</p>
-            <div class="d-flex justify-content-between align-items-center">
+            
+            <div class="d-flex justify-content-between align-items-center mt-2">
               <small class="text-muted">작성자: {{ announcement.author }}</small>
               <div v-if="authStore.isAdmin || authStore.isManager">
                 <button class="btn btn-link btn-sm text-secondary p-0 me-2" @click="openAddAnnouncementModal(announcement)">수정</button>
@@ -240,11 +307,44 @@ const deleteAnnouncement = async (id) => {
           <label class="form-label">내용 <span class="text-danger">*</span></label>
           <textarea class="form-control" rows="5" v-model="announcementForm.contents" :class="{ 'is-invalid': !announcementForm.contents && formSubmitted }"></textarea>
         </div>
-         <!-- 제목, 내용 입력: 빈 채 저장 누르면 빨간 테두리 -->
+        <div class="mb-3">
+          <label class="form-label">이미지 첨부</label>
+          <input
+            type="file"
+            class="form-control"
+            accept="image/*"
+            multiple
+            @change="handleImageSelect"
+          >
+          <small class="text-muted">여러 이미지를 선택할 수 있습니다.</small>
+        </div>
+        <!-- 이미지 미리보기 -->
+        <div v-if="imagePreviewUrls.length > 0" class="mb-3">
+          <label class="form-label">미리보기</label>
+          <div class="image-preview-container">
+            <div
+              v-for="(url, index) in imagePreviewUrls"
+              :key="index"
+              class="image-preview-item"
+            >
+              <img :src="url" alt="미리보기" class="preview-thumbnail">
+              <button
+                type="button"
+                class="btn btn-sm btn-danger remove-btn"
+                @click="removeImage(index)"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
       </form>
       <template #footer>
-        <button type="button" class="btn btn-secondary" @click="isModalOpen = false">취소</button>
-        <button type="button" class="btn btn-primary" @click="saveAnnouncement">저장</button>
+        <button type="button" class="btn btn-secondary" @click="isModalOpen = false" :disabled="isUploading">취소</button>
+        <button type="button" class="btn btn-primary" @click="saveAnnouncement" :disabled="isUploading">
+          <span v-if="isUploading" class="spinner-border spinner-border-sm me-1"></span>
+          {{ isUploading ? '업로드 중...' : '저장' }}
+        </button>
       </template>
     </BaseModal>
 
@@ -258,4 +358,42 @@ const deleteAnnouncement = async (id) => {
 .modal-backdrop {
   z-index: 1050; /* Bootstrap 기본 z-index와 일치 */
 }
+
+/* 이미지 미리보기 컨테이너 */
+.image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.image-preview-item {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.preview-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.remove-btn {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+}
+
+
 </style>
