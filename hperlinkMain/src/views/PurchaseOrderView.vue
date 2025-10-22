@@ -10,6 +10,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import { useOrderStore } from '@/stores/orders';
 
+import purchaseOrderApi from '@/api/purchase-order'
+
 const productStore = useProductStore();
 const authStore = useAuthStore();
 const toastStore = useToastStore();
@@ -19,7 +21,14 @@ const isLoading = ref(true);
 
 const isModalOpen = ref(false);
 const formSubmitted = ref(false);
-const orderForm = reactive({ productId: '', quantity: 1 });
+const orderForm = reactive({
+  productId: '',
+  quantity: 1
+});
+const updateOrderForm = reactive({
+  orderId: 0,
+  orderState: ''
+})
 
 // 검색, 필터, 정렬, 페이지네이션 상태
 const searchTerm = ref('');
@@ -28,19 +37,39 @@ const sortKey = ref('id');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
+const allProducts = ref([]);
+const totalPages = ref(0);
 
 // --- 데이터 로딩 시뮬레이션 ---
 onMounted(() => {
-  setTimeout(() => {
-    isLoading.value = false;
-  }, 500);
+  loadItems(1); // 초기 로드 시 서버에서 페이징 데이터 불러오기
 });
+
+const loadItems = async (page = 1) => {
+  try {
+    isLoading.value = true;
+
+    const response = await purchaseOrderApi.getPurchaseOrder(page - 1, itemsPerPage.value, `${sortKey.value},${sortOrder.value}`);
+    if (response.status === 200 && response.data) {
+      const pageData = response.data.data;
+      allProducts.value = pageData.content;
+      totalPages.value = pageData.totalPages;
+      currentPage.value = pageData.currentPage + 1; // Spring Pageable은 0-based
+    } else {
+      console.error('상품 목록 로딩 실패:', response);
+    }
+  } catch (e) {
+    console.error('서버 통신 오류:', e);
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 // --- 검색, 필터링, 정렬 로직 ---
 const filteredAndSortedOrders = computed(() => {
   let orders = [...orderStore.allOrders];
 
-  if (authStore.isStoreManager) {
+  if (authStore.isBranchManager) {
     orders = orders.filter(order => order.storeName === authStore.user.name);
   }
 
@@ -69,15 +98,6 @@ const filteredAndSortedOrders = computed(() => {
   return orders;
 });
 
-// --- 페이지네이션 로직 ---
-const paginatedOrders = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedOrders.value.slice(start, end);
-});
-
-const totalPages = computed(() => Math.ceil(filteredAndSortedOrders.value.length / itemsPerPage.value));
-
 // --- 이벤트 핸들러 ---
 const updateSort = (key) => {
   if (sortKey.value === key) {
@@ -88,11 +108,12 @@ const updateSort = (key) => {
   }
   currentPage.value = 1;
 };
-const updatePage = (page) => { 
-  if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page; 
-  }
+
+const updatePage = async (page) => {
+  if (page < 1 || page > totalPages.value) return;
+  await loadItems(page);
 };
+
 
 const openOrderModal = () => {
   formSubmitted.value = false;
@@ -123,18 +144,27 @@ const handleSubmitOrder = () => {
   toastStore.showToast('발주 요청이 완료되었습니다.', 'success');
 };
 
-const handleUpdateOrderStatus = (id, newStatus) => {
-  orderStore.updateOrderStatus(id, newStatus);
-  toastStore.showToast(`발주 #${id} 상태가 ${newStatus}(으)로 변경되었습니다.`, 'success');
+const handleUpdateOrderStatus = async (id, newStatus) => {
+  updateOrderForm.orderId = id;
+  updateOrderForm.orderState = newStatus;
+
+  let res = await purchaseOrderApi.updatePurchaseOrder(updateOrderForm);
+
+  updateOrderForm.orderId = 0;
+  updateOrderForm.orderState = '';
+
+  if(res.status === 200) {
+    toastStore.showToast(`발주 #${id} 상태가 ${newStatus}(으)로 변경되었습니다.`, 'success');
+    return;
+  }
+  toastStore.showToast(`발주 상태 수정에 실패했습니다.`, 'danger');
 };
 
 const orderStatusClass = (status) => {
   switch (status) {
-    case '요청 완료': return 'bg-primary';
-    case '처리중': return 'bg-info';
-    case '배송중': return 'bg-warning';
-    case '완료': return 'bg-success';
-    case '취소': return 'bg-danger';
+    case '발주 요청됨': return 'bg-primary';
+    case '수령 완료': return 'bg-success';
+    case '요청 취소': return 'bg-danger';
     default: return 'bg-secondary';
   }
 };
@@ -156,35 +186,35 @@ const orderStatusClass = (status) => {
               <option value="완료">완료</option>
               <option value="취소">취소</option>
             </select>
-            <button v-if="authStore.isStoreManager" class="btn btn-primary btn-sm" @click="openOrderModal()">+ 새 발주서 작성</button>
+            <button v-if="authStore.isBranchManager" class="btn btn-primary btn-sm" @click="openOrderModal()">+ 새 발주서 작성</button>
           </div>
         </div>
       </template>
       
-      <div v-if="paginatedOrders.length > 0">
+      <div v-if="allProducts.length > 0">
         <table class="table table-hover">
           <thead>
             <tr>
               <th @click="updateSort('id')" class="sortable">발주 번호 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="id" /></th>
-              <th v-if="authStore.isAdmin || authStore.isSubAdmin" @click="updateSort('storeName')" class="sortable">요청 매장 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="storeName" /></th>
+              <th v-if="authStore.isAdmin || authStore.isManager" @click="updateSort('storeName')" class="sortable">요청 매장 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="storeName" /></th>
               <th @click="updateSort('productName')" class="sortable">상품명 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="productName" /></th>
               <th @click="updateSort('quantity')" class="sortable">수량 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="quantity" /></th>
               <th @click="updateSort('requestDate')" class="sortable">요청일 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="requestDate" /></th>
               <th @click="updateSort('status')" class="sortable">상태 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="status" /></th>
-              <th v-if="authStore.isAdmin || authStore.isSubAdmin">관리</th>
+              <th v-if="authStore.isAdmin || authStore.isManager">관리</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in paginatedOrders" :key="order.id">
+            <tr v-for="order in allProducts" :key="order.id">
               <td>{{ order.id }}</td>
-              <td v-if="authStore.isAdmin || authStore.isSubAdmin">{{ order.storeName }}</td>
-              <td>{{ order.productName }}</td>
+              <td v-if="authStore.isAdmin || authStore.isManager">{{ order.deliveryRequest }}</td>
+              <td>{{ order.itemName }}</td>
               <td>{{ order.quantity }}</td>
-              <td>{{ order.requestDate }}</td>
+              <td>{{ order.requestDay }}</td>
               <td><span class="badge" :class="orderStatusClass(order.status)">{{ order.status }}</span></td>
-              <td v-if="authStore.isAdmin || authStore.isSubAdmin">
-                <button class="btn btn-sm btn-success" @click="handleUpdateOrderStatus(order.id, '처리중')">처리</button>
-                <button class="btn btn-sm btn-danger ms-2" @click="handleUpdateOrderStatus(order.id, '취소')">취소</button>
+              <td v-if="(authStore.isAdmin || authStore.isManager) && (order.status !== '수령 완료' && order.status !== '요청 취소')">
+                <button class="btn btn-sm btn-success" @click="handleUpdateOrderStatus(order.id, 'COMPLETED')">처리</button>
+                <button class="btn btn-sm btn-danger ms-2" @click="handleUpdateOrderStatus(order.id, 'CANCELED')">취소</button>
               </td>
             </tr>
           </tbody>

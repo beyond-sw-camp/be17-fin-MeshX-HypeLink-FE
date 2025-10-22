@@ -12,6 +12,8 @@ import { Korean } from 'flatpickr/dist/l10n/ko.js';
 import { usePromotionStore } from '@/stores/promotions';
 import { useToastStore } from '@/stores/toast';
 import { useModalStore } from '@/stores/modal';
+import { getAllPromotionsList, createPromotion, updatePromotion, deletePromotion  as deletePromotionApi } from '@/api/promotion';
+
 
 const promotionStore = usePromotionStore();
 const toastStore = useToastStore();
@@ -28,9 +30,13 @@ const promoForm = reactive({
   id: null,
   name: '',
   period: '',
-  target: '',
-  status: '예정',
+  target: 'ALL',
+  status: 'UPCOMING',
   description: '',
+  storeIds: [],
+  category: '',     // 카테고리용
+  itemId: null,     // 상품용
+  discountRate: null,
 });
 
 // 검색, 필터, 정렬, 페이지네이션 상태
@@ -72,41 +78,37 @@ watch(
 );
 
 // 데이터 로딩 시뮬레이션
-onMounted(() => {
-  setTimeout(() => {
-    allPromotions.value = [
-      {
-        id: 1,
-        name: '신학기 맞이 10% 할인',
-        period: '2025-03-01 ~ 2025-03-31',
-        target: '전체 고객',
-        status: '진행중',
-        description: '새 학기를 맞아 모든 상품 10% 할인 프로모션 진행',
-        salesImpact: {
-          labels: ['2월', '3월', '4월'],
-          before: [100, 110, 105],
-          during: [120, 150, 140],
-          after: [115, 125, 120],
-        },
-      },
-      {
-        id: 2,
-        name: '여름맞이 특별 세일',
-        period: '2024-07-01 ~ 2024-07-31',
-        target: '온라인 구매 고객',
-        status: '종료',
-        description: '여름 시즌 상품 최대 30% 할인 프로모션',
-        salesImpact: {
-          labels: ['6월', '7월', '8월'],
-          before: [90, 95, 88],
-          during: [130, 160, 150],
-          after: [100, 105, 98],
-        },
-      },
-    ];
+ onMounted(async () => {
+  if (!currentPage.value) currentPage.value = 1;
+   await loadPromotions();
+ });
+
+const loadPromotions = async () => {
+  isLoading.value = true;
+  try {
+    const res = await getAllPromotionsList();
+    console.log('[프로모션 전체 응답]', res);
+
+    // ✅ 백엔드 구조에 따라 조정
+    const promotions = res.data?.data?.promotions || res.data?.data || [];
+
+    allPromotions.value = promotions.map((item) => ({
+      id: item.id,
+      name: item.title,
+      period: `${item.startDate} ~ ${item.endDate}`,
+      target: item.promotionType,
+      status: item.status,
+      description: item.contents,
+      discountRate: item.discountRate
+    }));
+  } catch (error) {
+    console.error(error);
+    toastStore.showToast('프로모션 목록을 불러오는 중 오류가 발생했습니다.', 'danger');
+  } finally {
     isLoading.value = false;
-  }, 1000);
-});
+  }
+};
+
 
 // 검색, 필터링, 정렬 로직
 const filteredAndSortedPromotions = computed(() => {
@@ -171,21 +173,29 @@ const openPromotionModal = (promo = null) => {
       id: null,
       name: '',
       period: '',
-      target: '',
-      status: '예정',
+      target: 'ALL',
+      status: 'UPCOMING',
       description: '',
     });
   }
   isModalOpen.value = true;
 };
 
-const savePromotion = () => {
+const savePromotion = async () => {
   formSubmitted.value = true;
-  if (!promoForm.name || !promoForm.period) {
-    toastStore.showToast('프로모션명과 기간은 필수입니다.', 'danger');
-    return;
-  }
+  if (
+  !promoForm.name ||
+  !promoForm.period ||
+  promoForm.discountRate === null ||
+  promoForm.discountRate === undefined ||
+  promoForm.discountRate <= 0 ||
+  promoForm.discountRate > 100
+) {
+  toastStore.showToast('프로모션명, 기간, 할인율(1~100)은 필수입니다.', 'danger');
+  return;
+}
 
+  // ✅ 날짜 유효성 검사
   if (promoForm.period.includes(' ~ ')) {
     const [start, end] = promoForm.period.split(' ~ ');
     if (new Date(start) > new Date(end)) {
@@ -194,26 +204,50 @@ const savePromotion = () => {
     }
   }
 
-  if (isEditing.value) {
-    const index = allPromotions.value.findIndex((s) => s.id === promoForm.id);
-    if (index !== -1) {
-      Object.assign(allPromotions.value[index], promoForm);
-      toastStore.showToast('프로모션 정보가 수정되었습니다.', 'success');
+  // ✅ 한 번만 선언 (중복 X)
+const [startDate, endDate] = promoForm.period.split(' ~ ');
+
+const payload = {
+  promotionType: promoForm.target,
+  title: promoForm.name,
+  contents: promoForm.description,
+  discountRate: promoForm.discountRate, 
+  startDate,
+  endDate,
+  storeIds: promoForm.target === 'STORE' ? promoForm.storeIds : [],
+  category: promoForm.target === 'CATEGORY' ? promoForm.category : null,
+  itemId: promoForm.target === 'PRODUCT' ? promoForm.itemId : null,
+  status: promoForm.status
+};
+console.log('[create payload]', payload);
+
+  try {
+    if (isEditing.value) {
+      await updatePromotion(promoForm.id, payload);
+      toastStore.showToast('프로모션이 수정되었습니다.', 'success');
+    } else {
+      await createPromotion(payload);
+      toastStore.showToast('새 프로모션이 등록되었습니다.', 'success');
     }
-  } else {
-    promotionStore.addPromotion(promoForm);
-    toastStore.showToast('새 프로모션이 등록되었습니다.', 'success');
+
+    isModalOpen.value = false;
+    await loadPromotions(); // ✅ 목록 새로고침
+  } catch (err) {
+    console.error(err);
+    toastStore.showToast('저장 중 오류가 발생했습니다.', 'danger');
   }
-  isModalOpen.value = false;
+
+  // ✅ 폼 리셋
   Object.assign(promoForm, {
     id: null,
     name: '',
     period: '',
-    target: '',
-    status: '예정',
+    target: 'ALL', // ✅ 기본값
+    status: 'UPCOMING',
     description: '',
   });
 };
+
 
 const deletePromotion = async (id) => {
   const confirmed = await modalStore.show({
@@ -222,9 +256,14 @@ const deletePromotion = async (id) => {
     isConfirmation: true,
   });
   if (confirmed) {
-    promotionStore.deletePromotion(id);
-    toastStore.showToast('프로모션이 삭제되었습니다.', 'success');
-  }
+   try {
+     await deletePromotionApi(id);
+     toastStore.showToast('프로모션이 삭제되었습니다.', 'success');
+     await loadPromotions();
+   } catch (error) {
+     toastStore.showToast('삭제 중 오류가 발생했습니다.', 'danger');
+   }
+ }
 };
 
 const statusClass = (status) => {
@@ -420,14 +459,89 @@ const updateSort = (key) => {
         </div>
         <div class="mb-3">
           <label class="form-label">대상</label>
-          <input type="text" class="form-control" v-model="promoForm.target" />
+           <select class="form-select" v-model="promoForm.target">
+            <option value="ALL">전체 이벤트</option>
+            <option value="STORE">매장 이벤트</option>
+            <option value="CATEGORY">카테고리 이벤트</option>
+            <option value="PRODUCT">상품 이벤트</option>
+          </select>
         </div>
+                <!-- ✅ 매장 이벤트 선택 시 -->
+        <div v-if="promoForm.target === 'STORE'" class="mb-3">
+          <label class="form-label fw-bold">가맹점 선택</label>
+          <div class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
+            <select
+              v-model="promoForm.storeIds"
+              class="form-select"
+              multiple
+              style="min-height: 150px; width: 100%;"
+            >
+              <option
+                v-for="store in storeList"
+                :key="store.id"
+                :value="store.id"
+              >
+                {{ store.name }} ({{ store.address }})
+              </option>
+            </select>
+          </div>
+          <div v-if="formSubmitted && promoForm.storeIds.length === 0" class="text-danger mt-1">
+            최소 1개 이상의 매장을 선택해야 합니다.
+          </div>
+        </div>
+
+        <!-- ✅ 카테고리 이벤트 선택 시 -->
+        <div v-if="promoForm.target === 'CATEGORY'" class="mb-3">
+          <label class="form-label fw-bold">카테고리 선택</label>
+          <select v-model="promoForm.category" class="form-select">
+            <option disabled value="">카테고리를 선택하세요</option>
+            <option value="BACKPACK">백팩</option>
+            <option value="TOP_CLOTHES">상의</option>
+            <option value="BOTTOM_CLOTHES">하의</option>
+            <option value="OUTER_CLOTHES">아우터</option>
+            <option value="SHOES">신발</option>
+          </select>
+          <div v-if="formSubmitted && !promoForm.category" class="text-danger mt-1">
+            카테고리를 선택해야 합니다.
+          </div>
+        </div>
+
+       <!-- ✅ 상품 이벤트 선택 시 -->
+      <div v-if="promoForm.target === 'PRODUCT'" class="mb-3">
+        <label class="form-label fw-bold">상품 선택</label>
+        <select v-model="promoForm.itemId" class="form-select">
+          <option disabled value="">상품을 선택하세요</option>
+          <option v-for="item in productList" :key="item.id" :value="item.id">
+            {{ item.name }} ({{ item.category }})
+          </option>
+        </select>
+        <div v-if="formSubmitted && !promoForm.itemId" class="text-danger mt-1">
+          상품을 선택해야 합니다.
+        </div>
+      </div> <!-- ✅ 이 닫는 태그 위치 중요! -->
+
+<!-- ✅ 할인율 입력 (1~100 사이만 허용) -->
+<div class="mb-3">
+  <label class="form-label">할인율 (%)</label>
+  <input
+    type="number"
+    class="form-control"
+    v-model.number="promoForm.discountRate"
+    min="1"
+    max="100"
+    step="0.1"
+    placeholder="1~100"
+    :class="{ 'is-invalid': formSubmitted && (promoForm.discountRate === null || promoForm.discountRate <= 0 || promoForm.discountRate > 100) }"
+  />
+  <div class="invalid-feedback">유효한 할인율을 입력하세요 (1~100 사이).</div>
+
+      </div>
         <div class="mb-3">
           <label class="form-label">상태</label>
           <select class="form-select" v-model="promoForm.status">
-            <option>진행중</option>
-            <option>예정</option>
-            <option>종료</option>
+            <option value="ONGOING">진행중</option>
+            <option value="UPCOMING">예정</option>
+            <option value="ENDED">종료</option>
           </select>
         </div>
         <div class="mb-3">

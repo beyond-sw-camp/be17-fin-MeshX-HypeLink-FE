@@ -5,45 +5,45 @@ export const useProductsStore = defineStore('products', () => {
   const products = ref([
     {
       id: '1',
-      name: '아메리카노',
-      price: 4500,
-      category: 'coffee',
+      name: '베이직 티셔츠',
+      price: 29000,
+      category: 'top',
       stock: 100,
       barcode: '8801234567890'
     },
     {
       id: '2',
-      name: '카페라떼',
-      price: 5000,
-      category: 'coffee',
+      name: '슬림핏 청바지',
+      price: 59000,
+      category: 'bottom',
       stock: 100
     },
     {
       id: '3',
-      name: '카푸치노',
-      price: 5000,
-      category: 'coffee',
+      name: '오버핏 후드티',
+      price: 49000,
+      category: 'top',
       stock: 100
     },
     {
       id: '4',
-      name: '녹차라떼',
-      price: 5500,
-      category: 'tea',
+      name: '와이드 슬랙스',
+      price: 69000,
+      category: 'bottom',
       stock: 80
     },
     {
       id: '5',
-      name: '초코케이크',
-      price: 6500,
-      category: 'dessert',
+      name: '레더 자켓',
+      price: 149000,
+      category: 'outer',
       stock: 30
     },
     {
       id: '6',
-      name: '치즈케이크',
-      price: 7000,
-      category: 'dessert',
+      name: '울 코트',
+      price: 189000,
+      category: 'outer',
       stock: 25
     }
   ])
@@ -51,20 +51,20 @@ export const useProductsStore = defineStore('products', () => {
   // POS 화면에 표시될 품목 슬롯 설정 (24칸)
   // slotIndex: productId 매핑
   const posSlots = ref({
-    0: '1',   // 아메리카노
-    1: '2',   // 카페라떼
-    2: '3',   // 카푸치노
-    3: '4',   // 녹차라떼
-    4: '5',   // 초코케이크
-    5: '6'    // 치즈케이크
+    0: '1',   // 베이직 티셔츠
+    1: '2',   // 슬림핏 청바지
+    2: '3',   // 오버핏 후드티
+    3: '4',   // 와이드 슬랙스
+    4: '5',   // 레더 자켓
+    5: '6'    // 울 코트
     // 나머지 슬롯(6-23)은 비어있음
   })
 
   const categories = ref([
     { id: 'all', name: '전체' },
-    { id: 'coffee', name: '커피', color: '#6B4423' },
-    { id: 'tea', name: '차', color: '#2E7D32' },
-    { id: 'dessert', name: '디저트', color: '#D84315' }
+    { id: 'top', name: '상의', color: '#4A90E2' },
+    { id: 'bottom', name: '하의', color: '#7B68EE' },
+    { id: 'outer', name: '아우터', color: '#E94B3C' }
   ])
 
   const getProductById = (id) => {

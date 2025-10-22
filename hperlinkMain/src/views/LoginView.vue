@@ -1,84 +1,165 @@
 <script setup>
-import { ref, reactive } from 'vue';
+import { reactive, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseCard from '@/components/BaseCard.vue';
 import { useAuthStore } from '@/stores/auth';
-import { useToastStore } from '@/stores/toast';
+import { loadSlim } from "tsparticles-slim";
 
 const authStore = useAuthStore();
-const toastStore = useToastStore();
 const router = useRouter();
 
 const loginForm = reactive({
-  username: '',
+  email: '',
   password: '',
 });
 
-const formSubmitted = ref(false);
-
-const handleLogin = async (role = null) => {
-  formSubmitted.value = true;
-  if (!loginForm.username || !loginForm.password) {
-    toastStore.showToast('아이디와 비밀번호를 입력해주세요.', 'danger');
+const handleLogin = async () => {
+  if (!loginForm.email || !loginForm.password) {
+    console.warn('Email and password are required');
     return;
   }
 
-  // 실제 백엔드 연동 시에는 이 부분에서 API 호출
-  // 현재는 개발용 역할 선택 로그인으로 대체
-  if (role) {
-    authStore.login(role);
-  } else {
-    // 일반 로그인 시도 (목업)
-    if (loginForm.username === 'admin' && loginForm.password === 'admin123') {
-      authStore.login('super_admin');
-    } else if (loginForm.username === 'subadmin' && loginForm.password === 'subadmin123') {
-      authStore.login('sub_admin');
-    } else if (loginForm.username === 'gangnam' && loginForm.password === 'gangnam123') {
-      authStore.login('store_manager');
-    } else {
-      toastStore.showToast('아이디 또는 비밀번호가 올바르지 않습니다.', 'danger');
-      return;
+  try {
+    await authStore.login(loginForm);
+    await nextTick();
+    if (authStore.isLoggedIn) {
+      router.push('/');
     }
-  }
-
-  if (authStore.isLoggedIn) {
-    toastStore.showToast(`${authStore.user.name}님 환영합니다!`, 'success');
-    router.push('/'); // 로그인 성공 시 대시보드로 이동
+  } catch (error) {
+    console.error('Login failed from component:', error.message);
   }
 };
+
+// Particle Animation Options
+const particlesInit = async engine => {
+  await loadSlim(engine);
+};
+
+const particlesOptions = ref({
+  background: {
+    color: {
+      value: '#f8f9fa'
+    }
+  },
+  fpsLimit: 60,
+  interactivity: {
+    events: {
+      onHover: {
+        enable: true,
+        mode: 'grab'
+      }
+    },
+    modes: {
+      grab: {
+        distance: 150,
+        links: {
+          opacity: 0.5
+        }
+      }
+    }
+  },
+  particles: {
+    color: {
+      value: '#6c757d'
+    },
+    links: {
+      color: '#adb5bd',
+      distance: 150,
+      enable: true,
+      opacity: 0.6,
+      width: 1
+    },
+    move: {
+      direction: 'none',
+      enable: true,
+      outModes: {
+        default: 'bounce'
+      },
+      random: true,
+      speed: 1,
+      straight: false
+    },
+    number: {
+      density: {
+        enable: true,
+        area: 800
+      },
+      value: 60
+    },
+    opacity: {
+      value: 0.5
+    },
+    shape: {
+      type: 'circle'
+    },
+    size: {
+      value: { min: 1, max: 3 }
+    }
+  },
+  detectRetina: true
+});
 </script>
 
 <template>
-  <div class="d-flex justify-content-center align-items-center vh-100">
-    <BaseCard style="width: 400px;">
-      <template #header><h5>로그인</h5></template>
-      <form @submit.prevent="handleLogin()">
-        <div class="mb-3">
-          <label for="username" class="form-label">아이디</label>
-          <input type="text" class="form-control" id="username" v-model="loginForm.username" :class="{ 'is-invalid': !loginForm.username && formSubmitted }">
-          <div class="invalid-feedback">아이디를 입력해주세요.</div>
+  <div class="login-page-container d-flex align-items-center justify-content-center">
+    <Particles
+        id="tsparticles-login"
+        class="particles-canvas"
+        :particlesInit="particlesInit"
+        :options="particlesOptions"
+    />
+    <div class="login-box text-center">
+      <BaseCard class="login-card">
+        <template #header><h5>HypeLink 통합 관리 시스템</h5></template>
+        <div class="card-body p-4">
+          <form @submit.prevent="handleLogin" class="text-start">
+            <div class="mb-3">
+              <label for="email" class="form-label">이메일</label>
+              <input type="email" class="form-control" id="email" v-model="loginForm.email">
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">비밀번호</label>
+              <input type="password" class="form-control" id="password" v-model="loginForm.password">
+            </div>
+            <div class="d-grid gap-2 mt-4">
+              <button type="submit" class="btn btn-primary">로그인</button>
+            </div>
+          </form>
         </div>
-        <div class="mb-3">
-          <label for="password" class="form-label">비밀번호</label>
-          <input type="password" class="form-control" id="password" v-model="loginForm.password" :class="{ 'is-invalid': !loginForm.password && formSubmitted }">
-          <div class="invalid-feedback">비밀번호를 입력해주세요.</div>
-        </div>
-        <div class="d-grid gap-2">
-          <button type="submit" class="btn btn-primary">로그인</button>
-        </div>
-      </form>
-      <hr class="my-4">
-      <div class="d-grid gap-2">
-        <button class="btn btn-outline-secondary" @click="handleLogin('super_admin')">총괄 관리자로 로그인 (개발용)</button>
-        <button class="btn btn-outline-secondary" @click="handleLogin('sub_admin')">부관리자로 로그인 (개발용)</button>
-        <button class="btn btn-outline-secondary" @click="handleLogin('store_manager')">지점장으로 로그인 (개발용)</button>
-      </div>
-    </BaseCard>
+      </BaseCard>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.vh-100 {
+.login-page-container {
+  position: relative;
   height: 100vh;
+  overflow: hidden;
+}
+
+.particles-canvas {
+  position: fixed; /* Changed to fixed */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0; /* Keep z-index 0 for background */
+}
+
+.login-box {
+  position: absolute; /* Changed to absolute */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Center it */
+  z-index: 1; /* Bring to foreground */
+  width: 100%;
+  max-width: 600px;
+}
+
+.login-card {
+  border: none;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.075);
+  background-color: #ffffff;
 }
 </style>

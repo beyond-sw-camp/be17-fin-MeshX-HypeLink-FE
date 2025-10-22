@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useMessageStore } from '@/stores/messages';
 import { useToastStore } from '@/stores/toast';
+import usersApi from '@/api/users'; // Add this import
 import UserListPanel from './communication/UserListPanel.vue';
 import ChatWindow from './communication/ChatWindow.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
@@ -13,19 +14,19 @@ const toastStore = useToastStore();
 
 const allUsers = ref([]);
 const isLoading = ref(true);
+const searchTerm = ref('');
 
-// --- Mock User Data ---
-// 실제로는 사용자 관리 DB에서 가져와야 합니다.
-onMounted(() => {
-  setTimeout(() => {
-    allUsers.value = [
-      { id: 1, name: '총괄 관리자', role: 'super_admin' },
-      { id: 2, name: '부관리자', role: 'sub_admin' },
-      { id: 3, name: 'HypeLink 강남점', role: 'store_manager' },
-      { id: 4, name: 'HypeLink 홍대점', role: 'store_manager' },
-    ];
-    isLoading.value = false;
-  }, 1000);
+// --- Fetch User Data from API ---
+onMounted(async () => {
+  isLoading.value = true;
+  const response = await usersApi.getMessageUsers();
+  if (response.success) {
+        allUsers.value = response.data;
+      } else {
+    toastStore.showToast('대화 상대 목록을 불러오는데 실패했습니다.', 'danger');
+    console.error('Failed to fetch message users:', response.message);
+  }
+  isLoading.value = false;
 });
 
 // 자기 자신을 제외한 대화 상대 목록

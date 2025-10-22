@@ -5,35 +5,37 @@ import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 import BaseEmptyState from '@/components/BaseEmptyState.vue';
 import SortIcon from '@/components/SortIcon.vue';
-import { useProductStore } from '@/stores/products';
-import { useAuthStore } from '@/stores/auth';
+
 import { useToastStore } from '@/stores/toast';
 import { useWarehouseStore } from '@/stores/warehouse';
 
-const productStore = useProductStore();
-const authStore = useAuthStore();
+import purchaseOrderApi from '@/api/purchase-order'
+
 const toastStore = useToastStore();
 const warehouseStore = useWarehouseStore();
 
 const isLoading = ref(true);
-
 const isOrderModalOpen = ref(false);
 const formSubmitted = ref(false);
-const orderForm = reactive({ productId: '', quantity: 1, supplier: '' });
+const orderForm = reactive({
+  itemId: '',
+  quantity: 1,
+});
 
 // 검색, 필터, 정렬, 페이지네이션 상태
 const searchTerm = ref('');
 const filterCategory = ref('all');
-const sortKey = ref('name');
+const sortKey = ref('id');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
+const allProducts = ref([]);
+const totalPages = ref(0);
+const currentItem = ref(null);
 
 // --- 데이터 로딩 시뮬레이션 ---
 onMounted(() => {
-  setTimeout(() => {
-    isLoading.value = false;
-  }, 500);
+  loadItems(1); // 초기 로드 시 서버에서 페이징 데이터 불러오기
 });
 
 // --- 검색, 필터링, 정렬 로직 ---
@@ -66,21 +68,33 @@ const filteredAndSortedInventory = computed(() => {
   return inventory;
 });
 
-// --- 페이지네이션 로직 ---
-const paginatedInventory = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedInventory.value.slice(start, end);
-});
+// === 페이지 초기화 ===
+const loadItems = async (page = 1) => {
+  try {
+    isLoading.value = true;
 
-const totalPages = computed(() => Math.ceil(filteredAndSortedInventory.value.length / itemsPerPage.value));
-
-// --- 이벤트 핸들러 ---
-const updatePage = (page) => { 
-  if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page; 
+    const response = await purchaseOrderApi.getHeadPurchaseOrder(page - 1, itemsPerPage.value, `${sortKey.value},${sortOrder.value}`);
+    if (response.status === 200 && response.data) {
+      const pageData = response.data.data;
+      allProducts.value = pageData.content;
+      totalPages.value = pageData.totalPages;
+      currentPage.value = pageData.currentPage + 1; // Spring Pageable은 0-based
+    } else {
+      console.error('상품 목록 로딩 실패:', response);
+    }
+  } catch (e) {
+    console.error('서버 통신 오류:', e);
+  } finally {
+    isLoading.value = false;
   }
 };
+
+// === 페이지 이동 ===
+const updatePage = async (page) => {
+  if (page < 1 || page > totalPages.value) return;
+  await loadItems(page);
+};
+
 const updateSort = (key) => {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
@@ -91,18 +105,28 @@ const updateSort = (key) => {
   currentPage.value = 1;
 };
 
-const handleSubmitHeadOfficeOrder = () => {
+const orderItem = (item = null) => {
+  if(item === null) {
+    return;
+  }
+  currentItem.value = item;
+  isOrderModalOpen.value = true;
+}
+
+const handleSubmitHeadOfficeOrder = async () => {
   formSubmitted.value = true;
-  if (!orderForm.productId || orderForm.quantity <= 0 || !orderForm.supplier) {
+  orderForm.itemId = currentItem.value.id;
+  if (!orderForm.itemId || orderForm.quantity <= 0) {
     toastStore.showToast('모든 발주 정보를 올바르게 입력해주세요.', 'danger');
     return;
   }
+  await purchaseOrderApi.saveNewPurchaseOrder(orderForm);
 
-  warehouseStore.submitHeadOfficeOrder(orderForm);
-  toastStore.showToast(`발주 요청이 완료되었습니다.`, 'success');
+  alert('발주가 성공적으로 생성되었습니다.');
 
   isOrderModalOpen.value = false;
-  Object.assign(orderForm, { productId: '', quantity: 1, supplier: '' });
+  Object.assign(orderForm, { itemId: '', quantity: 1});
+  await loadItems(1);
 };
 </script>
 
@@ -126,32 +150,45 @@ const handleSubmitHeadOfficeOrder = () => {
                 <option value="기타">기타</option>
               </select>
             </div>
-            <button v-if="authStore.isSuperAdmin || authStore.isSubAdmin" class="btn btn-primary btn-sm" @click="isOrderModalOpen = true">+ 본사 발주</button>
           </div>
         </div>
       </template>
       
-      <div v-if="paginatedInventory.length > 0">
+      <div v-if="allProducts.length > 0">
         <table class="table table-hover">
           <thead>
             <tr>
-              <th @click="updateSort('code')" class="sortable">상품 코드 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="code" /></th>
-              <th @click="updateSort('name')" class="sortable">상품명 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="name" /></th>
+              <th @click="updateSort('code')" class="sortable">상품 코드 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemCode" /></th>
+              <th @click="updateSort('code')" class="sortable">상품 상세 코드 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemDetailCode" /></th>
+              <th @click="updateSort('name')" class="sortable">상품명(한글) <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="koName" /></th>
+              <th @click="updateSort('name')" class="sortable">상품명(영문) <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="enName" /></th>
               <th @click="updateSort('category')" class="sortable">카테고리 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="category" /></th>
+              <th>색상</th>
               <th>현재고</th>
-              <th>안전재고</th>
-              <th @click="updateSort('status')" class="sortable">상태 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="status" /></th>
+              <th>발주 재고</th>
+              <th>발주</th>
+
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in paginatedInventory" :key="item.id">
-              <td>{{ item.code }}</td>
-              <td>{{ item.name }}</td>
+            <tr v-for="item in allProducts" :key="item.id">
+              <td>{{ item.itemCode }}</td>
+              <td>{{ item.itemDetailCode }}</td>
+              <td>{{ item.itemKoName }}</td>
+              <td>{{ item.itemEnName }}</td>
               <td>{{ item.category }}</td>
-              <td>{{ item.currentStock }}</td>
-              <td>{{ item.safeStock }}</td>
               <td>
-                <span class="badge" :class="item.currentStock > item.safeStock ? 'bg-success' : (item.currentStock > 0 ? 'bg-warning' : 'bg-danger')">{{ item.currentStock > item.safeStock ? '양호' : (item.currentStock > 0 ? '주의' : '품절') }}</span>
+                <span
+                  class="badge border"
+                  :style="{ backgroundColor: item.colorCode, color: '#fff' }"
+                >
+                  {{ item.color }}
+                </span>
+              </td>
+              <td>{{ item.stock }}개</td>
+              <td>{{ item.totalQuantity }}개</td>
+              <td>
+                <button class="btn btn-outline-primary btn-sm" @click="orderItem(item)">발주</button>
               </td>
             </tr>
           </tbody>
@@ -181,24 +218,24 @@ const handleSubmitHeadOfficeOrder = () => {
       <form @submit.prevent="handleSubmitHeadOfficeOrder">
         <div class="mb-3">
           <label class="form-label">상품명 <span class="text-danger">*</span></label>
-          <select class="form-select" v-model="orderForm.productId" :class="{ 'is-invalid': !orderForm.productId && formSubmitted }">
-            <option disabled value="">상품 선택</option>
-            <option v-for="product in productStore.allProducts" :key="product.id" :value="product.id">{{ product.name }} ({{ product.code }})</option>
-          </select>
-          <div class="invalid-feedback">상품을 선택해주세요.</div>
+          <br>
+          <div class="p-2 border rounded bg-light fw-bold text-dark">
+            {{ currentItem?.itemKoName }}
+          </div>
         </div>
+
+        <div class="mb-3">
+          <label class="form-label">상품 상세 코드 <span class="text-danger">*</span></label>
+          <br>
+          <div class="p-2 border rounded bg-light fw-bold text-dark">
+            {{ currentItem?.itemDetailCode }}
+          </div>
+        </div>
+
         <div class="mb-3">
           <label class="form-label">수량 <span class="text-danger">*</span></label>
           <input type="number" class="form-control" v-model.number="orderForm.quantity" min="1" :class="{ 'is-invalid': (!orderForm.quantity || orderForm.quantity <= 0) && formSubmitted }">
           <div class="invalid-feedback">수량은 1개 이상이어야 합니다.</div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">공급처 <span class="text-danger">*</span></label>
-          <select class="form-select" v-model="orderForm.supplier" :class="{ 'is-invalid': !orderForm.supplier && formSubmitted }">
-            <option disabled value="">공급처 선택</option>
-            <option v-for="supplier in warehouseStore.suppliers" :key="supplier" :value="supplier">{{ supplier }}</option>
-          </select>
-          <div class="invalid-feedback">공급처를 선택해주세요.</div>
         </div>
       </form>
       <template #footer>

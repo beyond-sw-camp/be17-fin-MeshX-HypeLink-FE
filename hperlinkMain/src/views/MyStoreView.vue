@@ -1,72 +1,78 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { useMyStore } from '@/stores/store';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
-import BaseEmptyState from '@/components/BaseEmptyState.vue';
-import { useAuthStore } from '@/stores/auth';
-import { useToastStore } from '@/stores/toast';
 
-const authStore = useAuthStore();
-const toastStore = useToastStore();
+const myStore = useMyStore();
+const route = useRoute();
 
-const myStore = ref(null);
-const isLoading = ref(true);
+const fetchDataForRoute = (id) => {
+  myStore.fetchMyStoreData(id);
+};
 
+// --- Lifecycle Hooks ---
 onMounted(() => {
-  setTimeout(() => {
-    // 실제로는 로그인된 사용자 정보(authStore.user.name)를 기반으로 API를 호출하여
-    // 해당 점포의 상세 데이터를 가져와야 합니다.
-    // 여기서는 하드코딩된 샘플 데이터를 사용합니다.
-    if (authStore.user?.name === 'HypeLink 강남점') {
-      myStore.value = 
-        { id: 1, name: 'HypeLink 강남점', address: '서울시 강남구 테헤란로', owner: '최민성', phone: '010-1234-5678', status: '운영중' };
-      toastStore.showToast('매장 정보를 불러왔습니다.', 'info');
-    } else {
-      toastStore.showToast('해당 매장 정보를 찾을 수 없습니다.', 'danger');
-    }
-    isLoading.value = false;
-  }, 1000);
+  fetchDataForRoute(route.params.id);
 });
+
+// Watch for route changes to refetch data if the user navigates between different store detail pages
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId !== oldId) {
+    fetchDataForRoute(newId);
+  }
+});
+
 </script>
 
 <template>
   <div>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h3 class="mb-0">{{ authStore.user.name }} 관리</h3>
-      <span v-if="myStore" class="badge fs-6" :class="myStore.status === '운영중' ? 'bg-success' : 'bg-danger'">{{ myStore.status }}</span>
+    <BaseSpinner v-if="myStore.isLoading" />
+
+    <div v-else>
+      <!-- Store Details Card -->
+      <BaseCard v-if="myStore.storeDetails" class="mb-4">
+        <template #header><h5>점포 정보</h5></template>
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>가게명:</strong> {{ myStore.storeDetails.name }}</p>
+            <p><strong>주소:</strong> {{ myStore.storeDetails.address }}</p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>지역:</strong> {{ myStore.storeDetails.region }}</p>
+          </div>
+        </div>
+      </BaseCard>
+
+      <!-- POS Devices Card (Read-only) -->
+      <BaseCard>
+        <template #header>
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">POS 기기 목록</h5>
+          </div>
+        </template>
+
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>이메일</th>
+                <th>POS 코드</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="pos in myStore.posDevices" :key="pos.id">
+                <td>{{ pos.name }}</td>
+                <td>{{ pos.email }}</td>
+                <td>{{ pos.posCode }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-if="myStore.posDevices.length === 0" class="text-center text-muted mt-3">등록된 POS 기기가 없습니다.</p>
+      </BaseCard>
     </div>
-
-    <BaseSpinner v-if="isLoading" height="200px" />
-
-    <div v-else-if="myStore">
-      <div class="row">
-        <div class="col-md-12">
-          <BaseCard>
-            <template #header><h5>점포 기본 정보</h5></template>
-            <ul class="list-group list-group-flush">
-              <li class="list-group-item"><b>점주:</b> {{ myStore.owner }}</li>
-              <li class="list-group-item"><b>주소:</b> {{ myStore.address }}</li>
-              <li class="list-group-item"><b>연락처:</b> {{ myStore.phone }}</li>
-            </ul>
-          </BaseCard>
-        </div>
-      </div>
-
-      <div class="row mt-4">
-        <div class="col-md-6">
-          <BaseCard>
-            <template #header><h5>금일 매출 현황</h5></template>
-            <h2 class="text-center">1,250,000 원</h2>
-          </BaseCard>
-        </div>
-        <div class="col-md-6">
-          <BaseCard>
-            <template #header><h5>재고 현황 요약</h5></template>
-            <p>품절 임박 상품: <strong>2</strong>개</p>
-          </BaseCard>
-        </div>
-      </div>
-    </div>
-    <BaseEmptyState v-else message="내 매장 정보를 찾을 수 없습니다." />
   </div>
 </template>

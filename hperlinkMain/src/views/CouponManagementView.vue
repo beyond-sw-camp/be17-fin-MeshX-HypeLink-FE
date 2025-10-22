@@ -21,6 +21,10 @@ const isLoading = ref(true);
 const isModalOpen = ref(false);
 const formSubmitted = ref(false);
 
+// 페이징 상태
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+
 const couponForm = reactive({
   name: '',
   type: 'Percentage',
@@ -58,10 +62,10 @@ watch(
   }
 );
 
-onMounted(() => {
-  setTimeout(() => {
-    isLoading.value = false;
-  }, 500);
+onMounted(async () => {
+  isLoading.value = true;
+  await couponStore.fetchAllCoupons();
+  isLoading.value = false;
 });
 
 const openCouponModal = () => {
@@ -70,7 +74,7 @@ const openCouponModal = () => {
   isModalOpen.value = true;
 };
 
-const saveCoupon = () => {
+const saveCoupon = async () => {
   formSubmitted.value = true;
   if (!couponForm.name || !couponForm.value || !couponForm.period) {
     toastStore.showToast('모든 필드를 올바르게 입력해주세요.', 'danger');
@@ -91,9 +95,13 @@ const saveCoupon = () => {
     }
   }
 
-  couponStore.addCoupon(couponForm);
-  toastStore.showToast('새 쿠폰이 등록되었습니다.', 'success');
-  isModalOpen.value = false;
+  const success = await couponStore.addCoupon(couponForm);
+  if (success) {
+    toastStore.showToast('새 쿠폰이 등록되었습니다.', 'success');
+    isModalOpen.value = false;
+  } else {
+    toastStore.showToast('쿠폰 등록에 실패했습니다.', 'danger');
+  }
 };
 
 const deleteCoupon = async (id) => {
@@ -103,13 +111,39 @@ const deleteCoupon = async (id) => {
     isConfirmation: true,
   });
   if (confirmed) {
-    couponStore.deleteCoupon(id);
-    toastStore.showToast('쿠폰이 삭제되었습니다.', 'success');
+    const success = await couponStore.deleteCoupon(id);
+    if (success) {
+      // 전체 페이지 수 계산 후 현재 페이지 조정
+      const total = Math.ceil(couponStore.allCoupons.length / itemsPerPage.value);
+      if (currentPage.value > total) {
+        currentPage.value = total > 0 ? total : 1;
+      }
+      toastStore.showToast('쿠폰이 삭제되었습니다.', 'success');
+    } else {
+      toastStore.showToast('쿠폰 삭제에 실패했습니다.', 'danger');
+    }
   }
 };
 
 const formatValue = (type, value) => {
   return type === 'Percentage' ? `${value}%` : `${value.toLocaleString()}원`;
+};
+
+// 현재 페이지에 해당하는 쿠폰만 계산
+const paginatedCoupons = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return couponStore.allCoupons.slice(start, end);
+});
+
+// 전체 페이지 수 계산
+const totalPages = computed(() => Math.ceil(couponStore.allCoupons.length / itemsPerPage.value));
+
+// 페이지 변경 함수
+const updatePage = (page) => {
+  if (page > 0 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
 };
 </script>
 
@@ -121,7 +155,7 @@ const formatValue = (type, value) => {
           <h5 class="mb-0">쿠폰 관리</h5>
           <div class="d-flex">
             <button
-              v-if="authStore.isSuperAdmin || authStore.isSubAdmin"
+              v-if="authStore.isAdmin || authStore.isManager"
               class="btn btn-primary btn-sm"
               @click="openCouponModal"
             >
@@ -133,35 +167,52 @@ const formatValue = (type, value) => {
 
       <BaseSpinner v-if="isLoading" />
 
-      <div v-else-if="couponStore.allCoupons.length > 0">
-        <table class="table table-hover">
-          <thead>
-          <tr>
-            <th>쿠폰명</th>
-            <th>타입</th>
-            <th>할인 값</th>
-            <th>유효 기간</th>
-            <th>관리</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="coupon in couponStore.allCoupons" :key="coupon.id">
-            <td>{{ coupon.name }}</td>
-            <td>{{ coupon.type }}</td>
-            <td>{{ formatValue(coupon.type, coupon.value) }}</td>
-            <td>{{ coupon.period }}</td>
-            <td>
-              <button
-                v-if="authStore.isSuperAdmin || authStore.isSubAdmin"
-                class="btn btn-sm btn-danger"
-                @click="deleteCoupon(coupon.id)"
-              >
-                삭제
-              </button>
-            </td>
-          </tr>
-          </tbody>
-        </table>
+      <div v-else-if="couponStore.allCoupons.length > 0" class="coupon-table-container">
+        <div class="table-wrapper">
+          <table class="table table-hover">
+            <thead>
+            <tr>
+              <th>쿠폰명</th>
+              <th>타입</th>
+              <th>할인 값</th>
+              <th>유효 기간</th>
+              <th>관리</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="coupon in paginatedCoupons" :key="coupon.id">
+              <td>{{ coupon.name }}</td>
+              <td>{{ coupon.type }}</td>
+              <td>{{ formatValue(coupon.type, coupon.value) }}</td>
+              <td>{{ coupon.period }}</td>
+              <td>
+                <button
+                  v-if="authStore.isAdmin || authStore.isManager"
+                  class="btn btn-sm btn-danger"
+                  @click="deleteCoupon(coupon.id)"
+                >
+                  삭제
+                </button>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <nav v-if="totalPages > 1" class="pagination-wrapper">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }">
+              <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
+            </li>
+            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
+              <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+              <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
+            </li>
+          </ul>
+        </nav>
       </div>
 
       <BaseEmptyState v-else message="생성된 쿠폰이 없습니다." />
@@ -245,5 +296,25 @@ const formatValue = (type, value) => {
 .flatpickr-input.active {
   border-color: #007bff;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* 쿠폰 테이블 컨테이너 - 최소 높이 설정 */
+.coupon-table-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 600px; /* 최소 높이 설정 */
+}
+
+/* 테이블 래퍼 - 자동으로 남은 공간 차지 */
+.table-wrapper {
+  flex: 1;
+  min-height: 500px; /* 테이블 최소 높이 */
+}
+
+/* 페이지네이션 래퍼 - 하단 고정 */
+.pagination-wrapper {
+  margin-top: auto; /* 자동으로 하단으로 밀기 */
+  padding: 1rem 0;
+  border-top: 1px solid #dee2e6;
 }
 </style>
