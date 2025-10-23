@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
@@ -7,18 +7,20 @@ import BaseEmptyState from '@/components/BaseEmptyState.vue';
 import SortIcon from '@/components/SortIcon.vue';
 
 import { useToastStore } from '@/stores/toast';
-import { useWarehouseStore } from '@/stores/warehouse';
 
 import purchaseOrderApi from '@/api/purchase-order'
+import categoryApi from '@/api/item/category'
 
 const toastStore = useToastStore();
-const warehouseStore = useWarehouseStore();
 
 const isLoading = ref(true);
 const isOrderModalOpen = ref(false);
 const formSubmitted = ref(false);
+const orderDetails = ref([]);
+const categories = ref([]);
 const orderForm = reactive({
-  itemId: '',
+  itemDetailId: '',
+  description: '',
   quantity: 1,
 });
 
@@ -36,36 +38,8 @@ const currentItem = ref(null);
 // --- 데이터 로딩 시뮬레이션 ---
 onMounted(() => {
   loadItems(1); // 초기 로드 시 서버에서 페이징 데이터 불러오기
-});
-
-// --- 검색, 필터링, 정렬 로직 ---
-const filteredAndSortedInventory = computed(() => {
-  let inventory = [...warehouseStore.allInventory];
-
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase();
-    inventory = inventory.filter(item => 
-      item.name.toLowerCase().includes(term) || 
-      item.code.toLowerCase().includes(term) ||
-      item.category.toLowerCase().includes(term)
-    );
-  }
-
-  if (filterCategory.value !== 'all') {
-    inventory = inventory.filter(item => item.category === filterCategory.value);
-  }
-
-  if (sortKey.value) {
-    inventory.sort((a, b) => {
-      const valA = a[sortKey.value];
-      const valB = b[sortKey.value];
-      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
-
-  return inventory;
+  getOrderDetails();
+  getCategories();
 });
 
 // === 페이지 초기화 ===
@@ -113,10 +87,26 @@ const orderItem = (item = null) => {
   isOrderModalOpen.value = true;
 }
 
+const getCategories = async () => {
+  let res = await categoryApi.getCategories();
+  if(res.status !== 200) {
+    toastStore.showToast("카테고리를 불러오지 못했습니다.", "danger")
+  }
+  categories.value = res.data.data.categories;
+}
+
+const getOrderDetails = async () => {
+  let res = await purchaseOrderApi.getPurchaseOrderDetails();
+  if(res.status !== 200) {
+    toastStore.showToast(res.message, "danger")
+  }
+  orderDetails.value = res.data.data.purchaseDetailsStatusInfos;
+}
+
 const handleSubmitHeadOfficeOrder = async () => {
   formSubmitted.value = true;
-  orderForm.itemId = currentItem.value.id;
-  if (!orderForm.itemId || orderForm.quantity <= 0) {
+  orderForm.itemDetailId = currentItem.value.id;
+  if (!orderForm.itemDetailId) {
     toastStore.showToast('모든 발주 정보를 올바르게 입력해주세요.', 'danger');
     return;
   }
@@ -125,9 +115,36 @@ const handleSubmitHeadOfficeOrder = async () => {
   alert('발주가 성공적으로 생성되었습니다.');
 
   isOrderModalOpen.value = false;
-  Object.assign(orderForm, { itemId: '', quantity: 1});
+  Object.assign(orderForm, { itemDetailId: '', quantity: 1});
   await loadItems(1);
 };
+
+const isLightColor = (hex) => {
+  if (!hex) return false;
+
+  let r, g, b;
+  // HEX → RGB 변환
+  if (hex.startsWith('#')) {
+    const c = hex.substring(1);
+    if (c.length === 3) {
+      r = parseInt(c[0] + c[0], 16);
+      g = parseInt(c[1] + c[1], 16);
+      b = parseInt(c[2] + c[2], 16);
+    } else if (c.length === 6) {
+      r = parseInt(c.substring(0, 2), 16);
+      g = parseInt(c.substring(2, 4), 16);
+      b = parseInt(c.substring(4, 6), 16);
+    }
+  } else if (hex.startsWith('rgb')) {
+    [r, g, b] = hex.match(/\d+/g).map(Number);
+  } else {
+    return false;
+  }
+
+  // 밝기 계산 (Luminance)
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 180; // 밝으면 true
+}
 </script>
 
 <template>
@@ -143,11 +160,9 @@ const handleSubmitHeadOfficeOrder = async () => {
             <div class="me-2">
               <select class="form-select form-select-sm" v-model="filterCategory">
                 <option value="all">전체 카테고리</option>
-                <option value="상의">상의</option>
-                <option value="하의">하의</option>
-                <option value="아우터">아우터</option>
-                <option value="악세서리">악세서리</option>
-                <option value="기타">기타</option>
+                <option v-for="cat in categories" :key="cat.category" :value="cat.category">
+                  {{ cat.category }}
+                </option>
               </select>
             </div>
           </div>
@@ -180,7 +195,10 @@ const handleSubmitHeadOfficeOrder = async () => {
               <td>
                 <span
                   class="badge border"
-                  :style="{ backgroundColor: item.colorCode, color: '#fff' }"
+                  :style="{
+                    backgroundColor: item.colorCode,
+                    color: isLightColor(item.colorCode) ? '#000' : '#fff'
+                  }"
                 >
                   {{ item.color }}
                 </span>
@@ -195,7 +213,7 @@ const handleSubmitHeadOfficeOrder = async () => {
         </table>
 
         <!-- 페이지네이션 -->
-        <nav v-if="totalPages > 1">
+        <nav v-if="totalPages >= 1">
           <ul class="pagination justify-content-center">
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
@@ -233,9 +251,19 @@ const handleSubmitHeadOfficeOrder = async () => {
         </div>
 
         <div class="mb-3">
+          <label class="form-label">발주 상세 내역</label>
+          <select class="form-select" v-model="orderForm.description">
+            <option disabled value="">카테고리를 선택하세요</option>
+            <option v-for="cat in orderDetails" :key="cat.description" :value="cat.description">
+              {{ cat.description }}
+            </option>
+          </select>
+        </div>
+
+        <div class="mb-3">
           <label class="form-label">수량 <span class="text-danger">*</span></label>
-          <input type="number" class="form-control" v-model.number="orderForm.quantity" min="1" :class="{ 'is-invalid': (!orderForm.quantity || orderForm.quantity <= 0) && formSubmitted }">
-          <div class="invalid-feedback">수량은 1개 이상이어야 합니다.</div>
+          <input type="number" class="form-control" v-model.number="orderForm.quantity" :class="{ 'is-invalid': !orderForm.quantity && formSubmitted }">
+          <div class="invalid-feedback">수량을 입력해주세요.</div>
         </div>
       </form>
       <template #footer>

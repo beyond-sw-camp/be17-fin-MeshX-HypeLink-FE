@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
@@ -9,8 +9,10 @@ import CreateItemView from "@/views/item/CreateItemView.vue";
 import UpdateItemView from "@/views/item/UpdateItemView.vue";
 
 import itemApi from '@/api/item/index.js'
+import categoryApi from '@/api/item/category'
 
 const allProducts = ref([]);
+const categories = ref([]);
 const isLoading = ref(true);
 const isModalOpen = ref(false);
 const isEditing = ref(false);
@@ -44,48 +46,7 @@ let originalItem = null; // 수정 전 데이터 백업용
 // --- 데이터 로딩 시뮬레이션 ---
 onMounted(() => {
   loadItems(1); // ✅ 초기 로드 시 서버에서 페이징 데이터 불러오기
-});
-
-// --- 검색, 필터링, 정렬 로직 ---
-const filteredAndSortedProducts = computed(() => {
-  let products = [...allProducts.value];
-
-  // 검색 (koName / enName / itemCode / itemDetailCode)
-  const term = (searchTerm.value || '').trim().toLowerCase();
-  if (term) {
-    products = products.filter(p =>
-        p.koName?.toLowerCase().includes(term) ||
-        p.enName?.toLowerCase().includes(term) ||
-        p.itemCode?.toLowerCase().includes(term) ||
-        p.itemDetailCode?.toLowerCase().includes(term)
-    );
-  }
-
-  // 카테고리 필터
-  if (filterCategory.value !== 'all') {
-    products = products.filter(p => p.category === filterCategory.value);
-  }
-
-  // 정렬 (안전 비교)
-  if (sortKey.value) {
-    const dir = sortOrder.value === 'asc' ? 1 : -1;
-    products.sort((a, b) => {
-      const A = a?.[sortKey.value];
-      const B = b?.[sortKey.value];
-
-      // 숫자/문자 혼용 대비
-      if (A == null && B == null) return 0;
-      if (A == null) return -1 * dir;
-      if (B == null) return  1 * dir;
-
-      if (typeof A === 'number' && typeof B === 'number') {
-        return (A - B) * dir;
-      }
-      return String(A).localeCompare(String(B)) * dir;
-    });
-  }
-
-  return products;
+  getCategories();
 });
 
 const updateSort = (key) => {
@@ -108,44 +69,21 @@ const submitItem = async () => {
 const updateItem = async () => {
   try {
     if (!originalItem.itemCode) {
-      alert('상품 상세 코드(itemDetailCode)가 없습니다.');
+      alert('상품 코드(itemCode)가 없습니다.');
       return;
     }
 
-    // 변경된 필드만 감지
-    const changedFields = [];
-    if (itemForm.koName !== originalItem.koName)
-      changedFields.push({ key: 'koName', api: itemApi.updateKoName });
-    if (itemForm.enName !== originalItem.enName)
-      changedFields.push({ key: 'enName', api: itemApi.updateEnName });
-    if (itemForm.amount !== originalItem.amount)
-      changedFields.push({ key: 'amount', api: itemApi.updateAmount });
-    if (itemForm.company !== originalItem.company)
-      changedFields.push({ key: 'company', api: itemApi.updateCompany });
-    if (itemForm.category !== originalItem.category)
-      changedFields.push({ key: 'category', api: itemApi.updateCategory });
-    if (itemForm.content !== originalItem.content)
-      changedFields.push({ key: 'content', api: itemApi.updateContent });
-    if (itemForm.unitPrice !== originalItem.unitPrice)
-      changedFields.push({ key: 'unitPrice', api: itemApi.updateUnitPrice });
+    const changedFields = detectChangedFields();
 
-    if (changedFields.length === 0) {
+    if (changedFields.length === 0 && itemForm.itemDetailList.every(d => d.id)) {
       alert('변경된 항목이 없습니다.');
       return;
     }
 
-    // 각 필드별 PATCH 요청 순차 실행
-    for (const field of changedFields) {
-      const payload = {
-        itemCode: originalItem.itemCode,
-        [field.key]: itemForm[field.key],
-      };
-      const result = await field.api(payload);
-
-      if (!(result.status === 200 || result.status === 201)) {
-        console.error(`${field.key} 업데이트 실패`, result);
-      }
+    if (changedFields.length > 0) {
+      await applyFieldUpdates(changedFields);
     }
+    await uploadNewItemDetails();
 
     alert('상품 정보가 성공적으로 수정되었습니다.');
     isModalOpen.value = false;
@@ -157,6 +95,64 @@ const updateItem = async () => {
     originalItem = null;
   }
 }
+
+// ① 변경된 필드 감지 함수
+const detectChangedFields = () => {
+  const changedFields = [];
+  if (itemForm.koName !== originalItem.koName)
+    changedFields.push({ key: 'koName', api: itemApi.updateKoName });
+  if (itemForm.enName !== originalItem.enName)
+    changedFields.push({ key: 'enName', api: itemApi.updateEnName });
+  if (itemForm.amount !== originalItem.amount)
+    changedFields.push({ key: 'amount', api: itemApi.updateAmount });
+  if (itemForm.company !== originalItem.company)
+    changedFields.push({ key: 'company', api: itemApi.updateCompany });
+  if (itemForm.category !== originalItem.category)
+    changedFields.push({ key: 'category', api: itemApi.updateCategory });
+  if (itemForm.content !== originalItem.content)
+    changedFields.push({ key: 'content', api: itemApi.updateContent });
+  if (itemForm.unitPrice !== originalItem.unitPrice)
+    changedFields.push({ key: 'unitPrice', api: itemApi.updateUnitPrice });
+
+  return changedFields;
+};
+
+// ② 변경된 필드 API 순차 업데이트
+const applyFieldUpdates = async (changedFields) => {
+  for (const field of changedFields) {
+    const payload = {
+      itemId: originalItem.id,
+      [field.key]: itemForm[field.key],
+    };
+
+    const result = await field.api(payload);
+    if (!(result.status === 200 || result.status === 201)) {
+      console.error(`${field.key} 업데이트 실패`, result);
+    }
+  }
+};
+
+// ③ 신규 itemDetailList 전송 (id 없는 데이터만)
+const uploadNewItemDetails = async () => {
+  const newDetails = itemForm.itemDetailList.filter(detail => !detail.id);
+  if (newDetails.length === 0) return;
+
+  try {
+    const payload = {
+      itemId: originalItem.id,
+      details: newDetails,
+    };
+
+    const result = await itemApi.updateImageDetails(payload);
+    if (!(result.status === 200 || result.status === 201)) {
+      console.error('itemDetailList 추가 실패', result);
+    } else {
+      console.log(`${newDetails.length}개의 신규 상세 항목이 추가되었습니다.`);
+    }
+  } catch (error) {
+    console.error('itemDetailList 전송 중 오류:', error);
+  }
+};
 
 const saveItem = async () => {
   try {
@@ -207,12 +203,15 @@ const saveItem = async () => {
   }
 }
 
-const openProductModal = (product = null) => {
+const openProductModal = async (product = null) => {
   formSubmitted.value = false;
   if (product) {
     isEditing.value = true;
+    let res = await itemApi.getItemDetails(product.id)
     Object.assign(itemForm, product);
     originalItem = { ...product };
+    originalItem.itemDetailList = res.data.data.itemInfoResList;
+    itemForm.itemDetailList = [...originalItem.itemDetailList]; // 폼에 반영
   } else {
     isEditing.value = false;
     Object.assign(itemForm, { id: null, code: '', name: '', category: '상의', price: 0, unitPrice: 0 });
@@ -246,6 +245,14 @@ const loadItems = async (page = 1) => {
   }
 };
 
+const getCategories = async () => {
+  let res = await categoryApi.getCategories();
+  if(res.status !== 200) {
+    toastStore.showToast("카테고리를 불러오지 못했습니다.", "danger")
+  }
+  categories.value = res.data.data.categories;
+}
+
 // === 페이지 이동 ===
 const updatePage = async (page) => {
   if (page < 1 || page > totalPages.value) return;
@@ -267,11 +274,9 @@ const updatePage = async (page) => {
             <div class="me-2">
               <select class="form-select form-select-sm" v-model="filterCategory">
                 <option value="all">전체 카테고리</option>
-                <option value="상의">상의</option>
-                <option value="하의">하의</option>
-                <option value="아우터">아우터</option>
-                <option value="악세서리">악세서리</option>
-                <option value="기타">기타</option>
+                <option v-for="cat in categories" :key="cat.category" :value="cat.category">
+                  {{ cat.category }}
+                </option>
               </select>
             </div>
             <button class="btn btn-primary btn-sm" @click="openProductModal()">+ 새 상품 등록</button>
@@ -291,10 +296,6 @@ const updatePage = async (page) => {
               상품 코드
               <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemCode" />
             </th>
-            <th @click="updateSort('itemCode')" class="sortable">
-              상품 Detail 코드
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemCode" />
-            </th>
             <th @click="updateSort('koName')" class="sortable">
               한글명
               <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemDetailCode" />
@@ -311,8 +312,6 @@ const updatePage = async (page) => {
               카테고리
               <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="category" />
             </th>
-            <th>색상</th>
-            <th>사이즈</th>
             <th @click="updateSort('amount')" class="sortable">
               가격
               <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="amount" />
@@ -321,7 +320,6 @@ const updatePage = async (page) => {
               원가
               <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="unitPrice" />
             </th>
-            <th> 재고 </th>
             <th>관리</th>
           </tr>
           </thead>
@@ -329,23 +327,12 @@ const updatePage = async (page) => {
           <tr v-for="product in allProducts" :key="product.id">
             <td>{{ product.id }}</td>
             <td>{{ product.itemCode }}</td>
-            <td>{{ product.itemDetailCode }}</td>
             <td>{{ product.koName }}</td>
             <td>{{ product.enName }}</td>
             <td>{{ product.company }}</td>
             <td>{{ product.category }}</td>
-            <td>
-          <span
-              class="badge border"
-              :style="{ backgroundColor: product.colorCode, color: '#fff' }"
-          >
-            {{ product.colorName }}
-          </span>
-            </td>
-            <td>{{ product.size }}</td>
             <td>{{ product.amount.toLocaleString() }}원</td>
             <td>{{ product.unitPrice.toLocaleString() }}원</td>
-            <td>{{ product.stock.toLocaleString() }}개</td>
             <td>
               <button class="btn btn-sm btn-outline-secondary" @click="openProductModal(product)">
                 수정
@@ -356,7 +343,7 @@ const updatePage = async (page) => {
         </table>
 
         <!-- 페이지네이션 -->
-        <nav v-if="totalPages > 1">
+        <nav v-if="totalPages >= 1">
           <ul class="pagination justify-content-center">
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
@@ -378,8 +365,8 @@ const updatePage = async (page) => {
       <template #header>
         <h5>{{ isEditing ? '상품 수정' : '새 상품 등록' }}</h5>
       </template>
-      <CreateItemView v-if="!isEditing" :itemForm="itemForm" :isModalOpen="isModalOpen" @submit="submitItem" />
-      <UpdateItemView v-else :itemForm="itemForm" :isModalOpen="isModalOpen" @submit="submitItem" />
+      <CreateItemView v-if="!isEditing" v-model:itemForm="itemForm" :isModalOpen="isModalOpen" @submit="submitItem" />
+      <UpdateItemView v-else v-model:itemForm="itemForm" :isModalOpen="isModalOpen" @submit="submitItem" />
       <template #footer>
         <button class="btn btn-secondary" @click="closeProductModal" :disabled="isUploading">취소</button>
         <button class="btn btn-primary" @click="submitItem" :disabled="isUploading">
