@@ -1,14 +1,16 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted  } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseCard from '@/components/BaseCard.vue';
 import VueApexCharts from 'vue3-apexcharts';
 import { usePromotionStore } from '@/stores/promotions';
+import { getPromotionDetail } from '@/api/promotion'; 
 
 const apexchart = VueApexCharts;
 const route = useRoute();
 const router = useRouter();
 const promotionStore = usePromotionStore();
+
 
 const promotionId = parseInt(route.params.id);
 const promotion = computed(() => 

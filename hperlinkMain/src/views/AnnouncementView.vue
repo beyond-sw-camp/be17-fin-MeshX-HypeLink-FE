@@ -7,7 +7,7 @@ import BaseModal from '@/components/BaseModal.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useModalStore } from '@/stores/modal';
 import { useToastStore } from '@/stores/toast';
-import {getAllAnnouncementsList, createAnnouncement, deleteAnnouncement as deleteAnnouncementApi, getAnnouncementDetail, updateAnnouncement} from '@/api/announcements';
+import {getAllAnnouncementsList, createAnnouncement, getAnnouncementDetail, updateAnnouncement} from '@/api/announcements';
 import { uploadNoticeImage } from '@/api/image';
 
 const announcements = ref([]);   // 기존 allAnnouncements 대체
@@ -202,34 +202,6 @@ const saveAnnouncement = async () => {
   }
 };
 
-// 삭제 버튼 눌렀을 때
-const deleteAnnouncement = async (id) => {
-  const confirmed = await modalStore.show({
-    title: '삭제 확인',
-    message: '정말 이 공지사항을 삭제하시겠습니까?',
-    isConfirmation: true,
-  });
-  if (confirmed) {
-    try {
-      await deleteAnnouncementApi(id);
-
-      // 새 목록 재조회
-      const res = await getAllAnnouncementsList();
-      announcements.value = res?.data?.notices || [];
-
-      //  전체 페이지 수 계산 후 현재 페이지 조정
-      const total = Math.ceil(announcements.value.length / itemsPerPage.value);
-      if (currentPage.value > total) {
-        currentPage.value = total > 0 ? total : 1;
-      }
-
-      toastStore.showToast('공지사항이 삭제되었습니다.', 'success');
-    } catch (err) {
-      console.error(err);
-      toastStore.showToast('삭제 중 오류 발생', 'danger');
-    }
-  }
-};
 
 </script>
 
@@ -264,8 +236,7 @@ const deleteAnnouncement = async (id) => {
             <div class="d-flex justify-content-between align-items-center mt-2">
               <small class="text-muted">작성자: {{ announcement.author }}</small>
               <div v-if="authStore.isAdmin || authStore.isManager">
-                <button class="btn btn-link btn-sm text-secondary p-0 me-2" @click="openAddAnnouncementModal(announcement)">수정</button>
-                <button class="btn btn-link btn-sm text-danger p-0" @click="deleteAnnouncement(announcement.id)">삭제</button>
+                <button class="btn btn-link btn-sm text-secondary p-0" @click="openAddAnnouncementModal(announcement)">수정</button>
               </div>
             </div>
           </li>
