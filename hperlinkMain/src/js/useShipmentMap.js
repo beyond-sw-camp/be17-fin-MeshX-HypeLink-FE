@@ -1,4 +1,4 @@
-import { getAllStoreList } from '@/api/store';
+import { getStoresList } from '@/api/users';
 
 let map = null;
 let driverMarkers = {}; // 기사 마커
@@ -29,7 +29,7 @@ export function useShipmentMap(filteredAndSortedShipments) {
     /** 매장 마커 로딩 */
     const loadStoreMarkers = async () => {
         try {
-            const stores = await getAllStoreList();
+            const stores = await getStoresList();
             if (!Array.isArray(stores)) {
                 console.warn('매장 데이터 형식이 올바르지 않습니다:', stores);
                 return;
