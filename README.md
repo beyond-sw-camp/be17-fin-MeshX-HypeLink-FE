@@ -135,9 +135,17 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
 
 ---
+## ⚙️ Back-end
+- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-BE">백엔드 깃허브 바로가기</a>
 
 ## 🧩 시스템 아키텍처
-<a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-BE/blob/raccoon/swagger/doc/%EC%8B%9C%EC%8A%A4%ED%85%9C%20%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98.png">시스템 아키텍처 문서 보기</a>
+<a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/wiki/%EC%8B%9C%EC%8A%A4%ED%85%9C-%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90">시스템 아키텍처 문서 보기</a>
+
+## 🧩 피그마 
+<a href="https://www.figma.com/design/apT7cRFWE4TS6WcdayD1Tn/HypeLink?node-id=0-1&p=f&t=s8E79kwSqskjhKOT-0">피그마 주소</a>
+
+
+<a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/blob/main/doc/Fiqma.png">피그마 보기</a>
 
 ---
 

@@ -12,8 +12,9 @@ import { Korean } from 'flatpickr/dist/l10n/ko.js';
 import { usePromotionStore } from '@/stores/promotions';
 import { useToastStore } from '@/stores/toast';
 import { useModalStore } from '@/stores/modal';
-import { getAllPromotionsList, createPromotion, updatePromotion, deletePromotion  as deletePromotionApi } from '@/api/promotion';
-
+import { getPagedPromotions, createPromotion, updatePromotion } from '@/api/promotion';
+import { getStoresList } from '@/api/users';
+import { getItems } from '@/api/item';
 
 const promotionStore = usePromotionStore();
 const toastStore = useToastStore();
@@ -22,13 +23,15 @@ const router = useRouter();
 
 const allPromotions = ref([]);
 const isLoading = ref(true);
+const storeList = ref([]);
+const productList = ref([]);
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const formSubmitted = ref(false);
 const promoForm = reactive({
   id: null,
-  name: '',
+  title: '',
   period: '',
   target: 'ALL',
   status: 'UPCOMING',
@@ -39,13 +42,34 @@ const promoForm = reactive({
   discountRate: null,
 });
 
+const getTargetLabel = (type) => {
+  switch (type) {
+    case 'ALL': return '전체 이벤트';
+    case 'STORE': return '매장 이벤트';
+    case 'CATEGORY': return '카테고리 이벤트';
+    case 'PRODUCT': return '상품 이벤트';
+    default: return type;
+  }
+};
+
+const getStatusLabel = (status) => {
+  switch (status) {
+    case 'ONGOING': return '진행중';
+    case 'UPCOMING': return '예정';
+    case 'ENDED': return '종료';
+    default: return '알 수 없음';
+  }
+};
+
 // 검색, 필터, 정렬, 페이지네이션 상태
 const searchTerm = ref('');
 const filterStatus = ref('all');
-const sortKey = ref('name');
+const sortKey = ref('title');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
+const totalPages = ref(0);
+
 
 // flatpickrConfig 정의 (매출 코드와 유사)
 const flatpickrConfig = ref({
@@ -77,30 +101,82 @@ watch(
   }
 );
 
-// 데이터 로딩 시뮬레이션
- onMounted(async () => {
-  if (!currentPage.value) currentPage.value = 1;
-   await loadPromotions();
- });
+// 데이터 로딩
+onMounted(async () => {
+  await loadPromotions(1);
+  await loadStores();
+  await loadProducts();
+});
 
-const loadPromotions = async () => {
-  isLoading.value = true;
+// 가맹점 목록 로드
+const loadStores = async () => {
   try {
-    const res = await getAllPromotionsList();
-    console.log('[프로모션 전체 응답]', res);
+    const res = await getStoresList();
+    console.log('[가맹점 목록 응답]', res);
+    if (res.success && res.data) {
+      storeList.value = res.data.map(store => ({
+        id: store.storeId,
+        title: store.storeName,
+        address: store.storeAddress
+      }));
+      console.log('[가맹점 목록 매핑 후]', storeList.value);
+    }
+  } catch (error) {
+    console.error('가맹점 목록 로드 실패:', error);
+  }
+};
 
-    // ✅ 백엔드 구조에 따라 조정
-    const promotions = res.data?.data?.promotions || res.data?.data || [];
+// 상품 목록 로드
+const loadProducts = async () => {
+  try {
+    const res = await getItems(0, 1000); // 최대 1000개 조회
+    console.log('[상품 목록 응답]', res);
+    if (res.status === 200 && res.data?.data?.content) {
+      productList.value = res.data.data.content.map(item => ({
+        id: item.id,
+        title: item.title || item.name || item.koName || '상품명 없음',
+        category: item.category || '카테고리 없음'
+      }));
+      console.log('[상품 목록 매핑 후]', productList.value);
+    }
+  } catch (error) {
+    console.error('상품 목록 로드 실패:', error);
+  }
+};
 
-    allPromotions.value = promotions.map((item) => ({
-      id: item.id,
-      name: item.title,
-      period: `${item.startDate} ~ ${item.endDate}`,
-      target: item.promotionType,
-      status: item.status,
-      description: item.contents,
-      discountRate: item.discountRate
-    }));
+const loadPromotions = async (page = 1) => {
+  try {
+    isLoading.value = true;
+
+    // 0-based page index로 요청
+    const res = await getPagedPromotions(
+      page - 1,
+      itemsPerPage.value,
+      sortKey.value,
+      sortOrder.value
+    );
+    console.log('[프로모션 응답]', res);
+
+    if (res.status === 200 && res.data?.data) {
+      const pageData = res.data.data;
+
+      allPromotions.value = pageData.content.map((item) => ({
+        id: item.id,
+        title: item.title,
+        period: `${item.startDate} ~ ${item.endDate}`,
+        target: item.promotionType,
+        status: item.status,
+        description: item.contents,
+        discountRate: item.discountRate,
+        storeIds: item.storeIds || [],
+        category: item.category || '',
+        itemId: item.itemId || null
+      }));
+
+      // ✅ 페이지 정보 세팅
+      totalPages.value = pageData.totalPages;
+      currentPage.value = pageData.currentPage + 1; // 0-based → 1-based 보정
+    }
   } catch (error) {
     console.error(error);
     toastStore.showToast('프로모션 목록을 불러오는 중 오류가 발생했습니다.', 'danger');
@@ -110,52 +186,41 @@ const loadPromotions = async () => {
 };
 
 
-// 검색, 필터링, 정렬 로직
-const filteredAndSortedPromotions = computed(() => {
-  let promotions = [...allPromotions.value];
+// 검색, 필터링, 정렬 로직- 백엔드 구현 예정
+// const filteredAndSortedPromotions = computed(() => {
+//   let promotions = [...allPromotions.value];
 
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase();
-    promotions = promotions.filter(
-      (promo) =>
-        promo.name.toLowerCase().includes(term) ||
-        promo.description.toLowerCase().includes(term)
-    );
-  }
+//   if (searchTerm.value) {
+//     const term = searchTerm.value.toLowerCase();
+//     promotions = promotions.filter(
+//       (promo) =>
+//         promo.title.toLowerCase().includes(term) ||
+//         promo.description.toLowerCase().includes(term)
+//     );
+//   }
 
-  if (filterStatus.value !== 'all') {
-    promotions = promotions.filter((promo) => promo.status === filterStatus.value);
-  }
+//   if (filterStatus.value !== 'all') {
+//     promotions = promotions.filter((promo) => promo.status === filterStatus.value);
+//   }
 
-  if (sortKey.value) {
-    promotions.sort((a, b) => {
-      const valA = a[sortKey.value];
-      const valB = b[sortKey.value];
-      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
+//   if (sortKey.value) {
+//     promotions.sort((a, b) => {
+//       const valA = a[sortKey.value];
+//       const valB = b[sortKey.value];
+//       if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
+//       if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
+//       return 0;
+//     });
+//   }
 
-  return promotions;
-});
+//   return promotions;
+// });
 
-// 페이지네이션 로직
-const paginatedPromotions = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedPromotions.value.slice(start, end);
-});
-
-const totalPages = computed(() =>
-  Math.ceil(filteredAndSortedPromotions.value.length / itemsPerPage.value)
-);
 
 // 이벤트 핸들러
-const updatePage = (page) => {
-  if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page;
-  }
+const updatePage = async (page) => {
+  if (page < 1 || page > totalPages.value) return;
+  await loadPromotions(page);
 };
 
 const openPromotionModal = (promo = null) => {
@@ -166,16 +231,32 @@ const openPromotionModal = (promo = null) => {
     if (clonedPromo.period) {
       clonedPromo.period = clonedPromo.period.replace(' to ', ' ~ '); // 형식 호환
     }
-    Object.assign(promoForm, clonedPromo);
+    // ✅ 모든 필드를 명시적으로 설정
+    Object.assign(promoForm, {
+      id: clonedPromo.id,
+      title: clonedPromo.title,
+      period: clonedPromo.period,
+      target: clonedPromo.target,
+      status: clonedPromo.status,
+      description: clonedPromo.description,
+      storeIds: clonedPromo.storeIds || [],
+      category: clonedPromo.category || '',
+      itemId: clonedPromo.itemId || null,
+      discountRate: clonedPromo.discountRate
+    });
   } else {
     isEditing.value = false;
     Object.assign(promoForm, {
       id: null,
-      name: '',
+      title: '',
       period: '',
       target: 'ALL',
       status: 'UPCOMING',
       description: '',
+      storeIds: [],
+      category: '',
+      itemId: null,
+      discountRate: null
     });
   }
   isModalOpen.value = true;
@@ -183,17 +264,35 @@ const openPromotionModal = (promo = null) => {
 
 const savePromotion = async () => {
   formSubmitted.value = true;
+  
+  // 기본 필수 항목 검사
   if (
-  !promoForm.name ||
-  !promoForm.period ||
-  promoForm.discountRate === null ||
-  promoForm.discountRate === undefined ||
-  promoForm.discountRate <= 0 ||
-  promoForm.discountRate > 100
-) {
-  toastStore.showToast('프로모션명, 기간, 할인율(1~100)은 필수입니다.', 'danger');
-  return;
-}
+    !promoForm.title ||
+    !promoForm.period ||
+    promoForm.discountRate === null ||
+    promoForm.discountRate === undefined ||
+    promoForm.discountRate <= 0 ||
+    promoForm.discountRate > 100
+  ) {
+    toastStore.showToast('프로모션명, 기간, 할인율(1~100)은 필수입니다.', 'danger');
+    return;
+  }
+
+  // 대상별 필수 항목 검사
+  if (promoForm.target === 'STORE' && promoForm.storeIds.length === 0) {
+    toastStore.showToast('최소 1개 이상의 매장을 선택해야 합니다.', 'danger');
+    return;
+  }
+  
+  if (promoForm.target === 'CATEGORY' && !promoForm.category) {
+    toastStore.showToast('카테고리를 선택해야 합니다.', 'danger');
+    return;
+  }
+  
+  if (promoForm.target === 'PRODUCT' && !promoForm.itemId) {
+    toastStore.showToast('상품을 선택해야 합니다.', 'danger');
+    return;
+  }
 
   // ✅ 날짜 유효성 검사
   if (promoForm.period.includes(' ~ ')) {
@@ -209,7 +308,7 @@ const [startDate, endDate] = promoForm.period.split(' ~ ');
 
 const payload = {
   promotionType: promoForm.target,
-  title: promoForm.name,
+  title: promoForm.title,
   contents: promoForm.description,
   discountRate: promoForm.discountRate, 
   startDate,
@@ -240,37 +339,27 @@ console.log('[create payload]', payload);
   // ✅ 폼 리셋
   Object.assign(promoForm, {
     id: null,
-    name: '',
+    title: '',
     period: '',
-    target: 'ALL', // ✅ 기본값
+    target: 'ALL',
     status: 'UPCOMING',
     description: '',
+    storeIds: [],
+    category: '',
+    itemId: null,
+    discountRate: null
   });
 };
 
 
-const deletePromotion = async (id) => {
-  const confirmed = await modalStore.show({
-    title: '삭제 확인',
-    message: '정말 이 프로모션을 삭제하시겠습니까?',
-    isConfirmation: true,
-  });
-  if (confirmed) {
-   try {
-     await deletePromotionApi(id);
-     toastStore.showToast('프로모션이 삭제되었습니다.', 'success');
-     await loadPromotions();
-   } catch (error) {
-     toastStore.showToast('삭제 중 오류가 발생했습니다.', 'danger');
-   }
- }
-};
 
 const statusClass = (status) => {
-  if (status === '진행중') return 'bg-primary';
-  if (status === '예정') return 'bg-info';
-  if (status === '종료') return 'bg-secondary';
-  return 'bg-light';
+  switch (status) {
+    case 'ONGOING': return 'bg-primary';
+    case 'UPCOMING': return 'bg-info';
+    case 'ENDED': return 'bg-secondary';
+    default: return 'bg-light';
+  }
 };
 
 const goToDetail = (id) => {
@@ -317,16 +406,16 @@ const updateSort = (key) => {
         </div>
       </template>
 
-      <div v-if="paginatedPromotions.length > 0">
+      <div v-if="allPromotions.length > 0">
         <table class="table table-hover">
           <thead>
           <tr>
-            <th @click="updateSort('name')" class="sortable">
+            <th @click="updateSort('title')" class="sortable">
               프로모션명
               <SortIcon
                 :sortKey="sortKey"
                 :sortOrder="sortOrder"
-                currentKey="name"
+                currentKey="title"
               />
             </th>
             <th @click="updateSort('period')" class="sortable">
@@ -357,31 +446,23 @@ const updateSort = (key) => {
           </tr>
           </thead>
           <tbody>
-          <tr v-for="promo in paginatedPromotions" :key="promo.id">
+          <tr v-for="promo in allPromotions" :key="promo.id">
             <td>
               <router-link :to="`/promotions/${promo.id}`">{{
-                  promo.name
+                  promo.title
                 }}</router-link>
             </td>
             <td>{{ promo.period }}</td>
-            <td>{{ promo.target }}</td>
+            <td>{{ getTargetLabel(promo.target) }}</td>
             <td>
-                <span class="badge" :class="statusClass(promo.status)">{{
-                    promo.status
-                  }}</span>
+                <span class="badge" :class="statusClass(promo.status)">{{getStatusLabel(promo.status)}}</span>
             </td>
             <td>
               <button
-                class="btn btn-sm btn-outline-secondary me-2"
+                class="btn btn-sm btn-outline-secondary"
                 @click="openPromotionModal(promo)"
               >
                 수정
-              </button>
-              <button
-                class="btn btn-sm btn-danger"
-                @click="deletePromotion(promo.id)"
-              >
-                삭제
               </button>
             </td>
           </tr>
@@ -439,8 +520,8 @@ const updateSort = (key) => {
           <input
             type="text"
             class="form-control"
-            v-model="promoForm.name"
-            :class="{ 'is-invalid': !promoForm.name && formSubmitted }"
+            v-model="promoForm.title"
+            :class="{ 'is-invalid': !promoForm.title && formSubmitted }"
           />
           <div class="invalid-feedback">프로모션명은 필수입니다.</div>
         </div>
@@ -481,7 +562,7 @@ const updateSort = (key) => {
                 :key="store.id"
                 :value="store.id"
               >
-                {{ store.name }} ({{ store.address }})
+                {{ store.title }} ({{ store.address }})
               </option>
             </select>
           </div>
@@ -512,7 +593,7 @@ const updateSort = (key) => {
         <select v-model="promoForm.itemId" class="form-select">
           <option disabled value="">상품을 선택하세요</option>
           <option v-for="item in productList" :key="item.id" :value="item.id">
-            {{ item.name }} ({{ item.category }})
+            {{ item.title }} ({{ item.category }})
           </option>
         </select>
         <div v-if="formSubmitted && !promoForm.itemId" class="text-danger mt-1">

@@ -30,20 +30,53 @@ export const getAllPromotionsList = async () => {
   return data;
 };
 
+
+
 // ✅ 페이징 처리된 프로모션 목록
-export const getPagedPromotions = async (pageReq) => {
-  const requestUrl = `/api/promotion/read/page/all`;
-  let data = {};
-  await api
-    .get(requestUrl, { params: pageReq })
-    .then((response) => {
-      data = response.data;
+// export const getPagedPromotions = async (pageReq) => {
+//   const requestUrl = `/api/promotion/read/page/all`;
+//   let data = {};
+//   await api
+//     .get(requestUrl, { params: pageReq })
+//     .then((response) => {
+//       data = response.data;
+//     })
+//     .catch((error) => {
+//       data = error.response?.data || error.message;
+//     });
+//   return data;
+// };
+
+export const getPagedPromotions = async (page = 0, size = 10, sort = 'id,desc') => {
+    const requestUrl = `/api/promotion/read/page/all`
+    let data = {}
+    await api.get(requestUrl, {
+        params: { page, size, sort },
     })
-    .catch((error) => {
-      data = error.response?.data || error.message;
-    });
-  return data;
-};
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
+// export const getPagedPromotions = async (page = 0, pageSize = 10, sortBy = 'id', direction = 'desc') => {
+//     const requestUrl = `/api/promotion/read/page/all`;
+//     let data = {}
+//     await api.get(requestUrl, {
+//         params: { page, pageSize, sortBy, direction  },
+//     })
+//         .then((response) => {
+//             data = response.data;
+//         })
+//         .catch((error) => {
+//             data = error.data
+//         })
+//     return data
+// }
+
 
 // ✅ 단일 프로모션 상세 조회
 export const getPromotionDetail = async (id) => {
