@@ -10,6 +10,7 @@ import UpdateItemView from "@/views/item/UpdateItemView.vue";
 
 import itemApi from '@/api/item/index.js'
 import categoryApi from '@/api/item/category'
+import {uploadItemImage} from "@/api/image/index.js";
 
 const allProducts = ref([]);
 const categories = ref([]);
