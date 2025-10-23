@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import axios from 'axios'; // Add axios import
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 import BaseEmptyState from '@/components/BaseEmptyState.vue';
@@ -13,6 +12,7 @@ import { useCouponStore } from '@/stores/coupons';
 import { useModalStore } from '@/stores/modal';
 import { useToastStore } from '@/stores/toast';
 import { useAuthStore } from '@/stores/auth';
+import { issueCouponToCustomer } from '@/api/customers'; // Import the new API function
 
 const customerStore = useCustomerStore();
 const couponStore = useCouponStore();
@@ -133,15 +133,15 @@ const totalPages = computed(() => Math.ceil(filteredAndSortedCustomers.value.len
 // --- 일괄 선택 로직 ---
 const isAllSelected = computed(() => {
   if (paginatedCustomers.value.length === 0) return false;
-  return paginatedCustomers.value.every(c => selectedCustomers.value.has(c.id));
+  return paginatedCustomers.value.every(c => selectedCustomers.value.has(c.customerId));
 });
 const toggleSelectAll = () => {
   console.log('toggleSelectAll called. isAllSelected:', isAllSelected.value);
-  console.log('paginatedCustomers:', paginatedCustomers.value.map(c => c.id));
+  console.log('paginatedCustomers:', paginatedCustomers.value.map(c => c.customerId));
   if (isAllSelected.value) {
-    paginatedCustomers.value.forEach(c => selectedCustomers.value.delete(c.id));
+    paginatedCustomers.value.forEach(c => selectedCustomers.value.delete(c.customerId));
   } else {
-    paginatedCustomers.value.forEach(c => selectedCustomers.value.add(c.id));
+    paginatedCustomers.value.forEach(c => selectedCustomers.value.add(c.customerId));
   }
   console.log('selectedCustomers after toggleAll:', Array.from(selectedCustomers.value));
 };
@@ -188,7 +188,7 @@ const issueCoupon = async () => {
   if (confirmed) {
     try {
       const issuePromises = Array.from(selectedCustomers.value).map(customerId => {
-        return axios.post(`/api/customer/${customerId}/coupons?couponId=${selectedCoupon.value}`);
+        return issueCouponToCustomer(customerId, selectedCoupon.value); // Use the new API function
       });
       await Promise.all(issuePromises);
       toastStore.showToast('쿠폰이 성공적으로 발급되었습니다.', 'success');
