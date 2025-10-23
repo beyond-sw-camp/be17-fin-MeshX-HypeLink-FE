@@ -13,12 +13,41 @@ export const saveNewItem = async (itemForm) => {
     return data
 }
 
+// dto 수정되었을수도?
 export const getItems = async (page = 0, size = 10, sort = 'id,desc') => {
     const requestUrl = `/api/item/list`
     let data = {}
     await api.get(requestUrl, {
         params: { page, size, sort },
     })
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
+export const getAllItemDetails = async (page = 0, size = 10, sort = 'id,desc') => {
+    const requestUrl = `/api/item/detail/all`
+    let data = {}
+    await api.get(requestUrl, {
+        params: { page, size, sort },
+    })
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
+export const getItemDetails = async (id) => {
+    const requestUrl = `/api/item/detail/item/` + id
+    let data = {}
+    await api.get(requestUrl)
         .then((response) => {
             data = response
         })
@@ -42,7 +71,7 @@ export const updateContent = async (updateForm) => {
 }
 
 export const updateStock = async (updateForm) => {
-    const requestUrl = `/api/item/stock`
+    const requestUrl = `/api/item/detail/stock`
     let data = {}
     await api.patch(requestUrl, updateForm)
         .then((response) => {
@@ -145,7 +174,21 @@ export const updateImages = async (updateForm) => {
     return data
 }
 
+export const updateImageDetails = async (updateForm) => {
+    const requestUrl = `/api/item/detail/creates`
+    let data = {}
+    await api.post(requestUrl, updateForm)
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
 export default {
     saveNewItem, getItems, updateContent, updateStock, updateEnName, updateKoName, updateAmount,
-    updateCompany, updateCategory, updateImages, updateUnitPrice
+    updateCompany, updateCategory, updateImages, updateUnitPrice, getItemDetails, getAllItemDetails,
+    updateImageDetails
 }

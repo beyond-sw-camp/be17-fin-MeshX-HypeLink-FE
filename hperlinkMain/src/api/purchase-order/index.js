@@ -43,6 +43,32 @@ export const getPurchaseOrder = async (page = 0, size = 10, sort = 'id,desc') =>
     return data
 }
 
+export const getPurchaseOrderDetails = async () => {
+    const requestUrl = `/api/order/read/order/detail`
+    let data = {}
+    await api.get(requestUrl)
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
+export const getPurchaseOrderStates = async () => {
+    const requestUrl = `/api/order/read/order/state`
+    let data = {}
+    await api.get(requestUrl)
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
 export const updatePurchaseOrder = async (updateFrom) => {
     const requestUrl = `/api/order/update`
     let data = {}
@@ -57,5 +83,6 @@ export const updatePurchaseOrder = async (updateFrom) => {
 }
 
 export default {
-    saveNewPurchaseOrder, getHeadPurchaseOrder, getPurchaseOrder, updatePurchaseOrder
+    saveNewPurchaseOrder, getHeadPurchaseOrder, getPurchaseOrder, updatePurchaseOrder, getPurchaseOrderDetails,
+    getPurchaseOrderStates
 }

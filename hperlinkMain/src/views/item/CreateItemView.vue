@@ -1,6 +1,13 @@
 <script setup lang="js">
-import {ref, watch} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 import draggable from 'vuedraggable'; // npm install vuedraggable@next
+import {useToastStore} from "@/stores/toast.js";
+
+import colorApi from '@/api/item/color'
+import categoryApi from '@/api/item/category'
+import sizeApi from '@/api/item/size'
+
+const toastStore = useToastStore();
 
 const props = defineProps(['itemForm', 'isModalOpen']);
 const emit = defineEmits(['submit']);
@@ -8,6 +15,10 @@ const itemForm = props.itemForm;
 
 const imagePreviews = ref([]);
 const fileLabel = ref('파일 선택');
+
+const sizes = ref([]);
+const categories = ref([]);
+const colors = ref([]);
 
 // ✅ 파일 선택
 const handleFileSelect = (event) => {
@@ -26,6 +37,30 @@ const handleFileSelect = (event) => {
   // ✅ 파일 input 초기화 (같은 파일 다시 선택 시에도 인식되게)
   e.target.value = '';
 };
+
+const getColors = async () => {
+  let res = await colorApi.getColors();
+  if(res.status !== 200) {
+    toastStore.showToast("색깔을 불러오지 못했습니다.", "danger")
+  }
+  colors.value = res.data.data.colors;
+}
+
+const getCategories = async () => {
+  let res = await categoryApi.getCategories();
+  if(res.status !== 200) {
+    toastStore.showToast("카테고리를 불러오지 못했습니다.", "danger")
+  }
+  categories.value = res.data.data.categories;
+}
+
+const getSizes = async () => {
+  let res = await sizeApi.getSizes();
+  if(res.status !== 200) {
+    toastStore.showToast("색깔을 불러오지 못했습니다.", "danger")
+  }
+  sizes.value = res.data.data.sizes;
+}
 
 // ✅ 파일명 + 개수 업데이트
 const updateFileLabel = () => {
@@ -73,6 +108,29 @@ const resetForm = () => {
   fileLabel.value = '파일 선택';
 };
 
+const isLightColor = (hex) => {
+  if (!hex) return false;
+  let r, g, b;
+
+  if (hex.startsWith('#')) {
+    const c = hex.substring(1);
+    if (c.length === 3) {
+      r = parseInt(c[0] + c[0], 16);
+      g = parseInt(c[1] + c[1], 16);
+      b = parseInt(c[2] + c[2], 16);
+    } else if (c.length === 6) {
+      r = parseInt(c.substring(0, 2), 16);
+      g = parseInt(c.substring(2, 4), 16);
+      b = parseInt(c.substring(4, 6), 16);
+    }
+  } else if (hex.startsWith('rgb')) {
+    [r, g, b] = hex.match(/\d+/g).map(Number);
+  } else return false;
+
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 180;
+}
+
 // ✅ 모달 닫힐 때 전체 리셋
 watch(
     () => props.isModalOpen,
@@ -80,6 +138,12 @@ watch(
       if (!newVal) resetForm();
     }
 );
+
+onMounted(async () => {
+  await getColors();
+  await getSizes();
+  await getCategories();
+})
 </script>
 
 <template>
@@ -112,11 +176,10 @@ watch(
     <div class="mb-3">
       <label class="form-label">카테고리</label>
       <select class="form-select" v-model="itemForm.category">
-        <option>상의</option>
-        <option>하의</option>
-        <option>아우터</option>
-        <option>신발</option>
-        <option>악세서리</option>
+        <option disabled value="">카테고리를 선택하세요</option>
+        <option v-for="cat in categories" :key="cat.category" :value="cat.category">
+          {{ cat.category }}
+        </option>
       </select>
     </div>
 
@@ -135,11 +198,29 @@ watch(
       <label class="form-label">상품 상세 리스트</label>
       <div v-for="(detail, idx) in itemForm.itemDetailList" :key="idx" class="border p-2 mb-2 rounded">
         <div class="row">
+          <!-- 사이즈 선택 -->
           <div class="col">
-            <input type="text" class="form-control size-input" placeholder="사이즈" v-model="detail.size"/>
+            <select class="form-select size-input" v-model="detail.size">
+              <option disabled value="">사이즈 선택</option>
+              <option v-for="s in sizes" :key="s.size" :value="s.size">
+                {{ s.size }}
+              </option>
+            </select>
           </div>
+
+          <!-- 색상 선택 -->
           <div class="col">
-            <input type="text" class="form-control color-input" placeholder="색상" v-model="detail.color"/>
+            <select class="form-select color-input" v-model="detail.color">
+              <option disabled value="">색상 선택</option>
+              <option
+                  v-for="c in colors"
+                  :key="c.id"
+                  :value="c.colorName"
+                  :style="{ backgroundColor: c.colorCode, color: isLightColor(c.colorCode) ? '#000' : '#fff' }"
+              >
+                {{ c.colorName }}
+              </option>
+            </select>
           </div>
           <div class="col">
             <input type="number" class="form-control stock-input" placeholder="재고" v-model.number="detail.stock"/>
