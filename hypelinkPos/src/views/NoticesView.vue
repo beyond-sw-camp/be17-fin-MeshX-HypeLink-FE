@@ -13,7 +13,7 @@ const notices = ref([
   },
   {
     id: 2,
-    type: 'event',
+    
     title: '가을 신상품 특별 할인',
     content: '10월 한 달간 가을 의류 신상품 할인 이벤트가 진행됩니다.\n아우터 및 니트 제품 최대 20% 할인!',
     date: '2025-09-25',
@@ -29,7 +29,7 @@ const notices = ref([
   },
   {
     id: 4,
-    type: 'event',
+    
     title: '추석 연휴 운영 안내',
     content: '추석 연휴 기간 본사 고객센터 운영이 제한됩니다.\n긴급 문의는 비상연락망을 이용해주세요.',
     date: '2025-09-15',
@@ -37,21 +37,11 @@ const notices = ref([
   }
 ])
 
-const selectedType = ref('all')
 const selectedNotice = ref(null)
 const showDetail = ref(false)
 
-const typeOptions = [
-  { id: 'all', name: '전체' },
-  { id: 'notice', name: '공지사항' },
-  { id: 'event', name: '이벤트' }
-]
-
 const filteredNotices = computed(() => {
-  if (selectedType.value === 'all') {
-    return notices.value
-  }
-  return notices.value.filter(n => n.type === selectedType.value)
+  return notices.value
 })
 
 const unreadCount = computed(() => {
@@ -67,14 +57,6 @@ const openNotice = (notice) => {
 const closeDetail = () => {
   showDetail.value = false
   selectedNotice.value = null
-}
-
-const getTypeLabel = (type) => {
-  return type === 'notice' ? '공지' : '이벤트'
-}
-
-const getTypeBadgeClass = (type) => {
-  return type === 'notice' ? 'badge-notice' : 'badge-event'
 }
 
 const formatDate = (dateString) => {
@@ -96,17 +78,7 @@ const formatDate = (dateString) => {
           안읽은 공지 {{ unreadCount }}개
         </span>
       </div>
-      <div class="type-filter">
-        <button
-          v-for="option in typeOptions"
-          :key="option.id"
-          class="filter-btn"
-          :class="{ active: selectedType === option.id }"
-          @click="selectedType = option.id"
-        >
-          {{ option.name }}
-        </button>
-      </div>
+      
     </div>
 
     <div class="notices-container">
@@ -120,9 +92,6 @@ const formatDate = (dateString) => {
         >
           <div class="notice-header">
             <div class="badges">
-              <span class="type-badge" :class="getTypeBadgeClass(notice.type)">
-                {{ getTypeLabel(notice.type) }}
-              </span>
               <span v-if="!notice.isRead" class="new-badge">NEW</span>
             </div>
             <span class="date">{{ formatDate(notice.date) }}</span>
@@ -139,9 +108,6 @@ const formatDate = (dateString) => {
         <div class="modal-header">
           <div class="modal-header-content">
             <div class="badges">
-              <span class="type-badge" :class="getTypeBadgeClass(selectedNotice.type)">
-                {{ getTypeLabel(selectedNotice.type) }}
-              </span>
             </div>
             <h2>{{ selectedNotice.title }}</h2>
             <span class="date">{{ formatDate(selectedNotice.date) }}</span>
@@ -195,33 +161,7 @@ const formatDate = (dateString) => {
   font-weight: 600;
 }
 
-.type-filter {
-  display: flex;
-  gap: 12px;
-}
 
-.filter-btn {
-  padding: 10px 20px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: white;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.filter-btn:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.filter-btn.active {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
 
 .notices-container {
   background: white;
@@ -266,23 +206,7 @@ const formatDate = (dateString) => {
   gap: 8px;
 }
 
-.type-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
 
-.badge-notice {
-  background: #E8F5E9;
-  color: var(--success-color);
-}
-
-.badge-event {
-  background: #FFF3E0;
-  color: var(--warning-color);
-}
 
 .new-badge {
   display: inline-block;
