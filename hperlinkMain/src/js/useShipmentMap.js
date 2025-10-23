@@ -1,4 +1,4 @@
-import { getStoresList } from '@/api/users';
+import { getStoresList} from '@/api/users';
 
 let map = null;
 let driverMarkers = {}; // 기사 마커

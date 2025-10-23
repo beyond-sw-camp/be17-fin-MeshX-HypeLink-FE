@@ -16,7 +16,6 @@ import trackingRoutes from './routes/trackingRoutes.js'
 import customerAnalyticsRoutes from './routes/customerAnalyticsRoutes.js'
 import posHealthRoutes from './routes/posHealthRoutes.js'
 import driverRoutes from './routes/driverRoutes.js'
-import roleRoutes from './routes/roleRoutes.js'
 import communicationRoutes from './routes/communicationRoutes.js'
 import couponRoutes from './routes/couponRoutes.js'
 import LoginView from '@/views/LoginView.vue';
@@ -43,7 +42,6 @@ const routes = [
   ...customerAnalyticsRoutes,
   ...posHealthRoutes,
   ...driverRoutes,
-  ...roleRoutes,
   ...communicationRoutes,
   ...couponRoutes
 ]

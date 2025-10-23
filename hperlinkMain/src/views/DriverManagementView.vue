@@ -1,11 +1,30 @@
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import draggable from 'vuedraggable';
 import { useToastStore } from '@/stores/toast';
+import { useDriverStore } from '@/stores/drivers'; // Import the new driver store
+import BaseSpinner from '@/components/BaseSpinner.vue'; // Import spinner
+import BaseModal from '@/components/BaseModal.vue'; // Import modal
+import { useModalStore } from '@/stores/modal'; // Import modal store
 
 const toastStore = useToastStore();
+const driverStore = useDriverStore(); // Initialize the driver store
+const modalStore = useModalStore(); // Initialize the modal store
+
+const isModalOpen = ref(false);
+const newDriverDefaults = {
+  name: '',
+  email: '',
+  password: '',
+  phone: '',
+  carNumber: '',
+  macAddress: '',
+  region: 'SEOUL_GYEONGGI',
+  role: 'DRIVER'
+};
+const newDriver = reactive({ ...newDriverDefaults });
 
 // --- Helper Functions ---
 const getRegionBadgeClass = (region) => {
@@ -20,7 +39,7 @@ const getRegionBadgeClass = (region) => {
   }
 };
 
-// --- Mock Data ---
+// --- Mock Data for unassigned parcels (remains as is for now) ---
 const unassignedParcels = ref([
   { id: 1, trackingNumber: 'TN20241022001', content: 'Hype-Tee 외 2건', quantity: 15, from: '서울 본사', to: '강남점' },
   { id: 2, trackingNumber: 'TN20241022002', content: 'Mesh-Cap 외 1건', quantity: 8, from: '부산 물류센터', to: '부산점' },
@@ -28,20 +47,10 @@ const unassignedParcels = ref([
   { id: 4, trackingNumber: 'TN20241022004', content: 'Hyper-Jacket', quantity: 5, from: '대전 물류센터', to: '강남점' },
 ]);
 
-const drivers = ref([
-  { 
-    id: 1, 
-    name: '홍길동 기사', 
-    phone: '010-1111-1111', 
-    carNumber: '12가 3456', 
-    region: '서울/경기', 
-    assignedParcels: [
-      { id: 5, trackingNumber: 'TN20241021005', content: 'Initial-Item', quantity: 10, from: '서울 본사', to: '수원점' }
-    ]
-  },
-  { id: 2, name: '김철수 기사', phone: '010-2222-2222', carNumber: '23나 4567', region: '서울/경기', assignedParcels: [] },
-  { id: 3, name: '이영희 기사', phone: '010-3333-3333', carNumber: '34다 5678', region: '부산/경상', assignedParcels: [] },
-]);
+// --- Fetch Real Driver Data ---
+onMounted(() => {
+  driverStore.fetchDrivers();
+});
 
 // --- Drag and Drop Logic ---
 const handleParcelDrop = (driver, event) => {
@@ -51,6 +60,43 @@ const handleParcelDrop = (driver, event) => {
   toastStore.showToast(`'${droppedParcel.content}' 배송 건이 ${driver.name}에게 할당되었습니다.`, 'success');
 
   // 여기에 실제 백엔드 API (POST /shipment/connecting)를 호출하는 로직이 들어갑니다.
+};
+
+const openAddDriverModal = () => {
+  Object.assign(newDriver, newDriverDefaults);
+  isModalOpen.value = true;
+};
+
+const handleAddDriver = async () => {
+  // Basic validation
+  if (!newDriver.name || !newDriver.email || !newDriver.password || !newDriver.phone || !newDriver.carNumber) {
+    toastStore.showToast('모든 필수 항목을 입력해주세요.', 'danger');
+    return;
+  }
+  try {
+    await driverStore.addDriver(newDriver);
+    isModalOpen.value = false;
+    toastStore.showToast('새로운 기사가 성공적으로 추가되었습니다.', 'success');
+  } catch (error) {
+    toastStore.showToast(error.message || '기사 추가 중 오류가 발생했습니다.', 'danger');
+  }
+};
+
+const handleDeleteDriver = async (driver) => {
+  const confirmed = await modalStore.show({
+    title: '기사 삭제 확인',
+    message: `정말 '${driver.name}' 기사를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+    isConfirmation: true,
+  });
+
+  if (confirmed) {
+    try {
+      await driverStore.deleteDriver(driver.id);
+      toastStore.showToast(`'${driver.name}' 기사가 삭제되었습니다.`, 'success');
+    } catch (error) {
+      toastStore.showToast(error.message || '기사 삭제 중 오류가 발생했습니다.', 'danger');
+    }
+  }
 };
 
 </script>
@@ -90,14 +136,23 @@ const handleParcelDrop = (driver, event) => {
       <!-- Drivers List -->
       <div class="col-md-7">
         <BaseCard>
-          <template #header><h5>배송 기사 목록</h5></template>
-          <div class="driver-grid">
-            <div v-for="driver in drivers" :key="driver.id" class="driver-card">
+          <template #header>
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">배송 기사 목록</h5>
+              <button class="btn btn-primary btn-sm" @click="openAddDriverModal">+ 기사 추가</button>
+            </div>
+          </template>
+          <BaseSpinner v-if="driverStore.isLoading" />
+          <div v-else class="driver-grid">
+            <div v-for="driver in driverStore.drivers" :key="driver.id" class="driver-card">
               <BaseCard :title="driver.name">
                 <template #header>
                   <div class="d-flex justify-content-between">
                     <h6 class="mb-0">{{ driver.name }}</h6>
-                    <span class="badge" :class="getRegionBadgeClass(driver.region)">{{ driver.region }}</span>
+                    <div>
+                      <span class="badge me-2" :class="getRegionBadgeClass(driver.region)">{{ driver.region }}</span>
+                      <button class="btn btn-outline-danger btn-sm py-0 px-1" @click="handleDeleteDriver(driver)">삭제</button>
+                    </div>
                   </div>
                   <div class="small text-muted">{{ driver.carNumber }}</div>
                 </template>
@@ -128,6 +183,53 @@ const handleParcelDrop = (driver, event) => {
         </BaseCard>
       </div>
     </div>
+
+    <!-- Add Driver Modal -->
+    <BaseModal v-model="isModalOpen">
+      <template #header><h5>신규 배송기사 등록</h5></template>
+      <form @submit.prevent="handleAddDriver">
+        <div class="mb-3">
+          <label class="form-label">이름 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" v-model="newDriver.name">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">이메일 <span class="text-danger">*</span></label>
+          <input type="email" class="form-control" v-model="newDriver.email">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">비밀번호 <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" v-model="newDriver.password">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">전화번호 <span class="text-danger">*</span></label>
+          <input type="tel" class="form-control" v-model="newDriver.phone">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">차량 번호 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" v-model="newDriver.carNumber">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">MAC 주소</label>
+          <input type="text" class="form-control" v-model="newDriver.macAddress">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">담당 지역 <span class="text-danger">*</span></label>
+          <select class="form-select" v-model="newDriver.region">
+            <option value="SEOUL_GYEONGGI">서울/경기</option>
+            <option value="GANGWON">강원</option>
+            <option value="CHUNGCHEONG">충청</option>
+            <option value="GYEONGSANG">경상</option>
+            <option value="JEOLLA">전라</option>
+            <option value="JEJU">제주</option>
+          </select>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="isModalOpen = false">취소</button>
+        <button type="button" class="btn btn-primary" @click="handleAddDriver">추가하기</button>
+      </template>
+    </BaseModal>
+
   </div>
 </template>
 

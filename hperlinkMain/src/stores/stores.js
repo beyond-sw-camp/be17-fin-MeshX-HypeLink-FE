@@ -43,8 +43,16 @@ export const useStoreStore = defineStore('stores', () => {
     }
   };
 
-  const deleteStore = (id) => {
-    allStores.value = allStores.value.filter(s => s.id !== id);
+  const deleteStore = async (id) => {
+    const response = await usersApi.deleteStore(id);
+    if (response.success) {
+      // 삭제 성공 후, 전체 매장 목록을 다시 불러옵니다.
+      await fetchStores();
+      return true;
+    } else {
+      // API 호출 실패 시 에러를 발생시켜 컴포넌트에서 처리할 수 있도록 합니다.
+      throw new Error(response.message || '매장 삭제에 실패했습니다.');
+    }
   };
 
   return { allStores, addStore, updateStore, deleteStore, fetchStores };

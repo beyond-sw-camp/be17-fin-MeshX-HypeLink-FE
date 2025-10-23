@@ -6,14 +6,19 @@ import BaseSpinner from '@/components/BaseSpinner.vue';
 import { useToastStore } from '@/stores/toast';
 import { useModalStore } from '@/stores/modal';
 import { useUserStore } from '@/stores/users';
+import { useAuthStore } from '@/stores/auth'; // authStore import
+import { useDriverStore } from '@/stores/drivers'; // Import driver store
 
 const toastStore = useToastStore();
 const modalStore = useModalStore();
 const userStore = useUserStore();
+const authStore = useAuthStore(); // authStore 인스턴스 생성
+const driverStore = useDriverStore(); // driverStore 인스턴스 생성
 
 const isLoading = ref(true);
 
 const isAddManagerModalOpen = ref(false);
+const isEditing = ref(false); // 수정 모드 여부
 const formSubmitted = ref(false);
 
 const newManagerDefaults = {
@@ -24,7 +29,9 @@ const newManagerDefaults = {
   phone: '',
   address: '',
   region: 'SEOUL_GYEONGGI',
-  storeNumber: ''
+  storeNumber: '',
+  carNumber: '', // for DRIVER
+  macAddress: '' // for DRIVER
 };
 
 const newManager = reactive({ ...newManagerDefaults });
@@ -157,60 +164,130 @@ const updatePage = (page) => {
   }
 };
 
-// openAddManagerModal 함수 수정
+// 사용자 수정 모달 열기 (서버에서 최신 데이터 조회)
+const openEditUserModal = async (user) => {
+  isEditing.value = true;
+  formSubmitted.value = false;
+  isLoading.value = true; // 로딩 스피너 표시
+
+  try {
+    // 1. Pinia store를 통해 사용자 상세 정보를 비동기적으로 가져옵니다.
+    await userStore.fetchUserForEdit(user.id);
+    
+    // 2. 가져온 데이터로 newManager 폼을 채웁니다.
+    const userDetails = userStore.editingUser;
+    if (userDetails) {
+      Object.assign(newManager, {
+        id: userDetails.id,
+        name: userDetails.name,
+        email: userDetails.email, // 이메일은 수정하지 않으므로 표시만 함
+        phone: userDetails.phone,
+        address: userDetails.address,
+        region: userDetails.region,
+        role: userDetails.role,
+        password: '', // 비밀번호는 수정 시 비워둠
+        storeNumber: userDetails.storeNumber || '',
+        carNumber: userDetails.carNumber || '', // for DRIVER
+        macAddress: userDetails.macAddress || '' // for DRIVER
+      });
+      isAddManagerModalOpen.value = true; // 3. 데이터가 준비되면 모달을 엽니다.
+    } else {
+      toastStore.showToast('사용자 정보를 불러오는 데 실패했습니다.', 'danger');
+    }
+  } catch (error) {
+    console.error('Failed to open edit modal:', error);
+    toastStore.showToast(error.message || '사용자 정보를 불러오는 중 오류가 발생했습니다.', 'danger');
+  } finally {
+    isLoading.value = false; // 로딩 스피너 숨김
+  }
+};
+
+// 사용자 삭제
+const deleteUser = async (userId) => {
+  const user = userStore.allUsers.find(u => u.id === userId);
+  if (user) {
+    const confirmed = await modalStore.show({
+      title: '사용자 삭제 확인',
+      message: `'${user.name}' 사용자를 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+      isConfirmation: true,
+    });
+    if (confirmed) {
+      if (user.role === 'DRIVER') {
+        await driverStore.deleteDriver(userId);
+        await userStore.fetchUsers(); // Refresh the main user list after deleting a driver
+      } else {
+        await userStore.deleteUser(userId);
+      }
+      toastStore.showToast(`'${user.name}' 사용자가 삭제되었습니다.`, 'success');
+    }
+  }
+};
+
+// openAddManagerModal 함수는 그대로 유지
 const openAddManagerModal = () => {
   formSubmitted.value = false;
+  isEditing.value = false; // 추가 모드 활성화
   Object.assign(newManager, newManagerDefaults);
   isAddManagerModalOpen.value = true;
 };
 
-// addManager 함수 수정
+// addManager 함수는 add/edit 겸용으로 수정
 const addManager = async () => {
   formSubmitted.value = true;
   
-  // 기본 유효성 검사
-  if (!newManager.name || !newManager.email || !newManager.password || !newManager.role || !newManager.phone || !newManager.address || !newManager.region) {
+  // 공통 유효성 검사
+  let commonValidation = !newManager.name || !newManager.email || !newManager.phone || !newManager.region || !newManager.role;
+  if (newManager.role !== 'DRIVER') {
+    commonValidation = commonValidation || !newManager.address;
+  }
+
+  if (commonValidation) {
     toastStore.showToast('필수 항목을 모두 입력해주세요.', 'danger');
     return;
   }
 
+  // 비밀번호는 추가 시에만 필수
+  if (!isEditing.value && !newManager.password) {
+    toastStore.showToast('비밀번호는 필수입니다.', 'danger');
+    return;
+  }
+
   // 지점장일 경우 추가 유효성 검사
-  if (newManager.role === 'BRANCH_MANAGER') {
-    if (!newManager.storeNumber) {
-      toastStore.showToast('지점장 정보(가게 번호)를 모두 입력해주세요.', 'danger');
-      return;
-    }
+  if (newManager.role === 'BRANCH_MANAGER' && !newManager.storeNumber) {
+    toastStore.showToast('지점장 정보(가게 번호)를 모두 입력해주세요.', 'danger');
+    return;
+  }
+
+  // 기사일 경우 추가 유효성 검사
+  if (newManager.role === 'DRIVER' && !newManager.carNumber) {
+    toastStore.showToast('기사 정보(차량 번호)를 입력해주세요.', 'danger');
+    return;
   }
 
   try {
-    // 서버에 보낼 데이터 정제
     const payload = { ...newManager };
     if (payload.role !== 'BRANCH_MANAGER') {
       delete payload.storeNumber;
     }
-
-    await userStore.addManager(payload);
-    toastStore.showToast('새로운 사용자가 추가되었습니다.', 'success');
-    isAddManagerModalOpen.value = false;
-  } catch (error) {
-    toastStore.showToast(error.message || '사용자 추가에 실패했습니다.', 'danger');
-  }
-};
-
-const changeUserRole = async ({ userId, role }) => {
-  const user = userStore.allUsers.find(u => u.id === userId);
-  if (user) {
-    const confirmed = await modalStore.show({
-      title: '역할 변경 확인',
-      message: `'${user.name}' 사용자의 역할을 '${role}'(으)로 변경하시겠습니까?`,
-      isConfirmation: true,
-    });
-    if (confirmed) {
-      userStore.changeUserRole(userId, role);
-      toastStore.showToast(`'${user.name}'의 역할이 '${role}'(으)로 변경되었습니다.`, 'success');
+    if (payload.role !== 'DRIVER') {
+      delete payload.carNumber;
+      delete payload.macAddress;
     }
-  }
-};
+      if (isEditing.value) {
+        // 사용자 수정 API 호출
+        await userStore.updateUser(payload.id, payload);
+        toastStore.showToast('사용자 정보가 수정되었습니다.', 'success');
+      } else {
+        // 사용자 추가 API 호출
+        await userStore.addManager(payload);
+        toastStore.showToast('새로운 사용자가 추가되었습니다.', 'success');
+      }
+      isAddManagerModalOpen.value = false;
+    } catch (error) {
+      toastStore.showToast(error.message || '작업에 실패했습니다.', 'danger');
+    }
+  };
+
 </script>
 
 <template>
@@ -224,8 +301,9 @@ const changeUserRole = async ({ userId, role }) => {
       :sortOrder="sortOrder"
       :searchTerm="searchTerm"
       :filterRole="filterRole"
-      @change-role="changeUserRole"
       @add-manager="openAddManagerModal"
+      @edit-user="openEditUserModal"
+      @delete-user="deleteUser"
       @update:search-term="updateSearchTerm"
       @update:filter-role="updateFilterRole"
       @update:sort="updateSort"
@@ -233,18 +311,27 @@ const changeUserRole = async ({ userId, role }) => {
     />
 
     <BaseModal v-model="isAddManagerModalOpen">
-      <template #header><h5>새 사용자 추가</h5></template>
+      <template #header><h5>{{ isEditing ? '사용자 수정' : '새 사용자 추가' }}</h5></template>
       <form @submit.prevent="addManager">
         <!-- Common Fields -->
+        <div class="mb-3">
+          <label class="form-label">역할 <span class="text-danger">*</span></label>
+          <select class="form-select" v-model="newManager.role" :class="{ 'is-invalid': !newManager.role && formSubmitted }" :disabled="isEditing">
+            <option value="ADMIN">총괄 관리자</option>
+            <option value="MANAGER">중간 관리자</option>
+            <option value="BRANCH_MANAGER">지점장</option>
+            <option value="DRIVER">기사</option>
+          </select>
+        </div>
         <div class="mb-3">
           <label class="form-label">이름 (매장명) <span class="text-danger">*</span></label>
           <input type="text" class="form-control" v-model="newManager.name" :class="{ 'is-invalid': !newManager.name && formSubmitted }">
         </div>
         <div class="mb-3">
           <label class="form-label">이메일 <span class="text-danger">*</span></label>
-          <input type="email" class="form-control" v-model="newManager.email" :class="{ 'is-invalid': !newManager.email && formSubmitted }">
+          <input type="email" class="form-control" v-model="newManager.email" :class="{ 'is-invalid': !newManager.email && formSubmitted, 'bg-light': isEditing }" :readonly="isEditing">
         </div>
-        <div class="mb-3">
+        <div v-if="!isEditing" class="mb-3">
           <label class="form-label">비밀번호 <span class="text-danger">*</span></label>
           <input type="password" class="form-control" v-model="newManager.password" :class="{ 'is-invalid': !newManager.password && formSubmitted }">
         </div>
@@ -252,7 +339,7 @@ const changeUserRole = async ({ userId, role }) => {
           <label class="form-label">전화번호 <span class="text-danger">*</span></label>
           <input type="tel" class="form-control" v-model="newManager.phone" :class="{ 'is-invalid': !newManager.phone && formSubmitted }">
         </div>
-        <div class="mb-3">
+        <div class="mb-3" v-if="newManager.role !== 'DRIVER'">
           <label class="form-label">주소 <span class="text-danger">*</span></label>
           <div class="input-group">
             <input type="text" class="form-control" v-model="newManager.address" :class="{ 'is-invalid': !newManager.address && formSubmitted }" readonly placeholder="주소 검색 버튼을 클릭하세요">
@@ -267,15 +354,6 @@ const changeUserRole = async ({ userId, role }) => {
             <option v-for="(name, key) in regionOptions" :key="key" :value="key">{{ name }}</option>
           </select>
         </div>
-        <div class="mb-3">
-          <label class="form-label">역할 <span class="text-danger">*</span></label>
-          <select class="form-select" v-model="newManager.role" :class="{ 'is-invalid': !newManager.role && formSubmitted }">
-            <option value="MANAGER">중간 관리자</option>
-            <option value="BRANCH_MANAGER">지점장</option>
-          </select>
-        </div>
-
-        <!-- Branch Manager Specific Fields -->
         <div v-if="newManager.role === 'BRANCH_MANAGER'">
           <hr/>
           <h6 class="mb-3">지점장 정보</h6>
@@ -286,10 +364,23 @@ const changeUserRole = async ({ userId, role }) => {
           </div>
           
         </div>
+
+        <div v-if="newManager.role === 'DRIVER'">
+          <hr/>
+          <h6 class="mb-3">기사 정보</h6>
+          <div class="mb-3">
+            <label class="form-label">차량 번호 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" v-model="newManager.carNumber" :class="{ 'is-invalid': !newManager.carNumber && formSubmitted }">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">MAC 주소 <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" v-model="newManager.macAddress" :class="{ 'is-invalid': !newManager.macAddress && formSubmitted }">
+          </div>
+        </div>
       </form>
       <template #footer>
         <button type="button" class="btn btn-secondary" @click="isAddManagerModalOpen = false">취소</button>
-        <button type="button" class="btn btn-primary" @click="addManager">추가하기</button>
+        <button type="button" class="btn btn-primary" @click="addManager">{{ isEditing ? '수정하기' : '추가하기' }}</button>
       </template>
     </BaseModal>
 

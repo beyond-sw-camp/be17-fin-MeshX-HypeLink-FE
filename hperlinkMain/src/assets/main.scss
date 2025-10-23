@@ -22,6 +22,7 @@ body {
   &:hover {
     box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08);
     transform: translateY(-2px);
+    z-index: 10; // 마우스 올린 카드를 다른 카드 위로 올림
   }
 }
 

@@ -1,7 +1,6 @@
 import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 import usersApi from '@/api/users';
-import posApi from '@/api/pos';
 import authApi from '@/api/auth';
 
 // For Admins/Managers (Restored)
@@ -65,15 +64,18 @@ export const usePosManagementStore = defineStore('pos-management', () => {
   };
 
   const deletePosDevice = async (posId) => {
-    const response = await posApi.deletePos(posId);
-    if (response.success && selectedStore.value) {
-      const index = selectedStore.value.posDevices.findIndex(p => p.id === posId);
-      if (index > -1) {
-        selectedStore.value.posDevices.splice(index, 1);
+    try {
+      const response = await usersApi.deletePos(posId);
+      if (response.success) {
+        await fetchData(); // Refresh data after successful deletion
+        return true;
+      } else {
+        throw new Error(response.message || 'POS 기기 삭제에 실패했습니다.');
       }
-      return true;
+    } catch (error) {
+      console.error("Error deleting POS device:", error);
+      return false;
     }
-    return false;
   };
 
   return {
