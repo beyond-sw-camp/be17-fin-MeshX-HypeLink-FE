@@ -169,11 +169,9 @@ const orderStatusClass = (status) => {
             <input type="text" class="form-control form-control-sm me-2" placeholder="상품명/매장명 검색" v-model="searchTerm">
             <select class="form-select form-select-sm me-2" v-model="filterStatus">
               <option value="all">전체 상태</option>
-              <option value="요청 완료">요청 완료</option>
-              <option value="처리중">처리중</option>
-              <option value="배송중">배송중</option>
-              <option value="완료">완료</option>
-              <option value="취소">취소</option>
+              <option v-for="cat in orderStates" :key="cat.description" :value="cat.description">
+                {{ cat.description }}
+              </option>
             </select>
           </div>
         </div>
