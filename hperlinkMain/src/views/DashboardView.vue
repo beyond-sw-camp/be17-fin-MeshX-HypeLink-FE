@@ -15,7 +15,7 @@ const particlesInit = async engine => {
 const particlesOptions = ref({
   background: {
     color: {
-      value: '#f8f9fa' // Light gray background
+      value: 'transparent' // 배경색을 투명으로 변경
     }
   },
   fpsLimit: 60,
@@ -122,12 +122,12 @@ const particlesOptions = ref({
 }
 
 .particles-canvas {
-  position: fixed; /* Changed to fixed */
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: -1; /* Send to background */
+  z-index: 0; /* Send to background */
 }
 
 .login-box {

@@ -1,81 +1,62 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import usersApi from '@/api/users';
+import authApi from '@/api/auth'; // Import authApi
 
 export const useDriverStore = defineStore('drivers', () => {
-  const allDrivers = ref([]);
-  const stores = ref([]); // Initialize as empty array
+  // State
+  const drivers = ref([]);
+  const isLoading = ref(false);
 
-  // Fetches stores from the backend
-  const fetchStores = async () => {
-    const response = await usersApi.getStoresList();
-    if (response.success) {
-      stores.value = response.data.map(store => ({ 
-        id: store.storeId, 
-        name: store.storeName, 
-        address: store.storeAddress, 
-        phone: store.storePhone, 
-        drivers: [] // Initialize drivers array for each store
-      }));
-    } else {
-      console.error("Failed to fetch stores:", response.message);
-    }
-  };
-
-  // Fetches drivers from the backend
+  // Actions
   const fetchDrivers = async () => {
-    const response = await usersApi.getDrivers();
-    if (response.success) {
-      // The backend provides macAddress which is a unique identifier. Use it for the ID.
-      allDrivers.value = response.data.map(driver => ({ ...driver, id: driver.macAddress }));
-    } else {
-      console.error("Failed to fetch drivers:", response.message);
-      // Optionally, show a toast message to the user
-    }
-  };
-
-  const addDriver = (driver) => {
-    allDrivers.value.push({ id: Date.now(), ...driver });
-  };
-
-  const deleteDriver = (id) => {
-    allDrivers.value = allDrivers.value.filter(driver => driver.id !== id);
-    stores.value.forEach(store => {
-      store.drivers = store.drivers.filter(d => d.id !== id);
-    });
-  };
-
-  const assignDriverToStore = (driver, store) => {
-    // 다른 매장에서 기사 이동 시, 이전 매장에서 제거
-    stores.value.forEach(s => {
-      s.drivers = s.drivers.filter(d => d.id !== driver.id);
-    });
-
-    // 대상 매장에 이미 기사가 있다면, 그 기사를 전체 목록으로 이동
-    if (store.drivers.length > 0) {
-      const existingDriver = store.drivers[0];
-      if (!allDrivers.value.some(d => d.id === existingDriver.id)) {
-        allDrivers.value.push(existingDriver);
+    isLoading.value = true;
+    try {
+      const response = await usersApi.getDrivers();
+      if (response.success && response.data) {
+        // The API returns a list of drivers, assuming each has an empty assignedParcels array for the UI
+        drivers.value = response.data.map(driver => ({ ...driver, assignedParcels: [] }));
+      } else {
+        console.error('Failed to fetch drivers:', response.message);
+        drivers.value = [];
       }
-    }
-
-    // 대상 매장에 새 기사 할당
-    store.drivers = [driver];
-    
-    // 전체 기사 목록에서 제거
-    const indexInAll = allDrivers.value.findIndex(d => d.id === driver.id);
-    if (indexInAll > -1) {
-      allDrivers.value.splice(indexInAll, 1);
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
+      drivers.value = [];
+    } finally {
+      isLoading.value = false;
     }
   };
 
-  const unassignDriver = (store, driver) => {
-    store.drivers = [];
-    if (!allDrivers.value.some(d => d.id === driver.id)) {
-        allDrivers.value.push(driver);
+  const addDriver = async (driverData) => {
+    try {
+      const response = await authApi.registerUser(driverData);
+      if (response.success) {
+        await fetchDrivers(); // Refresh the list
+        return true;
+      } else {
+        throw new Error(response.message || '기사 추가에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error adding driver:', error);
+      throw error;
     }
   };
 
+  const deleteDriver = async (driverId) => {
+    try {
+      const response = await usersApi.deleteDriver(driverId);
+      if (response.success) {
+        await fetchDrivers(); // Refresh the list
+        return true;
+      } else {
+        throw new Error(response.message || '기사 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error deleting driver:', error);
+      throw error;
+    }
+  };
 
-  return { allDrivers, stores, fetchDrivers, addDriver, deleteDriver, assignDriverToStore, unassignDriver, fetchStores };
+  return { drivers, isLoading, fetchDrivers, addDriver, deleteDriver };
 });

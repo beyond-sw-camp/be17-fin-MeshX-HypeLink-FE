@@ -90,7 +90,7 @@ const roleText = (role) => {
               <th @click="emit('update:sort', 'role')" class="sortable">역할 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="role" /></th>
               <th @click="emit('update:sort', 'region')" class="sortable">지역 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="region" /></th>
               
-              <th v-if="authStore.isAdmin">권한 변경</th>
+              <th v-if="authStore.isAdmin">관리</th>
             </tr>
           </thead>
           <tbody>
@@ -103,15 +103,8 @@ const roleText = (role) => {
               <td>{{ user.region }}</td>
               
               <td v-if="authStore.isAdmin">
-                <div class="dropdown" v-if="user.id !== authStore.user.id">
-                  <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">변경</button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'ADMIN' })">총괄 관리자</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'MANAGER' })">중간 관리자</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'BRANCH_MANAGER' })">지점장</a></li>
-                    <li><a class="dropdown-item" href="#" @click.prevent="emit('change-role', { userId: user.id, role: 'DRIVER' })">기사</a></li>
-                  </ul>
-                </div>
+                <button class="btn btn-sm btn-outline-secondary me-2" @click="emit('edit-user', user)">수정</button>
+                <button class="btn btn-sm btn-danger" @click="emit('delete-user', user.id)">삭제</button>
               </td>
             </tr>
           </tbody>

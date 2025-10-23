@@ -24,17 +24,14 @@ export const getStoresWithPos = async () => {
 };
 
 export const getUsers = async () => {
-    let data = {};
-    await api.get('/api/member/member/list') // 백엔드 컨트롤러 엔드포인트에 맞춰 수정
-        .then((response) => {
-            data = response.data.data; // 성공 시 BaseResponse의 data 필드
-            data.success = true; // 성공 플래그 추가
-        })
-        .catch((error) => {
-            data = error.response?.data || {message: '네트워크 오류 또는 서버 응답 없음'};
-            data.success = false;
-        });
-    return data;
+    try {
+        const response = await api.get('/api/member/member/list');
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
 };
 
 export const getMessageUsers = async () => {
@@ -103,6 +100,83 @@ export const updateStoreInfo = async (id, dto) => {
     }
 };
 
+export const updateUser = async (id, payload) => {
+    try {
+        const response = await api.patch(`/api/member/user/update/${id}`, payload);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const deleteUser = async (id) => {
+    try {
+        const response = await api.delete(`/api/member/user/delete/${id}`);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const updateStoreState = async (id, dto) => {
+    try {
+        const response = await api.patch(`/api/member/store/state/${id}`, dto);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const getUserById = async (id) => {
+    try {
+        const response = await api.get(`/api/member/user/read/${id}`);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const deleteStore = async (id) => {
+    try {
+        const response = await api.delete(`/api/member/store/delete/${id}`);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const deletePos = async (id) => {
+    try {
+        const response = await api.delete(`/api/member/pos/delete/${id}`);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
+export const deleteDriver = async (id) => {
+    try {
+        const response = await api.delete(`/api/member/driver/delete/${id}`);
+        return { success: true, data: response.data.data };
+    } catch (error) {
+        const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
+        errorData.success = false;
+        return errorData;
+    }
+};
+
 export default {
     getDrivers,
     getStoresWithPos,
@@ -113,4 +187,11 @@ export default {
     getStoreById,
     getStoreInfoForEdit,
     updateStoreInfo,
+    updateUser,
+    deleteUser,
+    updateStoreState,
+    getUserById,
+    deleteStore,
+    deletePos,
+    deleteDriver,
 };

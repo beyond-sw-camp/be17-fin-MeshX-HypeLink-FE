@@ -1,43 +1,66 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { registerUser } from '@/api/auth';
-import { getUsers } from '@/api/users'; // Add this import
+import usersApi from '@/api/users'; // default export를 가져오도록 수정
 
 export const useUserStore = defineStore('users', () => {
-  // 모의 데이터 (나중에 백엔드 API 호출로 대체)
   const allUsers = ref([]);
+  const editingUser = ref(null); // 사용자 수정을 위한 상태 추가
 
   // 사용자 목록을 백엔드에서 가져오는 액션
   const fetchUsers = async () => {
-    const response = await getUsers();
-    if (response.success) {
-      allUsers.value = response.users; // Assuming response.users contains List<UserListItemDto>
+    const response = await usersApi.getUsers(); // 올바른 API 호출로 수정
+    if (response.success && response.data) {
+      allUsers.value = response.data.users;
     } else {
-      // 에러 처리 (예: 토스트 메시지)
       console.error('Failed to fetch users:', response.message);
-      // toastStore.showToast(response.message || '사용자 목록을 가져오는데 실패했습니다.', 'danger');
+      throw new Error(response.message || '사용자 목록을 가져오는데 실패했습니다.');
+    }
+  };
+
+  // 사용자 상세 정보 조회를 위한 액션 추가
+  const fetchUserForEdit = async (id) => {
+    const response = await usersApi.getUserById(id);
+    if (response.success && response.data) {
+      editingUser.value = response.data;
+    } else {
+      console.error('Failed to fetch user for edit:', response.message);
+      editingUser.value = null;
+      throw new Error(response.message || '사용자 정보를 가져오는데 실패했습니다.');
     }
   };
 
   const addManager = async (manager) => {
     const response = await registerUser(manager);
-
     if (response.success) {
-      // 등록 성공 후, 전체 사용자 목록을 다시 불러옵니다.
       await fetchUsers(); 
-      return true; // 성공을 알림
+      return true;
     } else {
-      // API 호출 실패 시 에러를 발생시켜 컴포넌트에서 처리할 수 있도록 합니다.
       throw new Error(response.message || '사용자 등록에 실패했습니다.');
     }
   };
 
-  const changeUserRole = (userId, role) => {
-    const user = allUsers.value.find(u => u.id === userId);
-    if (user) {
-      user.role = role;
+  // 사용자 정보 업데이트 액션
+  const updateUser = async (id, payload) => {
+    const response = await usersApi.updateUser(id, payload); // 올바른 API 호출로 수정
+    if (response.success) {
+      await fetchUsers();
+      return true;
+    } else {
+      throw new Error(response.message || '사용자 정보 업데이트에 실패했습니다.');
     }
   };
 
-  return { allUsers, fetchUsers, addManager, changeUserRole };
+  // 사용자 삭제 액션
+  const deleteUser = async (id) => {
+    const response = await usersApi.deleteUser(id); // 올바른 API 호출로 수정
+    if (response.success) {
+      await fetchUsers();
+      return true;
+    } else {
+      throw new Error(response.message || '사용자 삭제에 실패했습니다.');
+    }
+  };
+
+  return { allUsers, editingUser, fetchUsers, fetchUserForEdit, addManager, updateUser, deleteUser };
 });

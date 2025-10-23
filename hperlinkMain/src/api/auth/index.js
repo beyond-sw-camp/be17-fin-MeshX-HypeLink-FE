@@ -1,4 +1,5 @@
 import api from "@/plugins/axiosinterceptor";
+import axios from "axios"; // axios 직접 import
 
  export const loginUser = async (credentials) => {
   let data = {};
@@ -29,8 +30,17 @@ import api from "@/plugins/axiosinterceptor";
 };
 
  export const reissueToken = async () => {
-  const response = await api.post('/api/auth/reissue');
-  return response.data; // 재발급 시에는 BaseResponse로 감싸지 않으므로 data 직접 반환
+  try {
+    // HttpOnly 쿠키를 보내기 위해 withCredentials: true 옵션을 사용합니다.
+    const response = await axios.post('/api/auth/reissue', {}, {
+      withCredentials: true
+    });
+    // 백엔드 응답에서 accessToken을 직접적으로 사용합니다.
+    return { success: true, accessToken: response.data.accessToken };
+  } catch (error) {
+    console.error("Token reissue failed:", error);
+    return { success: false, message: error.response?.data?.message || '토큰 재발급 실패' };
+  }
 };
 
 export const logoutUser = async () => {

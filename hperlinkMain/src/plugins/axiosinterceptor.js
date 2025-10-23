@@ -75,6 +75,11 @@ api.interceptors.response.use(
 
             try {
                 const reissueResponse = await reissueToken();
+
+                if (!reissueResponse.success) {
+                    throw new Error(reissueResponse.message || '토큰 재발급 실패');
+                }
+
                 const newAccessToken = reissueResponse.accessToken;
 
                 // 순환 참조를 피하기 위해 스토어를 동적으로 import

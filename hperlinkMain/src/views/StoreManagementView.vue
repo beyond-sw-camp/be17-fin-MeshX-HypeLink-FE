@@ -106,6 +106,27 @@ const updateSort = (key) => {
 };
 const updatePage = (page) => { currentPage.value = page; };
 
+const openPostcodeSearch = () => {
+  new window.daum.Postcode({
+    oncomplete: (data) => {
+      let fullAddress = data.address;
+      let extraAddress = '';
+
+      if (data.addressType === 'R') {
+        if (data.bname !== '') {
+          extraAddress += data.bname;
+        }
+        if (data.buildingName !== '') {
+          extraAddress += (extraAddress !== '' ? ', ' + data.buildingName : data.buildingName);
+        }
+        fullAddress += (extraAddress !== '' ? ` (${extraAddress})` : '');
+      }
+
+      newStore.address = fullAddress;
+    },
+  }).open();
+};
+
 const openAddStoreModal = async (store = null) => {
   formSubmitted.value = false;
   if (store) {
@@ -117,9 +138,9 @@ const openAddStoreModal = async (store = null) => {
         id: store.id, // ID는 URL에서 가져온 store.id 사용
         name: response.data.name || '',
         address: response.data.address || '',
-        email: '', // 이메일은 수정 불가이므로 비워둠
-        password: '', // 비밀번호는 수정 불가이므로 비워둠
-        member_name: '', // 이름은 수정 불가이므로 비워둠
+        email: response.data.email || '', // API 응답에서 이메일 설정
+        password: '', // 비밀번호는 수정 시 비워둠
+        member_name: response.data.name || '', // 점주 이름도 함께 설정
         phone: response.data.phone || '',
         region: response.data.region || 'SEOUL_GYEONGGI',
         storeNumber: response.data.storeNumber || '',
@@ -273,14 +294,17 @@ const downloadPdf = () => {
         </div>
         <div class="mb-3">
           <label for="newStoreAddress" class="form-label">주소 <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" id="newStoreAddress" v-model="newStore.address" :class="{ 'is-invalid': !newStore.address && formSubmitted }">
+          <div class="input-group">
+            <input type="text" class="form-control" id="newStoreAddress" v-model="newStore.address" :class="{ 'is-invalid': !newStore.address && formSubmitted }" readonly placeholder="주소 검색 버튼을 클릭하세요">
+            <button class="btn btn-outline-secondary" type="button" @click="openPostcodeSearch">주소 검색</button>
+          </div>
           <div class="invalid-feedback">주소는 필수입니다.</div>
         </div>
+        <div class="mb-3">
+          <label for="newStoreEmail" class="form-label">이메일 <span v-if="!isEditing" class="text-danger">*</span></label>
+          <input type="email" class="form-control" id="newStoreEmail" v-model="newStore.email" :class="{ 'is-invalid': !newStore.email && formSubmitted && !isEditing, 'bg-light': isEditing }" :readonly="isEditing">
+        </div>
         <div v-if="!isEditing">
-          <div class="mb-3">
-            <label for="newStoreEmail" class="form-label">이메일 <span class="text-danger">*</span></label>
-            <input type="email" class="form-control" id="newStoreEmail" v-model="newStore.email" :class="{ 'is-invalid': !newStore.email && formSubmitted }">
-          </div>
           <div class="mb-3">
             <label for="newStorePassword" class="form-label">비밀번호 <span class="text-danger">*</span></label>
             <input type="password" class="form-control" id="newStorePassword" v-model="newStore.password" :class="{ 'is-invalid': !newStore.password && formSubmitted }">
