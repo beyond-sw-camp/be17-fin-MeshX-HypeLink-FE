@@ -6,7 +6,7 @@ import userRoutes from './routes/userRoutes.js'
 import storeRoutes from './routes/storeRoutes.js'
 import inventoryRoutes from './routes/inventoryRoutes.js'
 import salesRoutes from './routes/salesRoutes.js'
-import posSupportRoutes from './routes/posSupportRoutes.js'
+
 import promotionRoutes from './routes/promotionRoutes.js'
 import productRoutes from './routes/productRoutes.js'
 import warehouseInventoryRoutes from './routes/warehouseInventoryRoutes.js'
@@ -18,6 +18,7 @@ import posHealthRoutes from './routes/posHealthRoutes.js'
 import driverRoutes from './routes/driverRoutes.js'
 import communicationRoutes from './routes/communicationRoutes.js'
 import couponRoutes from './routes/couponRoutes.js'
+import asRoutes from './routes/asRoutes.js'
 import LoginView from '@/views/LoginView.vue';
 
 // 스프레드 연산자(...)를 사용하여 모든 라우트를 하나의 배열로 합칩니다.
@@ -33,7 +34,7 @@ const routes = [
   ...storeRoutes,
   ...inventoryRoutes,
   ...salesRoutes,
-  ...posSupportRoutes,
+  
   ...promotionRoutes,
   ...productRoutes,
   ...warehouseInventoryRoutes,
@@ -43,7 +44,8 @@ const routes = [
   ...posHealthRoutes,
   ...driverRoutes,
   ...communicationRoutes,
-  ...couponRoutes
+  ...couponRoutes,
+  ...asRoutes
 ]
 
 const router = createRouter({

@@ -40,26 +40,30 @@ const getRegionBadgeClass = (region) => {
 };
 
 // --- Mock Data for unassigned parcels (remains as is for now) ---
-const unassignedParcels = ref([
-  { id: 1, trackingNumber: 'TN20241022001', content: 'Hype-Tee 외 2건', quantity: 15, from: '서울 본사', to: '강남점' },
-  { id: 2, trackingNumber: 'TN20241022002', content: 'Mesh-Cap 외 1건', quantity: 8, from: '부산 물류센터', to: '부산점' },
-  { id: 3, trackingNumber: 'TN20241022003', content: 'Link-Pants', quantity: 20, from: '서울 본사', to: '홍대점' },
-  { id: 4, trackingNumber: 'TN20241022004', content: 'Hyper-Jacket', quantity: 5, from: '대전 물류센터', to: '강남점' },
-]);
+
 
 // --- Fetch Real Driver Data ---
-onMounted(() => {
-  driverStore.fetchDrivers();
+onMounted(async () => {
+  await driverStore.fetchDrivers();
+  await driverStore.fetchUnassignedParcelsAction();
+  await driverStore.fetchAssignedParcelsAction();
 });
 
 // --- Drag and Drop Logic ---
-const handleParcelDrop = (driver, event) => {
+const handleParcelDrop = async (driver, event) => {
   const droppedParcel = event.added.element;
   
-  console.log(`'${droppedParcel.trackingNumber}' 소포가 '${driver.name}'에게 배정되었습니다.`);
-  toastStore.showToast(`'${droppedParcel.content}' 배송 건이 ${driver.name}에게 할당되었습니다.`, 'success');
-
-  // 여기에 실제 백엔드 API (POST /shipment/connecting)를 호출하는 로직이 들어갑니다.
+  try {
+    const result = await driverStore.assignShipmentToDriver(droppedParcel.shipmentId, driver.id);
+    if (result.success) {
+      toastStore.showToast(`'${droppedParcel.content}' 배송 건이 ${driver.name}에게 할당되었습니다.`, 'success');
+    } else {
+      toastStore.showToast(result.message || '택배 배정에 실패했습니다.', 'danger');
+    }
+  } catch (error) {
+    console.error('Error assigning shipment:', error);
+    toastStore.showToast('택배 배정 중 오류가 발생했습니다.', 'danger');
+  }
 };
 
 const openAddDriverModal = () => {
@@ -105,16 +109,16 @@ const handleDeleteDriver = async (driver) => {
   <div>
     <div class="alert alert-primary" role="alert">
       <h4 class="alert-heading">드래그 앤 드롭 배차 관리</h4>
-      <p>왼쪽의 '미배정 소포 목록'에서 소포(송장)를 드래그하여 오른쪽의 담당 기사 카드 위로 옮겨 배송을 배정할 수 있습니다.</p>
+      <p>왼쪽의 '미배정 택배 목록'에서 택배(송장)를 드래그하여 오른쪽의 담당 기사 카드 위로 옮겨 배송을 배정할 수 있습니다.</p>
     </div>
 
     <div class="row">
       <!-- Unassigned Parcels List -->
       <div class="col-md-5">
         <BaseCard>
-          <template #header><h5>미배정 소포 목록</h5></template>
+          <template #header><h5>미배정 택배 목록</h5></template>
           <draggable 
-            :list="unassignedParcels"
+            :list="driverStore.unassignedParcels"
             group="parcels"
             item-key="id"
             class="parcel-list"
@@ -127,8 +131,8 @@ const handleDeleteDriver = async (driver) => {
               </div>
             </template>
           </draggable>
-          <div v-if="unassignedParcels.length === 0" class="text-center text-muted p-5">
-            배정할 소포가 없습니다.
+          <div v-if="driverStore.unassignedParcels.length === 0" class="text-center text-muted p-5">
+            배정할 택배가 없습니다.
           </div>
         </BaseCard>
       </div>
@@ -166,7 +170,7 @@ const handleDeleteDriver = async (driver) => {
                 >
                   <template #header>
                     <p v-if="driver.assignedParcels.length === 0" class="text-center text-muted small mb-0 p-4">
-                      이곳으로 소포를 드래그하세요
+                      이곳으로 택배를 드래그하세요
                     </p>
                   </template>
                   <template #item="{element}">

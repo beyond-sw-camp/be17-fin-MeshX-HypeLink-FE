@@ -35,17 +35,37 @@ import axios from "axios"; // axios 직접 import
     const response = await axios.post('/api/auth/reissue', {}, {
       withCredentials: true
     });
-    // 백엔드 응답에서 accessToken을 직접적으로 사용합니다.
-    return { success: true, accessToken: response.data.accessToken };
+
+    // 백엔드 응답 구조가 { accessToken: "..." } 형태입니다.
+    const accessToken = response.data.accessToken;
+
+    if (!accessToken) {
+      throw new Error('재발급된 토큰이 응답에 포함되지 않았습니다.');
+    }
+    return { success: true, accessToken };
   } catch (error) {
-    console.error("Token reissue failed:", error);
-    return { success: false, message: error.response?.data?.message || '토큰 재발급 실패' };
+    console.error("[Token Reissue] 실패:", error.response?.data?.message || error.message);
+    return { success: false, message: error.response?.data?.message || '토큰 재발급에 실패했습니다.' };
   }
 };
 
-export const logoutUser = async () => {
+export const logoutUser = async (token) => {
   let data = {};
-  await api.post('/api/auth/logout')
+  // 로그아웃은 인터셉터를 우회하여 axios를 직접 사용
+  // (401 에러 시 토큰 재발급을 시도하지 않도록)
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  // 토큰이 있으면 Authorization 헤더 추가
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  await axios.post('/api/auth/logout', {}, {
+    withCredentials: true,
+    headers
+  })
     .then((response) => {
       data = response.data;
       data.success = true;
