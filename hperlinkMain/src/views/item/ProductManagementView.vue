@@ -10,7 +10,6 @@ import UpdateItemView from "@/views/item/UpdateItemView.vue";
 
 import itemApi from '@/api/item/index.js'
 import categoryApi from '@/api/item/category'
-import {uploadItemImage} from "@/api/image/index.js";
 
 const allProducts = ref([]);
 const categories = ref([]);
@@ -115,6 +114,19 @@ const detectChangedFields = () => {
   if (itemForm.unitPrice !== originalItem.unitPrice)
     changedFields.push({ key: 'unitPrice', api: itemApi.updateUnitPrice });
 
+  const imagesChanged =
+      // 개수 달라짐 (삭제/추가)
+      itemForm.images.length !== (originalItem.images?.length || 0)
+      ||
+      // 순서 달라짐
+      itemForm.images.some((img, i) => img.index !== originalItem.images?.[i]?.index)
+      //새 이미지가 추가됨 (id나 s3Key 없는 경우)
+      ||itemForm.images.some(img => !img.id && !img.s3Key);
+
+  if (imagesChanged) {
+    changedFields.push({ key: 'images', api: itemApi.updateImages });
+  }
+
   return changedFields;
 };
 
@@ -127,7 +139,7 @@ const applyFieldUpdates = async (changedFields) => {
     };
 
     const result = await field.api(payload);
-    if (!(result.status === 200 || result.status === 201)) {
+    if (!(result.status === 200)) {
       console.error(`${field.key} 업데이트 실패`, result);
     }
   }
@@ -144,7 +156,7 @@ const uploadNewItemDetails = async () => {
       details: newDetails,
     };
 
-    const result = await itemApi.updateImageDetails(payload);
+    const result = await itemApi.updateItemDetails(payload);
     if (!(result.status === 200 || result.status === 201)) {
       console.error('itemDetailList 추가 실패', result);
     } else {
@@ -185,6 +197,7 @@ const saveItem = async () => {
       content: itemForm.content,
       unitPrice: itemForm.unitPrice,
       company: itemForm.company,
+      itemImages: itemForm.images,
       itemDetailList: itemForm.itemDetailList
     };
 
@@ -213,6 +226,7 @@ const openProductModal = async (product = null) => {
     originalItem = { ...product };
     originalItem.itemDetailList = res.data.data.itemInfoResList;
     itemForm.itemDetailList = [...originalItem.itemDetailList]; // 폼에 반영
+    originalItem = JSON.parse(JSON.stringify(itemForm));
   } else {
     isEditing.value = false;
     Object.assign(itemForm, { id: null, code: '', name: '', category: '상의', price: 0, unitPrice: 0 });

@@ -174,7 +174,7 @@ export const updateImages = async (updateForm) => {
     return data
 }
 
-export const updateImageDetails = async (updateForm) => {
+export const updateItemDetails = async (updateForm) => {
     const requestUrl = `/api/item/detail/creates`
     let data = {}
     await api.post(requestUrl, updateForm)
@@ -190,5 +190,5 @@ export const updateImageDetails = async (updateForm) => {
 export default {
     saveNewItem, getItems, updateContent, updateStock, updateEnName, updateKoName, updateAmount,
     updateCompany, updateCategory, updateImages, updateUnitPrice, getItemDetails, getAllItemDetails,
-    updateImageDetails
+    updateItemDetails
 }
