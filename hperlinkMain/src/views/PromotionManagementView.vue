@@ -550,25 +550,37 @@ const updateSort = (key) => {
                 <!-- ✅ 매장 이벤트 선택 시 -->
         <div v-if="promoForm.target === 'STORE'" class="mb-3">
           <label class="form-label fw-bold">가맹점 선택</label>
-          <div class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
-            <select
-              v-model="promoForm.storeIds"
-              class="form-select"
-              multiple
-              style="min-height: 150px; width: 100%;"
-            >
-              <option
-                v-for="store in storeList"
+          <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+            <div v-if="storeList.length === 0" class="text-muted">
+              가맹점 목록을 불러오는 중...
+            </div>
+            <div v-else>
+              <div 
+                v-for="store in storeList" 
                 :key="store.id"
-                :value="store.id"
+                class="form-check mb-2"
               >
-                {{ store.title }} ({{ store.address }})
-              </option>
-            </select>
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  :id="`store-${store.id}`"
+                  :value="store.id"
+                  v-model="promoForm.storeIds"
+                >
+                <label 
+                  class="form-check-label" 
+                  :for="`store-${store.id}`"
+                  style="cursor: pointer;"
+                >
+                  {{ store.title }} <span class="text-muted small">({{ store.address }})</span>
+                </label>
+              </div>
+            </div>
           </div>
           <div v-if="formSubmitted && promoForm.storeIds.length === 0" class="text-danger mt-1">
             최소 1개 이상의 매장을 선택해야 합니다.
           </div>
+          <small class="text-muted">선택된 가맹점: {{ promoForm.storeIds.length }}개</small>
         </div>
 
         <!-- ✅ 카테고리 이벤트 선택 시 -->
