@@ -1,16 +1,42 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth';
 import BaseCard from '@/components/BaseCard.vue';
+import userApi from '@/api/users'
+import {onMounted, ref} from "vue";
+import {useToastStore} from "@/stores/toast.js";
+
+const allStores = ref([]);
+const toastStore = useToastStore();
+const selectStore = ref(null);
+
+const getStores = async () => {
+  let res =  await userApi.getStoresList();
+  if(res.success) {
+    allStores.value = res.data;
+    return;
+  }
+  toastStore.showToast('Store 정보를 못 받아왔습니다.', 'danger');
+}
+
 defineProps({ inventory: Array });
 const emit = defineEmits(['send-shipment']);
 const authStore = useAuthStore();
+
+onMounted(() => {
+  getStores();
+})
 </script>
 
 <template>
   <BaseCard>
     <template #header>
-      <h5 v-if="authStore.isAdmin" class="mb-0">전체 재고 현황</h5>
-      <h5 v-else class="mb-0">내 매장 재고 현황</h5>
+      <h5 class="mb-0">재고 현황</h5>
+      <select class="form-select form-select-sm me-2" v-model="selectStore">
+        <option value=0>본사 재고</option>
+        <option v-for="cat in allStores" :key="cat.storeName" :value="cat.storeId">
+          {{ cat.storeName }}
+        </option>
+      </select>
     </template>
     <table class="table table-hover">
       <thead>
