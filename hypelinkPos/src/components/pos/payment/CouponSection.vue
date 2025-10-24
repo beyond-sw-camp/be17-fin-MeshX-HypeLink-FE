@@ -26,7 +26,7 @@ const formatPrice = (price) => {
       <div class="coupon-info">
         <span class="coupon-icon">🎟️</span>
         <div class="coupon-details">
-          <div class="coupon-name">{{ selectedCoupon.name }}</div>
+          <div class="coupon-name">{{ selectedCoupon.couponName }}</div>
           <div class="coupon-discount">-{{ formatPrice(couponDiscount) }}</div>
         </div>
       </div>

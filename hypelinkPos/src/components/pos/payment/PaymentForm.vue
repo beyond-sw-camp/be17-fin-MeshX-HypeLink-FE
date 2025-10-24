@@ -3,9 +3,7 @@ import { ref, computed } from 'vue'
 import { useOrdersStore } from '@/stores/orders'
 import { useInventoryStore } from '@/stores/inventory'
 import { useMembershipStore } from '@/stores/membership'
-import { useCouponsStore } from '@/stores/coupons'
 import ReceiptPrint from '../ReceiptPrint.vue'
-import PointsSection from './PointsSection.vue'
 import CouponSection from './CouponSection.vue'
 import CouponListModal from '../modals/CouponListModal.vue'
 import DiscountSummary from './DiscountSummary.vue'
@@ -14,7 +12,6 @@ import PortOne from '@portone/browser-sdk/v2'
 import api from '@/api/payment.js'
 
 const props = defineProps({
-  total: Number,
   member: Object
 })
 
@@ -29,32 +26,43 @@ const randomId = () => {
 const ordersStore = useOrdersStore()
 const inventoryStore = useInventoryStore()
 const membershipStore = useMembershipStore()
-const couponsStore = useCouponsStore()
+
+// ordersStore에서 직접 총액 계산
+const orderTotal = computed(() => {
+  if (!ordersStore.currentOrder) return 0
+  return ordersStore.currentOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+})
 
 const isProcessing = ref(false)
 const showSuccess = ref(false)
 const showReceipt = ref(false)
 const completedOrder = ref(null)
-const pointsToUse = ref(0)
 const selectedCoupon = ref(null)
 const showCouponList = ref(false)
 
-const availablePoints = computed(() => {
-  return props.member ? props.member.points : 0
-})
-
 const availableCoupons = computed(() => {
   if (!props.member) return []
-  return couponsStore.getAvailableCoupons(props.member.id, props.total)
+  return membershipStore.getAvailableCoupons()
 })
 
 const couponDiscount = computed(() => {
   if (!selectedCoupon.value) return 0
-  return couponsStore.calculateDiscount(selectedCoupon.value, props.total)
+
+  // FIXED: 고정 금액 할인
+  if (selectedCoupon.value.couponType === 'FIXED') {
+    return Math.min(selectedCoupon.value.couponValue, orderTotal.value)
+  }
+
+  // PERCENTAGE: 퍼센트 할인
+  if (selectedCoupon.value.couponType === 'PERCENTAGE') {
+    return Math.floor(orderTotal.value * (selectedCoupon.value.couponValue / 100))
+  }
+
+  return 0
 })
 
 const finalAmount = computed(() => {
-  return Math.max(0, props.total - pointsToUse.value - couponDiscount.value)
+  return Math.max(0, orderTotal.value - couponDiscount.value)
 })
 
 const selectCoupon = (coupon) => {
@@ -67,11 +75,6 @@ const removeCoupon = () => {
 }
 
 const processPayment = async () => {
-  if (pointsToUse.value > availablePoints.value) {
-    alert('사용 가능한 포인트를 초과했습니다.')
-    return
-  }
-
   isProcessing.value = true
 
   try {
@@ -125,60 +128,62 @@ const processPortOnePayment = async (currentOrder) => {
     }
 
     // 2. 백엔드에 검증 요청할 주문 데이터 준비
+    console.log('🔍 currentOrder 확인:', currentOrder)
+
     const orderData = {
       storeId: 1, // TODO: 실제 매장 ID로 변경
       memberId: props.member?.id || null,
       memberName: props.member?.name || "비회원",
       memberPhone: props.member?.phone || "",
-      pointsUsed: pointsToUse.value,
       couponDiscount: couponDiscount.value,
-      items: currentOrder.map(item => ({
-        productId: item.productId,
-        productName: item.productName,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        discountPrice: item.discountPrice || 0,
-        subtotal: item.price * item.quantity
-      }))
+      items: currentOrder.map(item => {
+        console.log('🔍 item 확인:', {
+          productId: item.productId,
+          storeItemId: item.storeItemId,
+          productName: item.productName
+        })
+
+        // storeItemId가 없으면 에러 발생
+        if (!item.storeItemId) {
+          throw new Error(`상품 "${item.productName}"에 storeItemId가 없습니다. productId: ${item.productId}`)
+        }
+
+        return {
+          productId: item.storeItemId, // StoreItem ID (백엔드가 기대하는 ID)
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          subtotal: item.price * item.quantity
+        }
+      })
     }
+
+    console.log('📤 백엔드로 보내는 orderData:', orderData)
 
     // 3. 백엔드 API 호출 - 결제 검증 및 주문 생성
     const response = await api.validatePayment(portOnePayment.paymentId, orderData)
 
-    console.log('백엔드 검증 결과:', response)
+    console.log('✅ 백엔드 검증 결과:', response)
 
-    // 4. 백엔드 검증 성공
-    if (response && response.data) {
-      // Use coupon if applicable
-      if (selectedCoupon.value) {
-        couponsStore.useCoupon(selectedCoupon.value.id)
-      }
+    // 4. 백엔드 검증 성공 (BaseResponse 구조: { data: {...}, message: "..." })
+    if (response && response.data && response.data.id) {
+      console.log('✅ 결제 검증 성공!')
 
-      // Use points if applicable
-      if (pointsToUse.value > 0 && props.member) {
-        membershipStore.usePoints(props.member.id, pointsToUse.value)
-      }
+      // Update inventory (currentOrder 기준으로 재고 차감)
+      currentOrder.forEach(item => {
+        inventoryStore.removeStock(item.productId, item.quantity, '판매')
+      })
 
       // Update local store
       const order = {
         id: response.data.id,
-        orderNumber: response.data.orderNumber,
-        items: response.data.items,
+        orderNumber: response.data.merchantUid,
+        items: response.data.orderItems,
         totalAmount: response.data.totalAmount,
         finalAmount: response.data.finalAmount,
         paymentMethod: 'card',
         status: response.data.status,
-        createdAt: response.data.createdAt
-      }
-
-      // Update inventory
-      order.items.forEach(item => {
-        inventoryStore.removeStock(item.productId, item.quantity, '판매')
-      })
-
-      // Earn points for member
-      if (props.member) {
-        membershipStore.earnPoints(props.member.id, props.total)
+        createdAt: response.data.paidAt
       }
 
       // Clear current order
@@ -187,7 +192,8 @@ const processPortOnePayment = async (currentOrder) => {
       completedOrder.value = order
       showSuccess.value = true
     } else {
-      alert('결제 검증에 실패했습니다: ' + (response.message || '알 수 없는 오류'))
+      console.error('❌ 결제 검증 실패:', response)
+      alert('결제 검증에 실패했습니다: ' + (response?.message || '알 수 없는 오류'))
       isProcessing.value = false
     }
 
@@ -221,14 +227,8 @@ const closeReceipt = () => {
       <div class="modal-body">
         <div class="total-amount">
           <div class="label">결제 금액</div>
-          <div class="amount">{{ formatPrice(total) }}</div>
+          <div class="amount">{{ formatPrice(orderTotal) }}</div>
         </div>
-
-        <PointsSection
-          v-model="pointsToUse"
-          :member="member"
-          :total-amount="total"
-        />
 
         <CouponSection
           :member="member"
@@ -240,8 +240,7 @@ const closeReceipt = () => {
         />
 
         <DiscountSummary
-          :total-amount="total"
-          :points-used="pointsToUse"
+          :total-amount="orderTotal"
           :coupon-discount="couponDiscount"
           :final-amount="finalAmount"
         />

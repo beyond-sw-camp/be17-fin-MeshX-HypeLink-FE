@@ -11,8 +11,7 @@ const menuItems = [
   { name: '주문내역', path: '/orders', icon: '📋' },
   { name: '재고관리', path: '/inventory', icon: '📦' },
   { name: '리포트', path: '/reports', icon: '📊' },
-  { name: '공지사항', path: '/notices', icon: '📢' },
-  { name: 'A/S 요청', path: '/service', icon: '🔧' }
+  { name: '공지사항', path: '/notices', icon: '📢' }
 ]
 
 const isActive = (path) => {

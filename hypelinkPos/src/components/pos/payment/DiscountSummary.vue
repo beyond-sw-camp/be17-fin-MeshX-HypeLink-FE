@@ -1,7 +1,6 @@
 <script setup>
 const props = defineProps({
   totalAmount: Number,
-  pointsUsed: Number,
   couponDiscount: Number,
   finalAmount: Number
 })
@@ -12,7 +11,7 @@ const formatPrice = (price) => {
 </script>
 
 <template>
-  <div v-if="couponDiscount > 0 || pointsUsed > 0" class="total-discount-summary">
+  <div v-if="couponDiscount > 0" class="total-discount-summary">
     <div class="summary-row">
       <span>원래 금액</span>
       <span>{{ formatPrice(totalAmount) }}</span>
@@ -20,10 +19,6 @@ const formatPrice = (price) => {
     <div v-if="couponDiscount > 0" class="summary-row discount">
       <span>쿠폰 할인</span>
       <span>-{{ formatPrice(couponDiscount) }}</span>
-    </div>
-    <div v-if="pointsUsed > 0" class="summary-row discount">
-      <span>포인트 사용</span>
-      <span>-{{ formatPrice(pointsUsed) }}</span>
     </div>
     <div class="summary-row final">
       <span>최종 결제 금액</span>
