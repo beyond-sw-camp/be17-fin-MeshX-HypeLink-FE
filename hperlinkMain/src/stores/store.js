@@ -103,8 +103,8 @@ export const useMyStore = defineStore('my-store-view', () => {
 
     try {
       // storeId가 있으면 관리자용 API, 없으면 점주용 API 호출
-      const response = storeId 
-        ? await usersApi.getStoreById(storeId) 
+      const response = storeId
+        ? await usersApi.getStoreById(storeId)
         : await usersApi.getMyStore();
 
       if (response.success && response.data) { // response.data가 null이 아닌지 확인
@@ -120,10 +120,44 @@ export const useMyStore = defineStore('my-store-view', () => {
     }
   };
 
+  const addPosDevice = async (newPosData) => {
+    if (!storeDetails.value?.id) {
+      console.error("Store ID not available for POS registration.");
+      return false;
+    }
+
+    const response = await authApi.registerUser(newPosData);
+
+    if (response.success) {
+      await fetchMyStoreData(storeDetails.value.id); // Refresh data
+      return true;
+    } else {
+      console.error("POS registration failed:", response.message);
+      return false;
+    }
+  };
+
+  const deletePosDevice = async (posId) => {
+    try {
+      const response = await usersApi.deletePos(posId);
+      if (response.success) {
+        await fetchMyStoreData(storeDetails.value.id); // Refresh data
+        return true;
+      } else {
+        throw new Error(response.message || 'POS 기기 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error("Error deleting POS device:", error);
+      return false;
+    }
+  };
+
   return {
     storeDetails,
     posDevices,
     isLoading,
-    fetchMyStoreData
+    fetchMyStoreData,
+    addPosDevice,
+    deletePosDevice
   };
 });

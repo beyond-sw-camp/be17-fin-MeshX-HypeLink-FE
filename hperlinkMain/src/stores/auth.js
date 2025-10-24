@@ -17,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.role === 'ADMIN');
   const isManager = computed(() => user.value?.role === 'MANAGER');
   const isBranchManager = computed(() => user.value?.role === 'BRANCH_MANAGER');
+  const isStoreOwner = computed(() => user.value?.role === 'MANAGER' || user.value?.role === 'BRANCH_MANAGER');
 
   // Actions
 
@@ -25,7 +26,6 @@ export const useAuthStore = defineStore('auth', () => {
    * @param {string} newAccessToken - The new access token.
    */
   function setNewAccessToken(newAccessToken) {
-    console.log('[Token Refresh] New Access Token Issued.');
     accessToken.value = newAccessToken;
     setAuthHeader(newAccessToken);
   }
@@ -63,8 +63,10 @@ export const useAuthStore = defineStore('auth', () => {
    * Logs out the user by calling the API, clearing local state, and redirecting to home.
    */
   async function logout() {
+    const currentToken = accessToken.value; // 로그아웃 전에 현재 토큰 저장
+
     try {
-      const response = await authApi.logoutUser();
+      const response = await authApi.logoutUser(currentToken);
       if (!response.success) {
         // Log an error if the API call fails, but still proceed with local logout
         console.error("Logout API call failed:", response.message);
@@ -76,9 +78,9 @@ export const useAuthStore = defineStore('auth', () => {
       accessToken.value = null;
       user.value = null;
       clearAuthHeader();
-      
+
       toastStore.showToast('로그아웃 되었습니다.', 'info');
-      
+
       // Redirect to the login page
       await router.push('/');
     }
@@ -91,6 +93,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin, 
     isManager, 
     isBranchManager, 
+    isStoreOwner,
     login, 
     logout, 
     setNewAccessToken 
