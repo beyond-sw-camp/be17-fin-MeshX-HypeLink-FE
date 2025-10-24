@@ -11,7 +11,6 @@ const emit = defineEmits([
   'holdCurrentOrder',
   'showHeldOrders',
   'cancelOrder',
-  'openDiscount',
   'openPayment'
 ])
 
@@ -97,14 +96,6 @@ const formatPrice = (price) => {
         <span class="total-amount">{{ formatPrice(orderTotal) }}</span>
       </div>
     </div>
-
-    <button
-      class="discount-btn"
-      :disabled="ordersStore.currentOrder.length === 0"
-      @click="emit('openDiscount')"
-    >
-      할인
-    </button>
 
     <button
       class="payment-btn"
@@ -339,29 +330,6 @@ const formatPrice = (price) => {
 .total-amount {
   color: var(--primary-color);
   font-size: 32px;
-}
-
-.discount-btn {
-  margin: 0 28px 12px;
-  padding: 16px;
-  background: var(--warning-color);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.discount-btn:hover:not(:disabled) {
-  background: #FF9900;
-}
-
-.discount-btn:disabled {
-  background: var(--border-color);
-  color: var(--text-secondary);
-  cursor: not-allowed;
 }
 
 .payment-btn {

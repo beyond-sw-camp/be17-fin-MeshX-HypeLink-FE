@@ -10,7 +10,8 @@ export function useOrder() {
   // Actions
   const addProduct = (product) => {
     ordersStore.addToOrder({
-      productId: product.id,
+      productId: product.id, // StoreItemDetail ID (프론트엔드 구분용)
+      storeItemId: product.storeItemId, // StoreItem ID (백엔드 결제용)
       productName: product.name,
       quantity: 1,
       price: product.price,

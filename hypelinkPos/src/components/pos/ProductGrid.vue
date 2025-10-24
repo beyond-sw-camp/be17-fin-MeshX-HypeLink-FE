@@ -43,7 +43,7 @@ const productSlots = computed(() => {
           slots[i] = product
         } else {
           const query = props.searchQuery.toLowerCase()
-          if (product.name.toLowerCase().includes(query) || product.barcode?.includes(query)) {
+          if (product.name.toLowerCase().includes(query)) {
             slots[i] = product
           }
         }
@@ -78,7 +78,7 @@ const formatPrice = (price) => {
         <input
           :value="searchQuery"
           type="text"
-          placeholder="상품명 또는 바코드로 검색"
+          placeholder="상품명으로 검색"
           class="search-input"
           @input="emit('update:searchQuery', $event.target.value)"
         />
