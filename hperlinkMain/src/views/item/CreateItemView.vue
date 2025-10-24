@@ -6,13 +6,14 @@ import {useToastStore} from "@/stores/toast.js";
 import colorApi from '@/api/item/color'
 import categoryApi from '@/api/item/category'
 import sizeApi from '@/api/item/size'
+import {uploadItemImage} from "@/api/image/index.js";
 
 const toastStore = useToastStore();
 
 const props = defineProps(['itemForm', 'isModalOpen']);
 const emit = defineEmits(['submit']);
 const itemForm = props.itemForm;
-
+const uploadedFiles = new Set();
 const imagePreviews = ref([]);
 const fileLabel = ref('파일 선택');
 
@@ -20,22 +21,46 @@ const sizes = ref([]);
 const categories = ref([]);
 const colors = ref([]);
 
-// ✅ 파일 선택
-const handleFileSelect = (event) => {
+// 파일 선택
+const handleFileSelect = async (event) => {
   const files = Array.from(event.target.files);
-  const newFiles = files.map(file => ({
-    file,
-    name: file.name,
-    url: URL.createObjectURL(file)
-  }));
 
-  imagePreviews.value.push(...newFiles);
-  itemForm.images.push(...files);
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const fileKey = `${file.name}-${file.size}`;
+
+    // 이미 업로드된 파일이면 스킵
+    if (uploadedFiles.has(fileKey)) {
+      console.log(`[SKIP] 이미 업로드된 파일: ${file.name}`);
+      continue;
+    }
+
+    try {
+      // 업로드 진행
+      const uploaded = await uploadItemImage(file);
+
+      // 업로드 성공 시 등록
+      const preview = {
+        file,
+        name: file.name,
+        url: URL.createObjectURL(file),
+        index: imagePreviews.value.length,
+      };
+
+      imagePreviews.value.push(preview);
+      itemForm.images.push({
+        ...uploaded, // s3Key, originalFilename, fileSize, contentType 등
+        index: preview.index,
+      });
+
+      // 업로드된 파일로 등록
+      uploadedFiles.add(fileKey);
+    } catch (err) {
+      toastStore.showToast("[FAIL]" + file.name + "업로드 실패", "danger");
+    }
+  }
 
   updateFileLabel();
-
-  // ✅ 파일 input 초기화 (같은 파일 다시 선택 시에도 인식되게)
-  e.target.value = '';
 };
 
 const getColors = async () => {
@@ -62,7 +87,7 @@ const getSizes = async () => {
   sizes.value = res.data.data.sizes;
 }
 
-// ✅ 파일명 + 개수 업데이트
+// 파일명 + 개수 업데이트
 const updateFileLabel = () => {
   const count = imagePreviews.value.length;
   if (count === 0) {
@@ -74,19 +99,41 @@ const updateFileLabel = () => {
   }
 };
 
-// ✅ 삭제
+// 삭제
 const removeImage = (index) => {
   imagePreviews.value.splice(index, 1);
   itemForm.images.splice(index, 1);
+
+  // 이후 남은 이미지들의 index 재정렬
+  imagePreviews.value = imagePreviews.value.map((img, i) => ({
+    ...img,
+    index: i
+  }));
+
+  itemForm.images = itemForm.images.map((img, i) => ({
+    ...img,
+    index: i
+  }));
+
   updateFileLabel();
 };
 
-// ✅ 순서 변경
+// 순서 변경
 const updateOrder = () => {
-  itemForm.images = imagePreviews.value.map(img => img.file);
+  // imagePreviews의 index도 새 순서로 갱신
+  imagePreviews.value = imagePreviews.value.map((img, idx) => ({
+    ...img,
+    index: idx
+  }));
+
+  // itemForm.images도 동일하게 맞춤
+  itemForm.images = imagePreviews.value.map((img, idx) => ({
+    ...itemForm.images.find(i => i.originalFilename === img.name), // s3Key 등 기존 정보 유지
+    index: idx
+  }));
 };
 
-// ✅ 기본 폼 초기화 함수
+// 기본 폼 초기화 함수
 const resetForm = () => {
   // 이미지 객체 URL 해제 (메모리 누수 방지)
   imagePreviews.value.forEach(img => URL.revokeObjectURL(img.url));
@@ -131,7 +178,7 @@ const isLightColor = (hex) => {
   return brightness > 180;
 }
 
-// ✅ 모달 닫힐 때 전체 리셋
+// 모달 닫힐 때 전체 리셋
 watch(
     () => props.isModalOpen,
     (newVal) => {
