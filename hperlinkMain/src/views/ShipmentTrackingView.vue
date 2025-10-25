@@ -3,10 +3,13 @@ import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useShipmentTable } from '@/js/useShipmentTable';
 import { useShipmentMap } from '@/js/useShipmentMap';
 import { useShipmentSocket } from '@/js/useShipmentSocket';
+import { useAuthStore } from '@/stores/auth';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 import BaseEmptyState from '@/components/BaseEmptyState.vue';
 import {useShipmentStore} from "@/stores/shipments.js";
+
+const authStore = useAuthStore();
 
 // 로딩 상태
 const isLoading = ref(true);
@@ -37,8 +40,10 @@ onMounted(() => { // async 추가
     // 지도 초기화
     initMap(); // await 추가
 
-    // 웹소켓 연결
-    connectWebSocket();
+    // 웹소켓 연결 (토큰 전달)
+    if (authStore.accessToken) {
+      connectWebSocket(authStore.accessToken);
+    }
 
     // 기본 대시보드 구독
     // updateMapMarkers는 내부에서 shipmentStore와 연계됨
