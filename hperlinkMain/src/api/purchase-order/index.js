@@ -13,11 +13,12 @@ export const saveNewPurchaseOrder = async (itemForm) => {
     return data
 }
 
-export const getHeadPurchaseOrder = async (page = 0, size = 10, sort = 'id,desc') => {
+export const getHeadPurchaseOrder = async (page = 0, size = 10, sort = 'id,desc',
+                                           keyWord='', category) => {
     const requestUrl = `/api/order/read/page/all`
     let data = {}
     await api.get(requestUrl,{
-        params: { page, size, sort },
+        params: { page, size, sort, keyWord, category },
     })
         .then((response) => {
             data = response

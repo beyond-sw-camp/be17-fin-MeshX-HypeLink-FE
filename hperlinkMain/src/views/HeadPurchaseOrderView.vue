@@ -47,7 +47,8 @@ const loadItems = async (page = 1) => {
   try {
     isLoading.value = true;
 
-    const response = await purchaseOrderApi.getHeadPurchaseOrder(page - 1, itemsPerPage.value, `${sortKey.value},${sortOrder.value}`);
+    const response = await purchaseOrderApi.getHeadPurchaseOrder(page - 1, itemsPerPage.value,
+        `${sortKey.value},${sortOrder.value}`, searchTerm.value, filterCategory.value);
     if (response.status === 200 && response.data) {
       const pageData = response.data.data;
       allProducts.value = pageData.content;
@@ -119,6 +120,11 @@ const handleSubmitHeadOfficeOrder = async () => {
   await loadItems(1);
 };
 
+const onSearch = async () => {
+  await loadItems(1);
+  searchTerm.value = '';
+}
+
 const isLightColor = (hex) => {
   if (!hex) return false;
 
@@ -165,6 +171,8 @@ const isLightColor = (hex) => {
                 </option>
               </select>
             </div>
+            <!-- 검색 버튼 -->
+            <button class="btn btn-primary btn-sm" @click="onSearch">검색</button>
           </div>
         </div>
       </template>
@@ -182,7 +190,6 @@ const isLightColor = (hex) => {
               <th>현재고</th>
               <th>발주 재고</th>
               <th>발주</th>
-
             </tr>
           </thead>
           <tbody>
