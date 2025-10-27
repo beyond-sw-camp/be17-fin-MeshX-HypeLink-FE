@@ -1,30 +1,29 @@
 <script setup>
 import BaseCard from '@/components/BaseCard.vue';
-import {onMounted, reactive, ref} from "vue";
+import BaseModal from "@/components/BaseModal.vue";
+import {computed, onMounted, reactive, ref} from "vue";
 import {useToastStore} from "@/stores/toast.js";
+import {useAuthStore} from "@/stores/auth.js";
+
+import userApi from '@/api/users'
+import storeItemApi from '@/api/item/store'
+import purchaseOrderApi from "@/api/purchase-order/index.js";
+import categoryApi from "@/api/item/category/index.js";
 
 defineProps({ inventory: Array });
 const emit = defineEmits(['send-shipment']);
-
-import userApi from '@/api/users'
-import itemApi from '@/api/item'
-import storeItemApi from '@/api/item/store'
-import purchaseOrderApi from "@/api/purchase-order/index.js";
-import BaseModal from "@/components/BaseModal.vue";
-import {useAuthStore} from "@/stores/auth.js";
-import categoryApi from "@/api/item/category/index.js";
-
 const auth = useAuthStore();
+const toastStore = useToastStore();
 
 // 서버에서 받은 데이터 처리
 const allStores = ref([]);
-const toastStore = useToastStore();
 const selectStore = ref(0);
 const currentStore = ref(0);
 const categories = ref([]);
 const allItems = ref([]);
 const currentItem = ref(null);
 const orderDetails = ref([]);
+const loginStore = ref(0);
 
 // paging 처리하는데 필요한 변수
 const totalPages = ref(0);
@@ -32,13 +31,16 @@ const currentPage = ref(0);
 const itemsPerPage = ref(5);
 const sortKey = ref('id');
 const sortOrder = ref('asc');
+const isLoading = ref(null);
 
 // 데이터 폼
 const searchKeyword = ref('');
 const filterCategory = ref('all');
 const orderForm = reactive({
-  itemDetailId: '',
+  itemDetailCode: '',
   description: '',
+  supplierStoreId: 0,
+  requestStoreId: 0,
   quantity: 1,
 });
 
@@ -50,6 +52,15 @@ const getStores = async () => {
   let res =  await userApi.getStoresList();
   if(res.success) {
     allStores.value = res.data;
+    const matchedStore = allStores.value.find(
+        (one) => one.storeName === auth.user.name
+    );
+
+    // 일치하는 스토어가 있으면 loginStore에 id 저장
+    if (matchedStore) {
+      loginStore.value = matchedStore.storeId;
+    }
+
     return;
   }
   toastStore.showToast('Store 정보를 못 받아왔습니다.', 'danger');
@@ -101,14 +112,18 @@ const getOrderDetails = async () => {
 
 const handleSubmitHeadOfficeOrder = async () => {
   formSubmitted.value = true;
-  orderForm.itemDetailId = currentItem.value.id;
-  if (!orderForm.itemDetailId) {
+  orderForm.itemDetailCode = currentItem.value.itemDetailCode;
+  orderForm.requestStoreId = currentStore.value;
+  if (!orderForm.itemDetailCode) {
     toastStore.showToast('모든 발주 정보를 올바르게 입력해주세요.', 'danger');
     return;
   }
-  await purchaseOrderApi.saveNewPurchaseOrder(orderForm);
-
-  alert('발주가 성공적으로 생성되었습니다.');
+  let res = await purchaseOrderApi.savePurchaseOrder(orderForm);
+  if(res.status !== 200) {
+    toastStore.showToast(res.message, 'danger');
+  } else {
+    toastStore.showToast('발주가 성공적으로 생성되었습니다.', 'success');
+  }
 
   isOrderModalOpen.value = false;
   Object.assign(orderForm, { itemDetailId: '', quantity: 1});
@@ -122,6 +137,10 @@ const getCategories = async () => {
   }
   categories.value = res.data.data.categories;
 }
+
+const filteredStores = computed(() =>
+    allStores.value.filter(cat => cat.storeId !== currentStore.value)
+)
 
 const isLightColor = (hex) => {
   if (!hex) return false;
@@ -216,7 +235,8 @@ onMounted(() => {
           <th>색상</th>
           <th>현재고</th>
           <th>발주 재고</th>
-          <th v-if="allStores[selectStore]?.storeName === auth.user.name">발주</th>
+          <th v-if="(auth.user.role !== 'BRANCH_MANAGER' ||
+          allStores[currentStore - 1]?.storeName === auth.user.name) && currentStore !== 0">발주</th>
         </tr>
       </thead>
       <tbody>
@@ -241,7 +261,8 @@ onMounted(() => {
           </td>
           <td>{{ item.stock }} 개</td>
           <td>{{ item.totalQuantity }} 개</td>
-          <td v-if="allStores[selectStore]?.storeName === auth.user.name">
+          <td v-if="(auth.user.role !== 'BRANCH_MANAGER' ||
+          allStores[currentStore - 1]?.storeName === auth.user.name) && currentStore !== 0">
             <button class="btn btn-outline-primary btn-sm" @click="orderItem(item)">발주</button>
           </td>
         </tr>
@@ -270,7 +291,28 @@ onMounted(() => {
       </div>
 
       <div class="mb-3">
-        <label class="form-label">발주 상세 내역</label>
+        <label class="form-label">발주 요청 위치 <span class="text-danger">*</span></label>
+        <select class="form-select" v-model="orderForm.supplierStoreId">
+          <option :value="0">본사 재고</option>
+          <option
+              v-for="cat in filteredStores"
+              :key="cat.storeName"
+              :value="cat.storeId">
+            {{ cat.storeName }}
+          </option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">발주 수령 위치<span class="text-danger">*</span></label>
+        <br>
+        <div class="p-2 border rounded bg-light fw-bold text-dark">
+          {{ allStores[currentStore - 1]?.storeName }}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">발주 상세 내역<span class="text-danger">*</span></label>
         <select class="form-select" v-model="orderForm.description">
           <option disabled value="">카테고리를 선택하세요</option>
           <option v-for="cat in orderDetails" :key="cat.description" :value="cat.description">

@@ -111,7 +111,7 @@ const handleSubmitHeadOfficeOrder = async () => {
     toastStore.showToast('모든 발주 정보를 올바르게 입력해주세요.', 'danger');
     return;
   }
-  await purchaseOrderApi.saveNewPurchaseOrder(orderForm);
+  await purchaseOrderApi.saveHeadPurchaseOrder(orderForm);
 
   alert('발주가 성공적으로 생성되었습니다.');
 

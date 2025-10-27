@@ -1,7 +1,20 @@
 import api from "@/plugins/axiosinterceptor";
 
-export const saveNewPurchaseOrder = async (itemForm) => {
+export const saveHeadPurchaseOrder = async (itemForm) => {
     const requestUrl = `/api/order/head/create`
+    let data = {}
+    await api.post(requestUrl, itemForm)
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
+export const savePurchaseOrder = async (itemForm) => {
+    const requestUrl = `/api/order/create`
     let data = {}
     await api.post(requestUrl, itemForm)
         .then((response) => {
@@ -84,6 +97,6 @@ export const updatePurchaseOrder = async (updateFrom) => {
 }
 
 export default {
-    saveNewPurchaseOrder, getHeadPurchaseOrder, getPurchaseOrder, updatePurchaseOrder, getPurchaseOrderDetails,
-    getPurchaseOrderStates
+    saveHeadPurchaseOrder, getHeadPurchaseOrder, getPurchaseOrder, updatePurchaseOrder, getPurchaseOrderDetails,
+    getPurchaseOrderStates, savePurchaseOrder
 }
