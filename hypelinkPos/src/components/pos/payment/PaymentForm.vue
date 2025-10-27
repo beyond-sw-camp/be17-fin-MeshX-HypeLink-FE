@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useOrdersStore } from '@/stores/orders'
 import { useInventoryStore } from '@/stores/inventory'
 import { useMembershipStore } from '@/stores/membership'
-import ReceiptPrint from '../ReceiptPrint.vue'
+import { useAuthStore } from '@/stores/auth'
 import CouponSection from './CouponSection.vue'
 import CouponListModal from '../modals/CouponListModal.vue'
 import DiscountSummary from './DiscountSummary.vue'
@@ -26,6 +26,7 @@ const randomId = () => {
 const ordersStore = useOrdersStore()
 const inventoryStore = useInventoryStore()
 const membershipStore = useMembershipStore()
+const authStore = useAuthStore()
 
 // ordersStore에서 직접 총액 계산
 const orderTotal = computed(() => {
@@ -35,8 +36,6 @@ const orderTotal = computed(() => {
 
 const isProcessing = ref(false)
 const showSuccess = ref(false)
-const showReceipt = ref(false)
-const completedOrder = ref(null)
 const selectedCoupon = ref(null)
 const showCouponList = ref(false)
 
@@ -130,8 +129,15 @@ const processPortOnePayment = async (currentOrder) => {
     // 2. 백엔드에 검증 요청할 주문 데이터 준비
     console.log('🔍 currentOrder 확인:', currentOrder)
 
+    // storeId를 authStore에서 가져오기
+    if (!authStore.storeInfo || !authStore.storeInfo.id) {
+      alert('매장 정보를 불러올 수 없습니다.')
+      isProcessing.value = false
+      return
+    }
+
     const orderData = {
-      storeId: 1, // TODO: 실제 매장 ID로 변경
+      storeId: authStore.storeInfo.id,
       memberId: props.member?.id || null,
       memberName: props.member?.name || "비회원",
       memberPhone: props.member?.phone || "",
@@ -143,13 +149,13 @@ const processPortOnePayment = async (currentOrder) => {
           productName: item.productName
         })
 
-        // storeItemId가 없으면 에러 발생
-        if (!item.storeItemId) {
-          throw new Error(`상품 "${item.productName}"에 storeItemId가 없습니다. productId: ${item.productId}`)
+        // productId가 없으면 에러 발생
+        if (!item.productId) {
+          throw new Error(`상품 "${item.productName}"에 productId가 없습니다.`)
         }
 
         return {
-          productId: item.storeItemId, // StoreItem ID (백엔드가 기대하는 ID)
+          storeItemDetailId: item.productId, // StoreItemDetail ID (색상/사이즈 포함)
           productName: item.productName,
           quantity: item.quantity,
           unitPrice: item.price,
@@ -158,6 +164,8 @@ const processPortOnePayment = async (currentOrder) => {
       })
     }
 
+    console.log('📤 백엔드로 보내는 storeId:', authStore.storeInfo.id)
+
     console.log('📤 백엔드로 보내는 orderData:', orderData)
 
     // 3. 백엔드 API 호출 - 결제 검증 및 주문 생성
@@ -165,31 +173,15 @@ const processPortOnePayment = async (currentOrder) => {
 
     console.log('✅ 백엔드 검증 결과:', response)
 
-    // 4. 백엔드 검증 성공 (BaseResponse 구조: { data: {...}, message: "..." })
-    if (response && response.data && response.data.id) {
+    // 4. 백엔드 검증 성공
+    if (response) {
       console.log('✅ 결제 검증 성공!')
 
-      // Update inventory (currentOrder 기준으로 재고 차감)
-      currentOrder.forEach(item => {
-        inventoryStore.removeStock(item.productId, item.quantity, '판매')
-      })
-
-      // Update local store
-      const order = {
-        id: response.data.id,
-        orderNumber: response.data.merchantUid,
-        items: response.data.orderItems,
-        totalAmount: response.data.totalAmount,
-        finalAmount: response.data.finalAmount,
-        paymentMethod: 'card',
-        status: response.data.status,
-        createdAt: response.data.paidAt
-      }
+      // 재고 차감은 백엔드에서 처리됨
 
       // Clear current order
       ordersStore.clearOrder()
 
-      completedOrder.value = order
       showSuccess.value = true
     } else {
       console.error('❌ 결제 검증 실패:', response)
@@ -204,15 +196,6 @@ const processPortOnePayment = async (currentOrder) => {
 
 const formatPrice = (price) => {
   return price.toLocaleString('ko-KR') + '원'
-}
-
-const openReceipt = () => {
-  showReceipt.value = true
-}
-
-const closeReceipt = () => {
-  showReceipt.value = false
-  emit('close')
 }
 </script>
 
@@ -260,15 +243,7 @@ const closeReceipt = () => {
 
     <PaymentSuccessMessage
       v-else
-      @print-receipt="openReceipt"
       @close="emit('close')"
-    />
-
-    <ReceiptPrint
-      v-if="showReceipt && completedOrder"
-      :order="completedOrder"
-      :store-name="'테스트 매장'"
-      @close="closeReceipt"
     />
 
     <CouponListModal
