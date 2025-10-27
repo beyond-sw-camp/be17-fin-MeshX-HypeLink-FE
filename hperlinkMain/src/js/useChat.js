@@ -204,7 +204,7 @@ export function useChat() {
             // WebSocket이 연결되지 않았으면 HTTP API로 폴백
             try {
                 const response = await sendMessageHttp(receiverId, content);
-                if (response.success && response.data) {
+                if (response.data) {
                     // HTTP로 보낸 메시지를 즉시 화면에 표시
                     const transformedMessage = {
                         from: response.data.senderEmail,

@@ -83,6 +83,10 @@ const canAccess = (routeName) => {
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-truck" viewBox="0 0 16 16"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.563l1.481 1.85a1.5 1.5 0 0 1 .329.938V10.5a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H5a2 2 0 1 1-4 0H1.5a.5.5 0 0 1 0-1H1v-1h.5a.5.5 0 0 1 0-1H1V6h.5a.5.5 0 0 1 0-1H1V3.5zm3 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM11 5V3.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5V5h10zM4.5 11h6.02a.5.5 0 0 1 0 1H4.5a.5.5 0 0 1 0-1zM12 8.02V6h-1v2.02a1.5 1.5 0 0 1 .17.98l.39 1.95a.5.5 0 0 1-.98.19l-.39-1.95a.5.5 0 0 1 .19-.49l.39-.39.39.39a.5.5 0 0 1 .19.49l-.39 1.95a.5.5 0 0 1-.98-.19l.39-1.95a1.5 1.5 0 0 1 .17-.98z"/></svg>
           <span>전체 배송 추적</span>
         </router-link>
+        <router-link v-if="canAccess('analytics')" to="/analytics" class="nav-link">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-bar-chart-line-fill" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1V2z"/></svg>
+          <span>통합 분석 대시보드</span>
+        </router-link>
         <router-link v-if="canAccess('customer-analytics')" to="/customer-analytics" class="nav-link">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-pie-chart-fill" viewBox="0 0 16 16"><path d="M15.985 8.5H8.207l.055 1.992A8.01 8.01 0 0 0 16 8.5.5.5 0 0 0 15.985 8.5zM4.241 15.032a8.017 8.017 0 0 0 9.792-9.792l-9.792 9.792zM8.5.505a8.017 8.017 0 0 0-4.756 13.553l9.246-9.246A8.01 8.01 0 0 0 8.5.505z"/></svg>
           <span>고객 분석</span>
