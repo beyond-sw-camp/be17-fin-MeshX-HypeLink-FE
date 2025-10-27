@@ -6,15 +6,14 @@ import BaseSpinner from '@/components/BaseSpinner.vue';
 import { useToastStore } from '@/stores/toast';
 import { useModalStore } from '@/stores/modal';
 import { useStoreStore } from '@/stores/stores';
-import authApi from '@/api/auth'; 
+import authApi from '@/api/auth';
 import usersApi from '@/api/users'; // usersApi import 추가
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import { nanumGothic } from '@/utils/NanumGothic-normal.js';
+import { usePdfDownload } from '@/js/usePdfDownload';
 
 const toastStore = useToastStore();
 const modalStore = useModalStore();
 const storeStore = useStoreStore();
+const { downloadPDF } = usePdfDownload();
 
 const isLoading = ref(true);
 
@@ -235,38 +234,15 @@ const deleteStore = async (id) => {
 };
 
 const downloadPdf = () => {
-  const doc = new jsPDF();
-  doc.addFileToVFS('NanumGothic.ttf', nanumGothic);
-  doc.addFont('NanumGothic.ttf', 'NanumGothic', 'normal');
-  doc.setFont('NanumGothic');
-  doc.text("전체 매장 목록", 14, 16);
-  const tableColumn = ["ID", "매장명", "주소", "점주 이름", "연락처", "상태"];
-  const tableRows = [];
-  storeStore.allStores.forEach(store => {
-    const storeData = [
-      store.id,
-      store.name,
-      store.member.address,
-      store.member_name,
-      store.phone,
-      store.status
-    ];
-    tableRows.push(storeData);
-  });
-  doc.autoTable({
-    head: [tableColumn],
-    body: tableRows,
-    startY: 20,
-    styles: { font: 'NanumGothic', fontStyle: 'normal' },
-  });
-  doc.save('store-report.pdf');
+  // 화면에 보이는 매장 목록을 PDF로 다운로드
+  downloadPDF('store-list-content', '매장목록');
 };
 </script>
 
 <template>
-  <div>
-    <StoreList 
-      :stores="paginatedStores" 
+  <div id="store-list-content">
+    <StoreList
+      :stores="paginatedStores"
       :totalStores="filteredAndSortedStores.length"
       :currentPage="currentPage"
       :itemsPerPage="itemsPerPage"
