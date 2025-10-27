@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, watch, ref, computed } from 'vue';
+import { onMounted, watch, ref, computed, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { useMyStore } from '@/stores/store';
 import { useModalStore } from '@/stores/modal';
@@ -17,6 +17,11 @@ const toastStore = useToastStore();
 const showStateChangeModal = ref(false);
 const targetState = ref(null);
 const targetStateText = ref('');
+
+const isAddPosModalOpen = ref(false);
+const formSubmitted = ref(false);
+const newPosDefaults = { email: '', password: '', posCode: '', name: '' };
+const newPos = reactive({ ...newPosDefaults });
 
 const storeId = computed(() => route.params.id || myStore.storeDetails?.id);
 
@@ -62,6 +67,55 @@ const handleStateChange = async () => {
     fetchDataForRoute(storeId.value);
   } else {
     toastStore.showToast(result.message || '상태 변경에 실패했습니다.', 'danger');
+  }
+};
+
+const openAddPosModal = () => {
+  Object.assign(newPos, newPosDefaults);
+  formSubmitted.value = false;
+  isAddPosModalOpen.value = true;
+};
+
+const handleAddPos = async () => {
+  formSubmitted.value = true;
+  if (!newPos.email || !newPos.password || !newPos.posCode || !newPos.name) {
+    toastStore.showToast('이메일, 비밀번호, 이름, POS 코드를 모두 입력해주세요.', 'danger');
+    return;
+  }
+
+  const payload = {
+    email: newPos.email,
+    password: newPos.password,
+    name: newPos.name,
+    posCode: newPos.posCode,
+    role: 'POS_MEMBER',
+    storeId: myStore.storeDetails?.id,
+  };
+
+  const success = await myStore.addPosDevice(payload);
+
+  if (success) {
+    toastStore.showToast('새로운 POS 기기가 등록되었습니다.', 'success');
+    isAddPosModalOpen.value = false;
+  } else {
+    toastStore.showToast('POS 기기 등록에 실패했습니다.', 'danger');
+  }
+};
+
+const handleDeletePos = async (pos) => {
+  const confirmed = await modalStore.show({
+    title: 'POS 삭제 확인',
+    message: `정말 '${pos.name}' POS 기기를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+    isConfirmation: true,
+  });
+
+  if (confirmed) {
+    const success = await myStore.deletePosDevice(pos.id);
+    if (success) {
+      toastStore.showToast('POS 기기가 삭제되었습니다.', 'success');
+    } else {
+      toastStore.showToast('POS 기기 삭제에 실패했습니다.', 'danger');
+    }
   }
 };
 
@@ -113,11 +167,12 @@ watch(() => route.params.id, (newId, oldId) => {
         </div>
       </BaseCard>
 
-      <!-- POS Devices Card (Read-only) -->
+      <!-- POS Devices Card -->
       <BaseCard>
         <template #header>
           <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">POS 기기 목록</h5>
+            <button class="btn btn-primary" @click="openAddPosModal">+ POS 추가</button>
           </div>
         </template>
 
@@ -128,6 +183,7 @@ watch(() => route.params.id, (newId, oldId) => {
                 <th>이름</th>
                 <th>이메일</th>
                 <th>POS 코드</th>
+                <th>관리</th>
               </tr>
             </thead>
             <tbody>
@@ -135,6 +191,9 @@ watch(() => route.params.id, (newId, oldId) => {
                 <td>{{ pos.name }}</td>
                 <td>{{ pos.email }}</td>
                 <td>{{ pos.posCode }}</td>
+                <td>
+                  <button class="btn btn-danger btn-sm" @click="handleDeletePos(pos)">삭제</button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -152,6 +211,34 @@ watch(() => route.params.id, (newId, oldId) => {
       <template #footer>
         <button type="button" class="btn btn-secondary" @click="showStateChangeModal = false">취소</button>
         <button type="button" class="btn btn-primary" @click="handleStateChange">변경</button>
+      </template>
+    </BaseModal>
+
+    <!-- Add POS Modal -->
+    <BaseModal v-model="isAddPosModalOpen">
+      <template #header><h5>새 POS 기기 등록</h5></template>
+      <form @submit.prevent="handleAddPos">
+        <div class="mb-3">
+          <label class="form-label">이메일 <span class="text-danger">*</span></label>
+          <input type="email" class="form-control" v-model="newPos.email" :class="{ 'is-invalid': formSubmitted && !newPos.email }" placeholder="예: pos01@example.com">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">비밀번호 <span class="text-danger">*</span></label>
+          <input type="password" class="form-control" v-model="newPos.password" :class="{ 'is-invalid': formSubmitted && !newPos.password }" placeholder="비밀번호">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">이름 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" v-model="newPos.name" :class="{ 'is-invalid': formSubmitted && !newPos.name }" placeholder="예: 카운터 POS">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">POS 코드 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" v-model="newPos.posCode" :class="{ 'is-invalid': formSubmitted && !newPos.posCode }" placeholder="예: 01, 02">
+          <div class="form-text">해당 지점 내에서 사용할 고유한 코드를 입력하세요. (예: 01)</div>
+        </div>
+      </form>
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="isAddPosModalOpen = false">취소</button>
+        <button type="button" class="btn btn-primary" @click="handleAddPos">추가하기</button>
       </template>
     </BaseModal>
   </div>

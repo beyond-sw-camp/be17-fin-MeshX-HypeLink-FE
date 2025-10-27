@@ -27,11 +27,11 @@ export const getAllAnnouncementsList = async () => {
   return data;
 };
 
-export const getPagedAnnouncements = async (pageReq) => {
+export const getPagedAnnouncements = async ({ page = 0, size = 6, sort = 'id,desc' } = {}) => {
   const requestUrl = `/api/notice/read/page/all`;
   let data = {};
   await api
-    .get(requestUrl, { params: pageReq })
+    .get(requestUrl, { params: { page, size, sort } })
     .then((response) => {
       data = response.data;
     })

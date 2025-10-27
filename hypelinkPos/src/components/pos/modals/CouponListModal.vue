@@ -1,6 +1,4 @@
 <script setup>
-import { useCouponsStore } from '@/stores/coupons'
-
 const props = defineProps({
   availableCoupons: Array,
   show: Boolean
@@ -8,9 +6,8 @@ const props = defineProps({
 
 const emit = defineEmits(['select-coupon', 'close'])
 
-const couponsStore = useCouponsStore()
-
 const formatDate = (dateString) => {
+  // "2025-10-24" → "2025.10.24"
   return dateString.replace(/-/g, '.')
 }
 
@@ -39,19 +36,16 @@ const selectCoupon = (coupon) => {
           @click="selectCoupon(coupon)"
         >
           <div class="coupon-item-header">
-            <span class="coupon-type-badge" :class="coupon.type">
-              {{ coupon.type === 'amount' ? '금액' : '비율' }}
+            <span class="coupon-type-badge" :class="coupon.couponType.toLowerCase()">
+              {{ coupon.couponType === 'FIXED' ? '금액' : '비율' }}
             </span>
-            <span class="coupon-expiry">~{{ formatDate(coupon.expiresAt) }}</span>
+            <span class="coupon-expiry">~{{ formatDate(coupon.expirationDate) }}</span>
           </div>
-          <div class="coupon-item-name">{{ coupon.name }}</div>
+          <div class="coupon-item-name">{{ coupon.couponName }}</div>
           <div class="coupon-item-value">
-            {{ coupon.type === 'amount'
-              ? formatPrice(coupon.value) + ' 할인'
-              : coupon.value + '% 할인' }}
-          </div>
-          <div v-if="coupon.minPurchase > 0" class="coupon-min-purchase">
-            {{ formatPrice(coupon.minPurchase) }} 이상 구매 시
+            {{ coupon.couponType === 'FIXED'
+              ? formatPrice(coupon.couponValue) + ' 할인'
+              : coupon.couponValue + '% 할인' }}
           </div>
         </div>
       </div>
@@ -161,12 +155,12 @@ const selectCoupon = (coupon) => {
   text-transform: uppercase;
 }
 
-.coupon-type-badge.amount {
+.coupon-type-badge.fixed {
   background: #FFD54F;
   color: #F57F17;
 }
 
-.coupon-type-badge.percent {
+.coupon-type-badge.percentage {
   background: #FFE082;
   color: #F57C00;
 }

@@ -54,7 +54,13 @@ api.interceptors.response.use(
     },
     async (error) => {
         const originalRequest = error.config;
-        
+
+        // 로그아웃, 재발급 요청은 인터셉터 로직을 적용하지 않음
+        if (originalRequest.url?.includes('/api/auth/logout') ||
+            originalRequest.url?.includes('/api/auth/reissue')) {
+            return Promise.reject(error);
+        }
+
         // 401 에러이고, 재시도 요청이 아닌 경우
         if (error.response?.status === 401 && !originalRequest._retry) {
             
@@ -88,9 +94,14 @@ api.interceptors.response.use(
 
                 // 스토어와 헤더에 새 토큰 설정
                 authStore.setNewAccessToken(newAccessToken);
-                
-                // 원래 요청의 헤더에 새 토큰 설정
-                originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
+
+                // 원래 요청의 헤더 객체가 없으면 생성
+                if (!originalRequest.headers) {
+                    originalRequest.headers = {};
+                }
+
+                // 새 토큰으로 Authorization 헤더 설정
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
                 // 대기열에 있던 모든 요청들을 새 토큰으로 재시도
                 processQueue(null, newAccessToken);

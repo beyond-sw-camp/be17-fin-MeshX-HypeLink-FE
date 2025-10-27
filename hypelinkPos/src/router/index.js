@@ -40,17 +40,17 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/service',
-      name: 'service',
-      component: () => import('@/views/ServiceView.vue'),
+      path: '/notices/:id',
+      name: 'notice-detail',
+      component: () => import('@/views/NoticeDetailView.vue'),
       meta: { requiresAuth: true }
     }
   ]
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  authStore.checkAuth()
+  await authStore.checkAuth()
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')

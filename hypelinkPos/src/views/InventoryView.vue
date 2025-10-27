@@ -1,7 +1,8 @@
 <script setup>
-import {computed, ref} from 'vue'
+import {computed, ref, onMounted} from 'vue'
 import {useInventoryStore} from '@/stores/inventory'
 import {useProductsStore} from '@/stores/products'
+import itemAPI from '@/api/item'
 
 const inventoryStore = useInventoryStore()
 const productsStore = useProductsStore()
@@ -12,8 +13,69 @@ const adjustType = ref('in')
 const adjustQuantity = ref(0)
 const adjustReason = ref('')
 
-const inventoryItems = computed(() => inventoryStore.inventoryItems)
-const lowStockItems = computed(() => inventoryStore.lowStockItems)
+const items = ref([])
+const loading = ref(false)
+const minStockSettings = ref({})
+const currentPage = ref(0)
+const totalPages = ref(1)
+const totalElements = ref(0)
+const pageSize = ref(10)
+
+const inventoryItems = computed(() => {
+  return items.value.map(item => ({
+    productId: item.id,
+    productName: item.productName,
+    currentStock: item.stock,
+    minStock: minStockSettings.value[item.id] || 10
+  }))
+})
+
+const lowStockItems = computed(() => {
+  return inventoryItems.value.filter(item => item.currentStock <= item.minStock)
+})
+
+// API로 상품 불러오기 (페이징)
+const fetchAllItems = async () => {
+  loading.value = true
+  const result = await itemAPI.getItemList(1, currentPage.value, pageSize.value)
+
+  if (result.success) {
+    items.value = result.data.content || []
+    totalPages.value = result.data.totalPages || 1
+    totalElements.value = result.data.totalElements || 0
+  } else {
+    console.error('Failed to fetch items:', result.message)
+    items.value = []
+  }
+
+  loading.value = false
+}
+
+// 페이징 함수
+const nextPage = () => {
+  if (currentPage.value < totalPages.value - 1) {
+    currentPage.value++
+    fetchAllItems()
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 0) {
+    currentPage.value--
+    fetchAllItems()
+  }
+}
+
+const goToPage = (page) => {
+  if (page >= 0 && page < totalPages.value) {
+    currentPage.value = page
+    fetchAllItems()
+  }
+}
+
+onMounted(() => {
+  fetchAllItems()
+})
 
 const openAddModal = (productId, type) => {
   selectedProductId.value = productId
@@ -29,21 +91,20 @@ const submitAdjustment = () => {
     return
   }
 
-  if (adjustType.value === 'in') {
-    inventoryStore.addStock(
-      selectedProductId.value,
-      adjustQuantity.value,
-      adjustReason.value
-    )
-  } else {
-    inventoryStore.removeStock(
-      selectedProductId.value,
-      adjustQuantity.value,
-      adjustReason.value
-    )
+  // 로컬에서 재고 업데이트 (실제로는 API 호출 필요)
+  const item = items.value.find(i => i.id === selectedProductId.value)
+  if (item) {
+    if (adjustType.value === 'in') {
+      item.stock += adjustQuantity.value
+    } else {
+      item.stock -= adjustQuantity.value
+    }
   }
 
   showAddModal.value = false
+
+  // TODO: 재고 업데이트 API 호출
+  // await axios.patch(`/api/store/item/${selectedProductId.value}/stock`, { quantity, type })
 }
 
 const getStockStatus = (item) => {
@@ -57,8 +118,11 @@ const getStockStatus = (item) => {
   <div class="inventory-view">
     <div class="header">
       <h1>재고 관리</h1>
-      <div class="alert-section" v-if="lowStockItems.length > 0">
-        <div class="alert-badge">⚠️ {{ lowStockItems.length }}개 상품 재고 부족</div>
+      <div class="header-info">
+        <div class="alert-section" v-if="lowStockItems.length > 0">
+          <div class="alert-badge">⚠️ {{ lowStockItems.length }}개 상품 재고 부족</div>
+        </div>
+        <div class="total-info">총 {{ totalElements }}개 상품</div>
       </div>
     </div>
 
@@ -110,6 +174,17 @@ const getStockStatus = (item) => {
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <button class="page-btn" :disabled="currentPage === 0" @click="prevPage">
+            ◀ 이전
+          </button>
+          <span class="page-info">{{ currentPage + 1 }} / {{ totalPages }}</span>
+          <button class="page-btn" :disabled="currentPage === totalPages - 1" @click="nextPage">
+            다음 ▶
+          </button>
         </div>
       </div>
     </div>
@@ -171,9 +246,24 @@ const getStockStatus = (item) => {
   margin-bottom: 16px;
 }
 
+.header-info {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
 .alert-section {
   display: flex;
   gap: 12px;
+}
+
+.total-info {
+  padding: 12px 20px;
+  background: #F0F7FF;
+  color: var(--primary-color);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .alert-badge {
@@ -420,6 +510,46 @@ const getStockStatus = (item) => {
 
 .confirm-btn:hover {
   background: #0052CC;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border-top: 1px solid var(--border-color);
+}
+
+.page-btn {
+  padding: 10px 20px;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: #f0f7ff;
+}
+
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 80px;
+  text-align: center;
 }
 
 </style>

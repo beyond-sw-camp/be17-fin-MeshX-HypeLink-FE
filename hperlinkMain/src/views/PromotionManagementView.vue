@@ -9,22 +9,16 @@ import SortIcon from '@/components/SortIcon.vue';
 import FlatPickr from 'vue-flatpickr-component';
 import 'flatpickr/dist/flatpickr.css'; // 매출 코드와 동일
 import { Korean } from 'flatpickr/dist/l10n/ko.js';
-import { usePromotionStore } from '@/stores/promotions';
 import { useToastStore } from '@/stores/toast';
-import { useModalStore } from '@/stores/modal';
 import { getPagedPromotions, createPromotion, updatePromotion } from '@/api/promotion';
-import { getStoresList } from '@/api/users';
-import { getItems } from '@/api/item';
+import { getAllCoupons } from '@/api/coupons';
 
-const promotionStore = usePromotionStore();
 const toastStore = useToastStore();
-const modalStore = useModalStore();
 const router = useRouter();
 
 const allPromotions = ref([]);
 const isLoading = ref(true);
-const storeList = ref([]);
-const productList = ref([]);
+const couponList = ref([]);
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
@@ -33,21 +27,16 @@ const promoForm = reactive({
   id: null,
   title: '',
   period: '',
-  target: 'ALL',
+  couponType: 'PERCENTAGE',  // PERCENTAGE 또는 FIXED
+  couponId: null,            // 선택된 쿠폰 ID
   status: 'UPCOMING',
   description: '',
-  storeIds: [],
-  category: '',     // 카테고리용
-  itemId: null,     // 상품용
-  discountRate: null,
 });
 
-const getTargetLabel = (type) => {
+const getCouponTypeLabel = (type) => {
   switch (type) {
-    case 'ALL': return '전체 이벤트';
-    case 'STORE': return '매장 이벤트';
-    case 'CATEGORY': return '카테고리 이벤트';
-    case 'PRODUCT': return '상품 이벤트';
+    case 'PERCENTAGE': return '퍼센트 할인';
+    case 'FIXED': return '고정 할인';
     default: return type;
   }
 };
@@ -85,62 +74,51 @@ const flatpickrConfig = ref({
   minDate: 'today', // 오늘 이후
   maxDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1년 후
   onChange: (selectedDates, dateStr) => {
-    console.log('Selected dates:', dateStr); // 디버깅
     promoForm.period = dateStr;
-  },
-  onReady: (selectedDates, dateStr, instance) => {
-    console.log('Flatpickr initialized:', instance); // 초기화 확인
   },
 });
 
-// period 변화 감지 (디버깅용)
+// 쿠폰 타입 변경 시 선택된 쿠폰 초기화 (UX 개선)
 watch(
-  () => promoForm.period,
-  (newValue) => {
-    console.log('promoForm.period updated:', newValue);
+  () => promoForm.couponType,
+  (newType, oldType) => {
+    if (newType !== oldType && oldType !== undefined) {
+      promoForm.couponId = null; // 다른 타입의 쿠폰이므로 초기화
+    }
   }
 );
 
 // 데이터 로딩
 onMounted(async () => {
   await loadPromotions(1);
-  await loadStores();
-  await loadProducts();
+  await loadCoupons();
 });
 
-// 가맹점 목록 로드
-const loadStores = async () => {
+// 쿠폰 목록 로드
+const loadCoupons = async () => {
   try {
-    const res = await getStoresList();
-    console.log('[가맹점 목록 응답]', res);
-    if (res.success && res.data) {
-      storeList.value = res.data.map(store => ({
-        id: store.storeId,
-        title: store.storeName,
-        address: store.storeAddress
-      }));
-      console.log('[가맹점 목록 매핑 후]', storeList.value);
-    }
-  } catch (error) {
-    console.error('가맹점 목록 로드 실패:', error);
-  }
-};
+    const res = await getAllCoupons();
 
-// 상품 목록 로드
-const loadProducts = async () => {
-  try {
-    const res = await getItems(0, 1000); // 최대 1000개 조회
-    console.log('[상품 목록 응답]', res);
-    if (res.status === 200 && res.data?.data?.content) {
-      productList.value = res.data.data.content.map(item => ({
-        id: item.id,
-        title: item.title || item.name || item.koName || '상품명 없음',
-        category: item.category || '카테고리 없음'
+    // 다양한 응답 구조 대응
+    let coupons = null;
+    if (res.data?.data?.content) {
+      coupons = res.data.data.content;
+    } else if (res.data?.data) {
+      coupons = res.data.data;
+    } else if (res.data) {
+      coupons = res.data;
+    }
+
+    if (coupons && Array.isArray(coupons)) {
+      couponList.value = coupons.map(coupon => ({
+        id: coupon.id,
+        type: coupon.type?.toUpperCase(),
+        name: coupon.name,
+        value: coupon.value,
       }));
-      console.log('[상품 목록 매핑 후]', productList.value);
     }
   } catch (error) {
-    console.error('상품 목록 로드 실패:', error);
+    console.error('쿠폰 목록 로드 실패:', error);
   }
 };
 
@@ -155,27 +133,28 @@ const loadPromotions = async (page = 1) => {
       sortKey.value,
       sortOrder.value
     );
-    console.log('[프로모션 응답]', res);
+    // 응답 구조 자동 감지
+    let pageData = null;
+    if (res.content && Array.isArray(res.content)) {
+      pageData = res;
+    } else if (res.data && Array.isArray(res.data.content)) {
+      pageData = res.data;
+    }
 
-    if (res.status === 200 && res.data?.data) {
-      const pageData = res.data.data;
-
-      allPromotions.value = pageData.content.map((item) => ({
+    if (pageData && Array.isArray(pageData.content)) {
+      allPromotions.value = pageData.content.map(item => ({
         id: item.id,
         title: item.title,
         period: `${item.startDate} ~ ${item.endDate}`,
-        target: item.promotionType,
+        couponType: item.couponType,
+        couponId: item.couponId,
         status: item.status,
         description: item.contents,
-        discountRate: item.discountRate,
-        storeIds: item.storeIds || [],
-        category: item.category || '',
-        itemId: item.itemId || null
       }));
 
-      // ✅ 페이지 정보 세팅
       totalPages.value = pageData.totalPages;
-      currentPage.value = pageData.currentPage + 1; // 0-based → 1-based 보정
+      // 요청한 페이지 번호를 사용 (API 응답의 페이지 번호보다 더 정확함)
+      currentPage.value = page;
     }
   } catch (error) {
     console.error(error);
@@ -236,13 +215,10 @@ const openPromotionModal = (promo = null) => {
       id: clonedPromo.id,
       title: clonedPromo.title,
       period: clonedPromo.period,
-      target: clonedPromo.target,
+      couponType: clonedPromo.couponType || 'PERCENTAGE',
+      couponId: clonedPromo.couponId || null,
       status: clonedPromo.status,
       description: clonedPromo.description,
-      storeIds: clonedPromo.storeIds || [],
-      category: clonedPromo.category || '',
-      itemId: clonedPromo.itemId || null,
-      discountRate: clonedPromo.discountRate
     });
   } else {
     isEditing.value = false;
@@ -250,13 +226,10 @@ const openPromotionModal = (promo = null) => {
       id: null,
       title: '',
       period: '',
-      target: 'ALL',
+      couponType: 'PERCENTAGE',
+      couponId: null,
       status: 'UPCOMING',
       description: '',
-      storeIds: [],
-      category: '',
-      itemId: null,
-      discountRate: null
     });
   }
   isModalOpen.value = true;
@@ -266,31 +239,14 @@ const savePromotion = async () => {
   formSubmitted.value = true;
   
   // 기본 필수 항목 검사
-  if (
-    !promoForm.title ||
-    !promoForm.period ||
-    promoForm.discountRate === null ||
-    promoForm.discountRate === undefined ||
-    promoForm.discountRate <= 0 ||
-    promoForm.discountRate > 100
-  ) {
-    toastStore.showToast('프로모션명, 기간, 할인율(1~100)은 필수입니다.', 'danger');
-    return;
-  }
-
-  // 대상별 필수 항목 검사
-  if (promoForm.target === 'STORE' && promoForm.storeIds.length === 0) {
-    toastStore.showToast('최소 1개 이상의 매장을 선택해야 합니다.', 'danger');
+  if (!promoForm.title || !promoForm.period) {
+    toastStore.showToast('프로모션명과 기간은 필수입니다.', 'danger');
     return;
   }
   
-  if (promoForm.target === 'CATEGORY' && !promoForm.category) {
-    toastStore.showToast('카테고리를 선택해야 합니다.', 'danger');
-    return;
-  }
-  
-  if (promoForm.target === 'PRODUCT' && !promoForm.itemId) {
-    toastStore.showToast('상품을 선택해야 합니다.', 'danger');
+  // 쿠폰 선택 필수 검사
+  if (!promoForm.couponId) {
+    toastStore.showToast('쿠폰을 선택해야 합니다.', 'danger');
     return;
   }
 
@@ -303,22 +259,17 @@ const savePromotion = async () => {
     }
   }
 
-  // ✅ 한 번만 선언 (중복 X)
 const [startDate, endDate] = promoForm.period.split(' ~ ');
 
 const payload = {
-  promotionType: promoForm.target,
   title: promoForm.title,
   contents: promoForm.description,
-  discountRate: promoForm.discountRate, 
+    couponType: promoForm.couponType,
+    couponId: promoForm.couponId,
   startDate,
   endDate,
-  storeIds: promoForm.target === 'STORE' ? promoForm.storeIds : [],
-  category: promoForm.target === 'CATEGORY' ? promoForm.category : null,
-  itemId: promoForm.target === 'PRODUCT' ? promoForm.itemId : null,
   status: promoForm.status
 };
-console.log('[create payload]', payload);
 
   try {
     if (isEditing.value) {
@@ -330,7 +281,7 @@ console.log('[create payload]', payload);
     }
 
     isModalOpen.value = false;
-    await loadPromotions(); // ✅ 목록 새로고침
+    await loadPromotions(currentPage.value); // ✅ 현재 페이지 유지하며 새로고침
   } catch (err) {
     console.error(err);
     toastStore.showToast('저장 중 오류가 발생했습니다.', 'danger');
@@ -341,13 +292,10 @@ console.log('[create payload]', payload);
     id: null,
     title: '',
     period: '',
-    target: 'ALL',
+    couponType: 'PERCENTAGE',
+    couponId: null,
     status: 'UPCOMING',
     description: '',
-    storeIds: [],
-    category: '',
-    itemId: null,
-    discountRate: null
   });
 };
 
@@ -374,6 +322,11 @@ const updateSort = (key) => {
     sortOrder.value = 'asc';
   }
 };
+
+// 쿠폰 타입별로 필터링된 쿠폰 목록
+const filteredCoupons = computed(() => {
+  return couponList.value.filter(coupon => coupon.type === promoForm.couponType);
+});
 </script>
 
 <template>
@@ -426,12 +379,12 @@ const updateSort = (key) => {
                 currentKey="period"
               />
             </th>
-            <th @click="updateSort('target')" class="sortable">
-              대상
+            <th @click="updateSort('couponType')" class="sortable">
+              쿠폰 타입
               <SortIcon
                 :sortKey="sortKey"
                 :sortOrder="sortOrder"
-                currentKey="target"
+                currentKey="couponType"
               />
             </th>
             <th @click="updateSort('status')" class="sortable">
@@ -453,7 +406,7 @@ const updateSort = (key) => {
                 }}</router-link>
             </td>
             <td>{{ promo.period }}</td>
-            <td>{{ getTargetLabel(promo.target) }}</td>
+            <td>{{ getCouponTypeLabel(promo.couponType) }}</td>
             <td>
                 <span class="badge" :class="statusClass(promo.status)">{{getStatusLabel(promo.status)}}</span>
             </td>
@@ -539,83 +492,34 @@ const updateSort = (key) => {
           <div class="invalid-feedback">기간은 필수입니다.</div>
         </div>
         <div class="mb-3">
-          <label class="form-label">대상</label>
-           <select class="form-select" v-model="promoForm.target">
-            <option value="ALL">전체 이벤트</option>
-            <option value="STORE">매장 이벤트</option>
-            <option value="CATEGORY">카테고리 이벤트</option>
-            <option value="PRODUCT">상품 이벤트</option>
+          <label class="form-label">쿠폰 타입 <span class="text-danger">*</span></label>
+           <select class="form-select" v-model="promoForm.couponType">
+            <option value="PERCENTAGE">퍼센트 할인</option>
+            <option value="FIXED">고정 할인</option>
           </select>
         </div>
-                <!-- ✅ 매장 이벤트 선택 시 -->
-        <div v-if="promoForm.target === 'STORE'" class="mb-3">
-          <label class="form-label fw-bold">가맹점 선택</label>
-          <div class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
-            <select
-              v-model="promoForm.storeIds"
-              class="form-select"
-              multiple
-              style="min-height: 150px; width: 100%;"
+
+        <!-- ✅ 쿠폰 선택 -->
+        <div class="mb-3">
+          <label class="form-label fw-bold">쿠폰 선택 <span class="text-danger">*</span></label>
+          <select 
+            v-model="promoForm.couponId" 
+            class="form-select"
+            :class="{ 'is-invalid': formSubmitted && !promoForm.couponId }"
+          >
+            <option :value="null" disabled>쿠폰을 선택하세요</option>
+            <option 
+              v-for="coupon in filteredCoupons" 
+              :key="coupon.id" 
+              :value="coupon.id"
             >
-              <option
-                v-for="store in storeList"
-                :key="store.id"
-                :value="store.id"
-              >
-                {{ store.title }} ({{ store.address }})
-              </option>
-            </select>
-          </div>
-          <div v-if="formSubmitted && promoForm.storeIds.length === 0" class="text-danger mt-1">
-            최소 1개 이상의 매장을 선택해야 합니다.
-          </div>
-        </div>
-
-        <!-- ✅ 카테고리 이벤트 선택 시 -->
-        <div v-if="promoForm.target === 'CATEGORY'" class="mb-3">
-          <label class="form-label fw-bold">카테고리 선택</label>
-          <select v-model="promoForm.category" class="form-select">
-            <option disabled value="">카테고리를 선택하세요</option>
-            <option value="BACKPACK">백팩</option>
-            <option value="TOP_CLOTHES">상의</option>
-            <option value="BOTTOM_CLOTHES">하의</option>
-            <option value="OUTER_CLOTHES">아우터</option>
-            <option value="SHOES">신발</option>
+              {{ coupon.name }}
+            </option>
           </select>
-          <div v-if="formSubmitted && !promoForm.category" class="text-danger mt-1">
-            카테고리를 선택해야 합니다.
-          </div>
-        </div>
-
-       <!-- ✅ 상품 이벤트 선택 시 -->
-      <div v-if="promoForm.target === 'PRODUCT'" class="mb-3">
-        <label class="form-label fw-bold">상품 선택</label>
-        <select v-model="promoForm.itemId" class="form-select">
-          <option disabled value="">상품을 선택하세요</option>
-          <option v-for="item in productList" :key="item.id" :value="item.id">
-            {{ item.title }} ({{ item.category }})
-          </option>
-        </select>
-        <div v-if="formSubmitted && !promoForm.itemId" class="text-danger mt-1">
-          상품을 선택해야 합니다.
-        </div>
-      </div> <!-- ✅ 이 닫는 태그 위치 중요! -->
-
-<!-- ✅ 할인율 입력 (1~100 사이만 허용) -->
-<div class="mb-3">
-  <label class="form-label">할인율 (%)</label>
-  <input
-    type="number"
-    class="form-control"
-    v-model.number="promoForm.discountRate"
-    min="1"
-    max="100"
-    step="0.1"
-    placeholder="1~100"
-    :class="{ 'is-invalid': formSubmitted && (promoForm.discountRate === null || promoForm.discountRate <= 0 || promoForm.discountRate > 100) }"
-  />
-  <div class="invalid-feedback">유효한 할인율을 입력하세요 (1~100 사이).</div>
-
+          <div class="invalid-feedback">쿠폰을 선택해야 합니다.</div>
+          <small class="text-muted d-block mt-1">
+            {{ promoForm.couponType === 'PERCENTAGE' ? '퍼센트 할인' : '고정 할인' }} 타입의 쿠폰만 표시됩니다.
+          </small>
       </div>
         <div class="mb-3">
           <label class="form-label">상태</label>
