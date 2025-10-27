@@ -20,6 +20,7 @@ const auth = useAuthStore();
 const allStores = ref([]);
 const toastStore = useToastStore();
 const selectStore = ref(0);
+const currentStore = ref(0);
 const categories = ref([]);
 const allItems = ref([]);
 const currentItem = ref(null);
@@ -62,6 +63,7 @@ const loadItems = async (page = 1) => {
       allItems.value = pageData.content;
       totalPages.value = pageData.totalPages;
       currentPage.value = pageData.currentPage + 1; // Spring Pageable은 0-based
+      currentStore.value = selectStore.value;
     } else {
       console.error('상품 목록 로딩 실패:', response);
     }
@@ -219,7 +221,7 @@ onMounted(() => {
       </thead>
       <tbody>
         <tr v-for="item in allItems" :key="item.id">
-          <td>  {{ selectStore === 0 ? '본사 재고' : allStores.find(store => store.storeId === selectStore)?.storeName }}
+          <td>  {{ currentStore === 0 ? '본사 재고' : allStores.find(store => store.storeId === currentStore)?.storeName }}
           </td>
           <td>{{ item.itemCode }}</td>
           <td>{{ item.itemDetailCode }}</td>
