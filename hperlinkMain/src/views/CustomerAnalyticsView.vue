@@ -12,7 +12,8 @@ import { useCouponStore } from '@/stores/coupons';
 import { useModalStore } from '@/stores/modal';
 import { useToastStore } from '@/stores/toast';
 import { useAuthStore } from '@/stores/auth';
-import { issueCouponToCustomer } from '@/api/customers'; // Import the new API function
+import { issueCouponToCustomer } from '@/api/customers';
+import { getAgeDistribution, getCategoryCustomerSales } from '@/api/analytics';
 
 const customerStore = useCustomerStore();
 const couponStore = useCouponStore();
@@ -55,9 +56,9 @@ const clearDrillDown = () => {
 };
 
 // --- 차트 데이터 ---
-const ageChartSeries = ref([15, 45, 25, 10, 5]);
+const ageChartSeries = ref([]);
 const ageChartLabels = ref(['10대', '20대', '30대', '40대', '50대 이상']);
-const categoryChartSeries = ref([{ name: '매출액', data: [400, 230, 180, 120] }]);
+const categoryChartSeries = ref([]);
 const categoryChartCategories = ref(['상의', '하의', '아우터', '악세서리']);
 
 // --- 연령대 계산 헬퍼 함수 ---
@@ -74,13 +75,45 @@ const calculateAgeGroup = (birthDateString) => {
   return '50대 이상';
 };
 
+// --- 차트 데이터 로딩 ---
+const loadChartData = async () => {
+  try {
+    // 연령대별 분포
+    const ageResponse = await getAgeDistribution();
+    const ageData = ageResponse.data || [];
+
+    // 차트에 맞게 데이터 변환
+    const ageMap = new Map();
+    ageData.forEach(item => {
+      ageMap.set(item.ageGroup, item.customerCount);
+    });
+
+    ageChartSeries.value = ageChartLabels.value.map(label =>
+      ageMap.get(label) || 0
+    );
+
+    // 카테고리별 매출
+    const categoryResponse = await getCategoryCustomerSales();
+    const categoryData = categoryResponse.data || [];
+
+    categoryChartCategories.value = categoryData.map(item => item.category);
+    categoryChartSeries.value = [{
+      name: '매출액',
+      data: categoryData.map(item => item.salesAmount / 10000) // 만원 단위
+    }];
+
+  } catch (error) {
+    console.error('Failed to load chart data:', error);
+  }
+};
+
 // --- 데이터 로딩 ---
 onMounted(async () => {
   isLoading.value = true;
   try {
     await customerStore.fetchAllCustomers(); // Fetch customers from backend
-    // Assuming couponStore also needs to fetch coupons
     await couponStore.fetchAllCoupons(); // Fetch coupons from backend
+    await loadChartData(); // Load chart data
   } catch (error) {
     console.error('Failed to fetch initial data:', error);
     toastStore.showToast('데이터 로딩에 실패했습니다.', 'error');
@@ -99,7 +132,7 @@ const filteredAndSortedCustomers = computed(() => {
     calculatedAgeGroup: calculateAgeGroup(c.birthday) // Use 'birthday' from CustomerInfoRes
   }));
 
-  
+
   if (searchTerm.value) {
     const term = searchTerm.value.toLowerCase();
     customers = customers.filter(c => c.name.toLowerCase().includes(term));
@@ -108,7 +141,7 @@ const filteredAndSortedCustomers = computed(() => {
     customers = customers.filter(c => c.calculatedAgeGroup === filterAgeGroup.value);
   }
   if (filterCategory.value !== 'all') {
-    customers = customers.filter(c => c.purchaseHistory.some(p => p.category === filterCategory.value));
+    customers = customers.filter(c => c.purchaseHistory && c.purchaseHistory.some(p => p.category === filterCategory.value));
   }
 
   customers.sort((a, b) => {
@@ -136,14 +169,11 @@ const isAllSelected = computed(() => {
   return paginatedCustomers.value.every(c => selectedCustomers.value.has(c.customerId));
 });
 const toggleSelectAll = () => {
-  console.log('toggleSelectAll called. isAllSelected:', isAllSelected.value);
-  console.log('paginatedCustomers:', paginatedCustomers.value.map(c => c.customerId));
   if (isAllSelected.value) {
     paginatedCustomers.value.forEach(c => selectedCustomers.value.delete(c.customerId));
   } else {
     paginatedCustomers.value.forEach(c => selectedCustomers.value.add(c.customerId));
   }
-  console.log('selectedCustomers after toggleAll:', Array.from(selectedCustomers.value));
 };
 
 // --- 이벤트 핸들러 ---
@@ -159,18 +189,15 @@ const updateSort = (key) => {
 };
 
 const toggleCustomerSelection = (customerId) => {
-  console.log('toggleCustomerSelection called for customerId:', customerId);
   if (selectedCustomers.value.has(customerId)) {
     selectedCustomers.value.delete(customerId);
   } else {
     selectedCustomers.value.add(customerId);
   }
-  console.log('selectedCustomers after toggle:', Array.from(selectedCustomers.value));
 };
 
 // --- 쿠폰 발급 로직 ---
 const issueCoupon = async () => {
-  console.log('issueCoupon called. selectedCustomers:', Array.from(selectedCustomers.value));
   if (selectedCustomers.value.size === 0) {
     return toastStore.showToast('쿠폰을 발급할 고객을 선택해주세요.', 'warning');
   }
@@ -188,13 +215,13 @@ const issueCoupon = async () => {
   if (confirmed) {
     try {
       const issuePromises = Array.from(selectedCustomers.value).map(customerId => {
-        return issueCouponToCustomer(customerId, selectedCoupon.value); // Use the new API function
+        return issueCouponToCustomer(customerId, selectedCoupon.value);
       });
       await Promise.all(issuePromises);
       toastStore.showToast('쿠폰이 성공적으로 발급되었습니다.', 'success');
       selectedCustomers.value.clear();
       selectedCoupon.value = null;
-      await customerStore.fetchAllCustomers(); // Re-fetch customers to update their coupon lists
+      await customerStore.fetchAllCustomers();
     } catch (error) {
       console.error('쿠폰 발급 실패:', error);
       toastStore.showToast('쿠폰 발급에 실패했습니다.', 'error');
@@ -222,7 +249,7 @@ const issueCoupon = async () => {
             <div class="d-flex justify-content-between align-items-center">
               <h5 class="mb-0">고객 목록</h5>
               <div class="d-flex align-items-center">
-                
+
                 <input type="text" class="form-control form-control-sm me-2" placeholder="고객명 검색" v-model="searchTerm">
                 <select class="form-select form-select-sm me-2" v-model="filterAgeGroup">
                   <option value="all">전체 연령대</option>
@@ -235,7 +262,7 @@ const issueCoupon = async () => {
               </div>
             </div>
           </template>
-          
+
           <div v-if="authStore.isAdmin || authStore.isManager" v-show="selectedCustomers.size > 0" class="coupon-issue-section alert alert-info">
             <div class="d-flex justify-content-between align-items-center">
               <span><strong>{{ selectedCustomers.size }}</strong>명의 고객 선택됨</span>
@@ -256,8 +283,8 @@ const issueCoupon = async () => {
                   <th style="width: 1%;"><input class="form-check-input" type="checkbox" @change="toggleSelectAll" :checked="isAllSelected"></th>
                   <th @click="updateSort('name')" class="sortable">고객명 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="name" /></th>
                   <th @click="updateSort('calculatedAgeGroup')" class="sortable">연령대 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="calculatedAgeGroup" /></th>
-                  <th @click="updateSort('totalPurchases')" class="sortable">총 구매액 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="totalPurchases" /></th>
-                  <th @click="updateSort('lastPurchase')" class="sortable">최근 구매일 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="lastPurchase" /></th>
+                  <th @click="updateSort('phone')" class="sortable">전화번호 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="phone" /></th>
+                  <th @click="updateSort('birthday')" class="sortable">생년월일 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="birthday" /></th>
                 </tr>
               </thead>
               <tbody>
@@ -265,8 +292,8 @@ const issueCoupon = async () => {
                   <td><input class="form-check-input" type="checkbox" :value="customer.customerId" :checked="selectedCustomers.has(customer.customerId)" @change="toggleCustomerSelection(customer.customerId)"></td>
                   <td>{{ customer.name }}</td>
                   <td>{{ customer.calculatedAgeGroup }}</td>
-                  <td></td> <!-- 총 구매액 (Total Purchases) - 비워둠 -->
-                  <td></td> <!-- 최근 구매일 (Last Purchase) - 비워둠 -->
+                  <td>{{ customer.phone }}</td>
+                  <td>{{ customer.birthday || '-' }}</td>
                 </tr>
               </tbody>
             </table>
@@ -301,3 +328,19 @@ const issueCoupon = async () => {
     <BaseSpinner v-if="isLoading" height="200px" />
   </div>
 </template>
+
+<style scoped>
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.sortable:hover {
+  background-color: #f8f9fa;
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+</style>

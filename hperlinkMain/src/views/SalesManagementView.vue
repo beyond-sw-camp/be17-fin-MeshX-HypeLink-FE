@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { getDailySales, getSalesTrend } from '@/api/analytics';
 import SalesChart from './sales-management/SalesChart.vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
@@ -14,11 +15,9 @@ const authStore = useAuthStore();
 
 const allSalesData = ref([]);
 const isLoading = ref(true);
+const chartData = ref({});
 
-const stores = ref([
-  { id: 1, name: 'HypeLink 강남점' }, { id: 2, name: 'HypeLink 홍대점' }, { id: 3, name: 'HypeLink 부산점' }, { id: 4, name: 'HypeLink 제주점' },
-]);
-
+const stores = ref([]);
 const selectedStore = ref(null);
 
 // 검색, 필터, 정렬, 페이지네이션 상태
@@ -27,7 +26,7 @@ const dateRange = ref([]);
 const sortKey = ref('date');
 const sortOrder = ref('desc');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 
 const flatpickrConfig = {
   mode: 'range',
@@ -35,21 +34,76 @@ const flatpickrConfig = {
   locale: Korean,
 };
 
-// --- 데이터 로딩 시뮬레이션 ---
-onMounted(() => {
-  setTimeout(() => {
-    allSalesData.value = [
-      { id: 1, storeName: 'HypeLink 강남점', date: '2025-09-29', amount: 1200000 },
-      { id: 2, storeName: 'HypeLink 홍대점', date: '2025-09-29', amount: 850000 },
-      { id: 3, storeName: 'HypeLink 강남점', date: '2025-09-28', amount: 1500000 },
-      { id: 4, storeName: 'HypeLink 부산점', date: '2025-09-28', amount: 900000 },
-      { id: 5, storeName: 'HypeLink 강남점', date: '2025-09-27', amount: 1100000 },
-      { id: 6, storeName: 'HypeLink 홍대점', date: '2025-09-27', amount: 700000 },
-      { id: 7, storeName: 'HypeLink 강남점', date: '2025-08-15', amount: 2100000 },
-      { id: 8, storeName: 'HypeLink 홍대점', date: '2025-08-15', amount: 1700000 },
-    ];
+// --- 데이터 로딩 ---
+const loadSalesData = async () => {
+  isLoading.value = true;
+  try {
+    // 일별 매출 데이터 로드
+    const startDate = dateRange.value[0] || null;
+    const endDate = dateRange.value[1] || null;
+    const storeId = selectedStore.value || null;
+
+    const response = await getDailySales(startDate, endDate, storeId);
+    allSalesData.value = response.data || [];
+
+    // 매장 목록 추출 (중복 제거)
+    const storeSet = new Map();
+    allSalesData.value.forEach(sale => {
+      if (!storeSet.has(sale.storeId)) {
+        storeSet.set(sale.storeId, {
+          id: sale.storeId,
+          name: sale.storeName
+        });
+      }
+    });
+    stores.value = Array.from(storeSet.values());
+
+  } catch (error) {
+    console.error('Failed to load sales data:', error);
+  } finally {
     isLoading.value = false;
-  }, 1000);
+  }
+};
+
+// 차트 데이터 로드
+const loadChartData = async () => {
+  try {
+    const response = await getSalesTrend('weekly');
+    const trendData = response.data || [];
+
+    // 날짜별로 데이터 변환
+    const categories = [];
+    const values = [];
+
+    trendData.forEach(item => {
+      const date = new Date(item.date);
+      const dayName = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+      categories.push(dayName);
+      values.push(item.totalRevenue / 10000); // 만원 단위
+    });
+
+    chartData.value = {
+      categories: categories.length > 0 ? categories : ['월', '화', '수', '목', '금', '토', '일'],
+      values: values.length > 0 ? values : [0, 0, 0, 0, 0, 0, 0]
+    };
+
+  } catch (error) {
+    console.error('Failed to load chart data:', error);
+    chartData.value = {
+      categories: ['월', '화', '수', '목', '금', '토', '일'],
+      values: [0, 0, 0, 0, 0, 0, 0]
+    };
+  }
+};
+
+onMounted(async () => {
+  await loadSalesData();
+  await loadChartData();
+});
+
+// 날짜 범위 변경 시 데이터 다시 로드
+watch(dateRange, () => {
+  loadSalesData();
 });
 
 // --- 검색, 필터링, 정렬 로직 ---
@@ -64,19 +118,10 @@ const filteredAndSortedSalesData = computed(() => {
   // 검색
   if (searchTerm.value) {
     const term = searchTerm.value.toLowerCase();
-    sales = sales.filter(sale => 
-      sale.storeName.toLowerCase().includes(term) || 
+    sales = sales.filter(sale =>
+      sale.storeName.toLowerCase().includes(term) ||
       sale.date.includes(term)
     );
-  }
-
-  // 날짜 범위 필터링
-  if (dateRange.value.length === 2) {
-    const [start, end] = dateRange.value;
-    sales = sales.filter(sale => {
-      const saleDate = new Date(sale.date);
-      return saleDate >= new Date(start) && saleDate <= new Date(end);
-    });
   }
 
   // 정렬
@@ -112,48 +157,25 @@ const updateSort = (key) => {
   }
   currentPage.value = 1;
 };
-const updatePage = (page) => { 
+
+const updatePage = (page) => {
   if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page; 
+    currentPage.value = page;
   }
 };
 
 // 조회할 수 있는 다른 매장 목록
-const availableStores = computed(() => 
+const availableStores = computed(() =>
   stores.value.filter(store => store.name !== authStore.user?.name)
 );
 
-// 차트에 필요한 가공된 매출 데이터 (임시)
-const salesData = {
-  '전체': {
-    series: [{ name: '전체 매출', data: [1050, 1230, 1180, 1350, 1400, 1520, 1480] }]
-  },
-  'HypeLink 강남점': {
-    series: [{ name: '강남점 매출', data: [380, 420, 400, 450, 470, 510, 490] }]
-  },
-  'HypeLink 홍대점': {
-    series: [{ name: '홍대점 매출', data: [255, 280, 270, 300, 310, 340, 330] }]
-  },
-  'HypeLink 부산점': {
-    series: [{ name: '부산점 매출', data: [270, 300, 290, 320, 330, 360, 350] }]
-  },
-   'HypeLink 제주점': {
-    series: [{ name: '제주점 매출', data: [145, 130, 120, 180, 190, 210, 210] }]
-  }
-};
-
-// 역할에 따라 보여줄 메인 차트 데이터
+// 메인 차트 데이터
 const mainChart = computed(() => {
-  let dataKey = '전체';
-  if (authStore.isBranchManager) {
-    dataKey = authStore.user.name;
-  }
-  const sales = salesData[dataKey] || salesData['전체'];
   return {
-    series: sales.series,
+    series: [{ name: '매출', data: chartData.value.values || [] }],
     options: {
       chart: { id: 'main-sales-chart', toolbar: { show: false } },
-      xaxis: { categories: ['월', '화', '수', '목', '금', '토', '일'] },
+      xaxis: { categories: chartData.value.categories || [] },
       yaxis: { title: { text: '매출 (만원)' } }
     }
   };
@@ -162,12 +184,12 @@ const mainChart = computed(() => {
 // 조회용 차트 데이터
 const lookupChart = computed(() => {
   if (!selectedStore.value) return { series: [], options: {} };
-  const sales = salesData[selectedStore.value] || { series: [] };
+  // TODO: 특정 매장의 차트 데이터 로드 필요
   return {
-    series: sales.series,
+    series: [{ name: '매출', data: chartData.value.values || [] }],
     options: {
       chart: { id: 'lookup-sales-chart', toolbar: { show: false } },
-      xaxis: { categories: ['월', '화', '수', '목', '금', '토', '일'] },
+      xaxis: { categories: chartData.value.categories || [] },
       colors: ['#6c757d']
     }
   };
@@ -244,7 +266,7 @@ const lookupChart = computed(() => {
             <label for="store-lookup" class="form-label">매장 선택</label>
             <select id="store-lookup" class="form-select" v-model="selectedStore">
               <option :value="null">-- 조회할 매장 선택 --</option>
-              <option v-for="store in availableStores" :key="store.id" :value="store.name">
+              <option v-for="store in availableStores" :key="store.id" :value="store.id">
                 {{ store.name }}
               </option>
             </select>
@@ -252,7 +274,7 @@ const lookupChart = computed(() => {
         </div>
         <div v-if="selectedStore" class="mt-3">
           <hr>
-          <h6>'{{ selectedStore }}' 매출 현황</h6>
+          <h6>선택된 매장 매출 현황</h6>
           <SalesChart :chartOptions="lookupChart.options" :series="lookupChart.series" />
         </div>
       </BaseCard>
@@ -261,3 +283,13 @@ const lookupChart = computed(() => {
     <BaseSpinner v-if="isLoading" height="200px" />
   </div>
 </template>
+
+<style scoped>
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.sortable:hover {
+  background-color: #f8f9fa;
+}
+</style>

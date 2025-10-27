@@ -280,6 +280,103 @@ export const getProductABC = async (period = 'monthly') => {
     return data
 }
 
+/**
+ * 일별 매출 데이터 조회 (Sales Management 페이지용)
+ * @param {string} startDate - 시작일 (yyyy-MM-dd)
+ * @param {string} endDate - 종료일 (yyyy-MM-dd)
+ * @param {number} storeId - 매장 ID (optional)
+ */
+export const getDailySales = async (startDate, endDate, storeId) => {
+    const requestUrl = `/api/analytics/sales/daily`
+    let data = {}
+    const params = {}
+    if (startDate) params.startDate = startDate
+    if (endDate) params.endDate = endDate
+    if (storeId) params.storeId = storeId
+
+    await api.get(requestUrl, { params })
+        .then((response) => {
+            data = response.data
+        })
+        .catch((error) => {
+            console.error('Failed to fetch daily sales:', error)
+            data = { data: [] }
+        })
+    return data
+}
+
+/**
+ * 최근 7일간 매출 차트 데이터 (Sales Management 페이지용)
+ * @param {number} storeId - 매장 ID (optional)
+ */
+export const getSalesChartData = async (storeId) => {
+    const requestUrl = `/api/analytics/sales/chart`
+    let data = {}
+    const params = {}
+    if (storeId) params.storeId = storeId
+
+    await api.get(requestUrl, { params })
+        .then((response) => {
+            data = response.data
+        })
+        .catch((error) => {
+            console.error('Failed to fetch sales chart data:', error)
+            data = { data: [] }
+        })
+    return data
+}
+
+/**
+ * 고객 분석 데이터 조회 (Customer Analytics 페이지용)
+ */
+export const getCustomerAnalytics = async () => {
+    const requestUrl = `/api/analytics/customers/analytics`
+    let data = {}
+    await api.get(requestUrl)
+        .then((response) => {
+            data = response.data
+        })
+        .catch((error) => {
+            console.error('Failed to fetch customer analytics:', error)
+            data = { data: [] }
+        })
+    return data
+}
+
+/**
+ * 연령대별 고객 분포
+ */
+export const getAgeDistribution = async () => {
+    const requestUrl = `/api/analytics/customers/age-distribution`
+    let data = {}
+    await api.get(requestUrl)
+        .then((response) => {
+            data = response.data
+        })
+        .catch((error) => {
+            console.error('Failed to fetch age distribution:', error)
+            data = { data: [] }
+        })
+    return data
+}
+
+/**
+ * 카테고리별 고객 매출 (Customer Analytics 페이지용)
+ */
+export const getCategoryCustomerSales = async () => {
+    const requestUrl = `/api/analytics/customers/category-sales`
+    let data = {}
+    await api.get(requestUrl)
+        .then((response) => {
+            data = response.data
+        })
+        .catch((error) => {
+            console.error('Failed to fetch category customer sales:', error)
+            data = { data: [] }
+        })
+    return data
+}
+
 export default {
     getSalesOverview,
     getOrderOverview,
@@ -293,5 +390,10 @@ export default {
     getAllStores,
     getAllProducts,
     getCustomerRFM,
-    getProductABC
+    getProductABC,
+    getDailySales,
+    getSalesChartData,
+    getCustomerAnalytics,
+    getAgeDistribution,
+    getCategoryCustomerSales
 }
