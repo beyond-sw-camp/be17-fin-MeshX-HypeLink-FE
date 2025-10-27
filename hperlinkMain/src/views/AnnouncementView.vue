@@ -7,7 +7,7 @@ import BaseModal from '@/components/BaseModal.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useModalStore } from '@/stores/modal';
 import { useToastStore } from '@/stores/toast';
-import {getAllAnnouncementsList, createAnnouncement, getAnnouncementDetail, updateAnnouncement} from '@/api/announcements';
+import {getAllAnnouncementsList, getPagedAnnouncements, createAnnouncement, getAnnouncementDetail, updateAnnouncement} from '@/api/announcements';
 import { uploadNoticeImage } from '@/api/image';
 
 const announcements = ref([]);   // 기존 allAnnouncements 대체
@@ -30,10 +30,10 @@ const selectedFiles = ref([]);  // 선택된 파일들
 const imagePreviewUrls = ref([]);  // 미리보기 URL
 const isUploading = ref(false);  // 업로드 중 상태
 
-// 검색, 필터, 정렬, 페이지네이션 상태
-const searchTerm = ref('');
+// 페이지네이션 상태
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(6);
+const totalPages = ref(1);
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -43,42 +43,34 @@ const formatDate = (dateString) => {
   return `${month}월 ${day}일`;
 };
 
-//화면이 처음 뜰 때 실행: 전체 공지 목록을 서버에서 받아오기
-onMounted(async () => {
+//공지사항 목록 조회 (백엔드 페이징)
+const fetchAnnouncements = async () => {
   loading.value = true;
   try {
-    const res = await getAllAnnouncementsList();
-    announcements.value = res?.data?.notices || [];
+    const res = await getPagedAnnouncements({
+      page: currentPage.value - 1,  // Spring Pageable은 0부터 시작
+      size: itemsPerPage.value,
+      sort: 'id,desc'
+    });
+    announcements.value = res?.data?.content || [];
+    totalPages.value = res?.data?.totalPages || 1;
   } catch (err) {
     console.error(err);
     error.value = '공지사항 불러오기 실패';
   } finally {
     loading.value = false;
   }
+};
+
+//화면이 처음 뜰 때 실행
+onMounted(() => {
+  fetchAnnouncements();
 });
 
-//검색어가 반영된 목록 계산(computed: 원본+검색어가 바뀌면 자동 재계산)
-const filteredAnnouncements = computed(() => {
-  let filtered = [...announcements.value]; 
-  if (searchTerm.value) {                         // 검색어가 있으면 소문자로 맞추고 제목/내용에 검색어 포함된 것만 남김
-    const term = searchTerm.value.toLowerCase();
-    filtered = filtered.filter(a =>
-      a.title.toLowerCase().includes(term) ||
-      a.contents?.toLowerCase().includes(term)
-    );
-  }
-  return filtered;
+// 페이지 변경 시 데이터 다시 불러오기
+watch(currentPage, () => {
+  fetchAnnouncements();
 });
-
-//현재 페이지에 해당하는 목록 조각만 계산
-const paginatedAnnouncements = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAnnouncements.value.slice(start, end);
-});
-
-// 전체 페이지 수 계산(목록 길이 ÷ 페이지당 개수)
-const totalPages = computed(() => Math.ceil(filteredAnnouncements.value.length / itemsPerPage.value));
 
 //페이지 번호 바꾸기(범위 밖이면 무시)
 const updatePage = (page) => {
@@ -187,8 +179,7 @@ const saveAnnouncement = async () => {
     }
 
     // 등록/수정 후 목록 다시 불러오기
-    const res = await getAllAnnouncementsList();
-    announcements.value = res?.data?.notices || [];
+    await fetchAnnouncements();
 
     isModalOpen.value = false;
     selectedFiles.value = [];
@@ -212,7 +203,6 @@ const saveAnnouncement = async () => {
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0">공지사항 목록</h5>
           <div class="d-flex">
-            <input type="text" class="form-control form-control-sm me-2" placeholder="제목/내용 검색" v-model="searchTerm">
              <!-- 권한이 관리자/매니저일 때만 보이는 버튼 -->
             <button v-if="authStore.isAdmin || authStore.isManager" class="btn btn-primary btn-sm" @click="openAddAnnouncementModal">+ 새 공지 작성</button>
           </div>
@@ -220,9 +210,9 @@ const saveAnnouncement = async () => {
       </template>
     
        <!-- 목록이 있으면 리스트 보여주고 -->
-      <div v-if="paginatedAnnouncements && paginatedAnnouncements.length > 0">
+      <div v-if="announcements && announcements.length > 0">
         <ul class="list-group list-group-flush">
-          <li v-for="announcement in paginatedAnnouncements" :key="announcement.id" class="list-group-item">
+          <li v-for="announcement in announcements" :key="announcement.id" class="list-group-item">
             <div class="d-flex w-100 justify-content-between">
                <!-- 제목 눌렀을 때 상세 페이지로 이동하는 링크 -->
               <router-link :to="`/announcements/${announcement.id}`" class="text-decoration-none">

@@ -1,14 +1,25 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import Sidebar from './components/common/Sidebar.vue'
 import TopHeader from './components/common/TopHeader.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const isSidebarOpen = ref(false)
+const authStore = useAuthStore()
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
 }
+
+// 앱 시작 시 자동 세션 복원 시도
+onMounted(async () => {
+  try {
+    await authStore.checkAuth()
+  } catch (error) {
+    console.log('세션 복원 실패:', error)
+  }
+})
 </script>
 
 <template>

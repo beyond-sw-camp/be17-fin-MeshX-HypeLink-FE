@@ -40,7 +40,7 @@ const getStatusClass = (status) => {
 // 주문 내역 조회
 const fetchOrders = async () => {
   loading.value = true
-  const result = await ordersAPI.getOrdersByStore(1) // TODO: 실제 매장 ID로 변경
+  const result = await ordersAPI.getOrdersByStore()
 
   if (result.success) {
     // 백엔드 응답 데이터를 프론트 형식에 맞게 변환
