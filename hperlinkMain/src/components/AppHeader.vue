@@ -14,14 +14,41 @@ const showLogoutModal = ref(false);
 
 const pageTitle = computed(() => {
   const name = route.name || 'dashboard';
-  if (name === 'my-store') return '내 점포';
-  if (name === 'customer-analytics') return '고객 분석';
-  if (name === 'tracking') return '배송 추적';
-  if (name === 'communication') return '공지/소통';
-  if (name === 'stores') return '매장 관리';
+  
+  // 공통 메뉴
+  if (name === 'dashboard') return '대시보드';
+  if (name === 'announcements') return '공지사항';
+  if (name === 'announcement-detail') return '공지사항 상세';
+  if (name === 'messenger') return '메신저';
+  
+  // B2B 관리
+  if (name === 'stores') return '전체 매장 관리';
+  if (name === 'store-detail') return '점포 상세 정보';
+  if (name === 'my-store') return '내 점포 관리';
+  if (name === 'pos-management') return 'POS 기기 관리';
   if (name === 'inventory') return '재고 관리';
   if (name === 'sales') return '매출 관리';
+  if (name === 'asList') return 'AS/고장 접수';
+  if (name === 'asCreate') return 'AS/고장 접수 등록';
+  if (name === 'asDetail') return 'AS/고장 접수 상세';
+  if (name === 'promotions') return '프로모션 관리';
+  if (name === 'promotion-detail') return '프로모션 상세';
+  if (name === 'products') return '상품 관리';
+  if (name === 'warehouse-inventory') return '창고 재고';
+  if (name === 'purchase-orders') return '발주서';
+ 
+  
+  // 시스템 관리
+  if (name === 'tracking') return '전체 배송 추적';
+  if (name === 'customer-analytics') return '고객 분석';
+  if (name === 'pos-health') return 'POS 헬스체크';
+  if (name === 'drivers') return '드라이버 관리';
   if (name === 'users') return '사용자 관리';
+  if (name === 'coupons') return '쿠폰 관리';
+  
+  // 기타
+  if (name === 'communication') return '공지/소통';
+  
   return name.charAt(0).toUpperCase() + name.slice(1);
 });
 

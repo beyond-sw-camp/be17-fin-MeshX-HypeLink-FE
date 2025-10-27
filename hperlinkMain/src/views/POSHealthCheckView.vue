@@ -14,6 +14,15 @@ const statusClass = (status) => {
   if (status === 'Error') return 'bg-danger';
   return 'bg-secondary';
 };
+
+const getStatusText = (status) => {
+  switch (status) {
+    case 'Online': return '정상';
+    case 'Offline': return '연결 끊김';
+    case 'Error': return '오류';
+    default: return status;
+  }
+};
 </script>
 
 <template>
@@ -35,7 +44,7 @@ const statusClass = (status) => {
           <td>{{ device.storeName }}</td>
           <td>{{ device.posId }}</td>
           <td>
-            <span class="badge" :class="statusClass(device.status)">{{ device.status }}</span>
+            <span class="badge" :class="statusClass(device.status)">{{ getStatusText(device.status) }}</span>
           </td>
           <td>
             <div class="progress">
