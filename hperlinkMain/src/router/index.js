@@ -14,6 +14,7 @@ import purchaseOrderRoutes from './routes/purchaseOrderRoutes.js'
 import trackingRoutes from './routes/trackingRoutes.js'
 
 import customerAnalyticsRoutes from './routes/customerAnalyticsRoutes.js'
+import analyticsRoutes from './routes/analyticsRoutes.js'
 import posHealthRoutes from './routes/posHealthRoutes.js'
 import driverRoutes from './routes/driverRoutes.js'
 import communicationRoutes from './routes/communicationRoutes.js'
@@ -41,6 +42,7 @@ const routes = [
   ...purchaseOrderRoutes,
   ...trackingRoutes,
   ...customerAnalyticsRoutes,
+  ...analyticsRoutes,
   ...posHealthRoutes,
   ...driverRoutes,
   ...communicationRoutes,
