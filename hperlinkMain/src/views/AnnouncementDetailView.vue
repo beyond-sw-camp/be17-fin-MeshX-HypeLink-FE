@@ -64,10 +64,6 @@ const formatDate = (dateString) => {
           <img :src="image.imageUrl" :alt="image.originalName" class="img-fluid rounded shadow-sm" style="border: 1px solid #eee;">
         </div>
       </div>
-
-      <template #footer>
-        <button class="btn btn-secondary" @click="router.back()">목록으로</button>
-      </template>
     </BaseCard>
     <BaseEmptyState v-else message="공지사항을 찾을 수 없습니다." />
   </div>

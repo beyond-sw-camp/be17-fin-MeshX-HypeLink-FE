@@ -179,7 +179,7 @@ const isLightColor = (hex) => {
               <th @click="updateSort('name')" class="sortable">상품명(영문) <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="enName" /></th>
               <th @click="updateSort('category')" class="sortable">카테고리 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="category" /></th>
               <th>색상</th>
-              <th>현재고</th>
+              <th>현재 재고</th>
               <th>발주 재고</th>
               <th>발주</th>
 

@@ -134,9 +134,8 @@ const getRoleBadge = (role) => {
 
 <template>
   <div class="as-detail-view">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="mb-4">
       <h2>AS 요청 상세</h2>
-      <button class="btn btn-secondary" @click="router.back()">목록으로</button>
     </div>
 
     <BaseSpinner v-if="asStore.isLoading" />
