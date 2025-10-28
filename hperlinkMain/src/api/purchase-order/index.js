@@ -42,11 +42,12 @@ export const getHeadPurchaseOrder = async (page = 0, size = 10, sort = 'id,desc'
     return data
 }
 
-export const getPurchaseOrder = async (page = 0, size = 10, sort = 'id,desc') => {
-    const requestUrl = `/api/order/page/all`
+export const searchPurchaseOrder = async (page = 0, size = 10, sort = 'id,desc',
+                                          keyWord='', status) => {
+    const requestUrl = `/api/order/page/search`
     let data = {}
     await api.get(requestUrl,{
-        params: { page, size, sort },
+        params: { page, size, sort, keyWord, status },
     })
         .then((response) => {
             data = response
@@ -97,6 +98,6 @@ export const updatePurchaseOrder = async (updateFrom) => {
 }
 
 export default {
-    saveHeadPurchaseOrder, getHeadPurchaseOrder, getPurchaseOrder, updatePurchaseOrder, getPurchaseOrderDetails,
-    getPurchaseOrderStates, savePurchaseOrder
+    saveHeadPurchaseOrder, getHeadPurchaseOrder, updatePurchaseOrder, getPurchaseOrderDetails,
+    getPurchaseOrderStates, savePurchaseOrder, searchPurchaseOrder
 }

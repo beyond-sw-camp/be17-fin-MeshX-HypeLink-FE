@@ -244,7 +244,8 @@ const loadItems = async (page = 1) => {
   try {
     isLoading.value = true;
 
-    const response = await itemApi.getItems(page - 1, itemsPerPage.value, `${sortKey.value},${sortOrder.value}`);
+    const response = await itemApi.getItems(page - 1, itemsPerPage.value,
+        `${sortKey.value},${sortOrder.value}`, searchTerm.value, filterCategory.value);
     if (response.status === 200 && response.data) {
       const pageData = response.data.data;
       allProducts.value = pageData.content;
@@ -266,6 +267,10 @@ const getCategories = async () => {
     toastStore.showToast("카테고리를 불러오지 못했습니다.", "danger")
   }
   categories.value = res.data.data.categories;
+}
+
+const onSearch = async () => {
+  await loadItems(1);
 }
 
 // === 페이지 이동 ===
@@ -313,6 +318,9 @@ const visiblePages = computed(() => {
                   {{ cat.category }}
                 </option>
               </select>
+            </div>
+            <div class="me-2">
+              <button class="btn btn-primary btn-sm" @click="onSearch">검색</button>
             </div>
             <button class="btn btn-primary btn-sm" @click="openProductModal()">+ 새 상품 등록</button>
           </div>

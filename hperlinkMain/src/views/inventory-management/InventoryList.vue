@@ -231,15 +231,18 @@ onMounted(() => {
             </option>
           </select>
 
-          <select class="form-select form-select-sm" v-model="filterCategory">
-            <option value="all">전체 카테고리</option>
-            <option v-for="cat in categories" :key="cat.category" :value="cat.category">
-              {{ cat.category }}
-            </option>
-          </select>
-
+          <div class="me-2">
+            <select class="form-select form-select-sm" v-model="filterCategory">
+              <option value="all">전체 카테고리</option>
+              <option v-for="cat in categories" :key="cat.category" :value="cat.category">
+                {{ cat.category }}
+              </option>
+            </select>
+          </div>
+          <div class="me-2">
           <!-- 검색 버튼 -->
-          <button class="btn btn-primary btn-sm" @click="loadItems(1)">검색</button>
+            <button class="btn btn-primary btn-sm" @click="loadItems(1)">검색</button>
+          </div>
         </div>
       </div>
     </template>

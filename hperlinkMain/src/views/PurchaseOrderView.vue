@@ -1,38 +1,24 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 import BaseEmptyState from '@/components/BaseEmptyState.vue';
 import SortIcon from '@/components/SortIcon.vue';
-import {useProductStore} from '@/stores/products';
 import {useAuthStore} from '@/stores/auth';
 import {useToastStore} from '@/stores/toast';
-import {useOrderStore} from '@/stores/orders';
 
 import purchaseOrderApi from '@/api/purchase-order'
 
-const productStore = useProductStore();
 const authStore = useAuthStore();
 const toastStore = useToastStore();
-const orderStore = useOrderStore();
 
 const isLoading = ref(true);
 const orderStates = ref([]);
 
 const checkOrder = ref(false);
 const currentOrder = ref(null);
-const isModalOpen = ref(false);
 const isCheckModalOpen = ref(false);
-const formSubmitted = ref(false);
-const orderForm = reactive({
-  productId: '',
-  quantity: 1
-});
-const updateOrderForm = reactive({
-  orderId: 0,
-  orderState: ''
-})
 
 // 검색, 필터, 정렬, 페이지네이션 상태
 const searchTerm = ref('');
@@ -54,7 +40,8 @@ const loadItems = async (page = 1) => {
   try {
     isLoading.value = true;
 
-    const response = await purchaseOrderApi.getPurchaseOrder(page - 1, itemsPerPage.value, `${sortKey.value},${sortOrder.value}`);
+    const response = await purchaseOrderApi.searchPurchaseOrder(page - 1, itemsPerPage.value,
+        `${sortKey.value},${sortOrder.value}`, searchTerm.value, filterStatus.value);
     if (response.status === 200 && response.data) {
       const pageData = response.data.data;
       allProducts.value = pageData.content;
@@ -84,47 +71,6 @@ const updateSort = (key) => {
 const updatePage = async (page) => {
   if (page < 1 || page > totalPages.value) return;
   await loadItems(page);
-};
-
-const handleSubmitOrder = async () => {
-  formSubmitted.value = true;
-  if (!orderForm.productId) {
-    toastStore.showToast('상품과 수량을 올바르게 입력해주세요.', 'danger');
-    return;
-  }
-  const product = productStore.allProducts.find(p => p.id === orderForm.productId);
-  if (!product) {
-    toastStore.showToast('선택된 상품을 찾을 수 없습니다.', 'danger');
-    return;
-  }
-
-  orderStore.submitOrder({
-    ...orderForm,
-    productName: product.name,
-    storeName: authStore.user.name
-  });
-
-  isModalOpen.value = false;
-  await loadItems(currentPage + 1);
-  toastStore.showToast('발주 요청이 완료되었습니다.', 'success');
-};
-
-const handleUpdateOrderStatus = async (id, newStatus) => {
-  updateOrderForm.orderId = id;
-  updateOrderForm.orderState = newStatus;
-
-  let res = await purchaseOrderApi.updatePurchaseOrder(updateOrderForm);
-
-  updateOrderForm.orderId = 0;
-  updateOrderForm.orderState = '';
-  closeCompleteModal();
-  await loadItems(currentPage.value);
-
-  if (res.status === 200) {
-    toastStore.showToast(`발주 #${id} 상태가 ${newStatus}(으)로 변경되었습니다.`, 'success');
-    return;
-  }
-  toastStore.showToast(`발주 상태 수정에 실패했습니다.`, 'danger');
 };
 
 const openCompleteModal = (order, check) => {
@@ -158,6 +104,10 @@ const orderStatusClass = (status) => {
   }
 };
 
+const onSearch = async () => {
+  await loadItems(1);
+}
+
 // --- 표시할 페이지 버튼 계산 (최대 5개) ---
 const visiblePages = computed(() => {
   const total = totalPages.value;
@@ -186,13 +136,18 @@ const visiblePages = computed(() => {
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0">발주서 목록</h5>
           <div class="d-flex">
-            <input type="text" class="form-control form-control-sm me-2" placeholder="상품명/매장명 검색" v-model="searchTerm">
-            <select class="form-select form-select-sm me-2" v-model="filterStatus">
-              <option value="all">전체 상태</option>
-              <option v-for="cat in orderStates" :key="cat.description" :value="cat.description">
-                {{ cat.description }}
-              </option>
-            </select>
+            <div class="me-2">
+              <input type="text" class="form-control form-control-sm me-2" placeholder="상품명/매장명 검색" v-model="searchTerm">
+            </div>
+            <div class="me-2">
+              <select class="form-select form-select-sm me-2" v-model="filterStatus">
+                <option value="all">전체 상태</option>
+                <option v-for="cat in orderStates" :key="cat.description" :value="cat.description">
+                  {{ cat.description }}
+                </option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-sm" @click="onSearch">검색</button>
           </div>
         </div>
       </template>
@@ -276,34 +231,6 @@ const visiblePages = computed(() => {
       </div>
       <BaseEmptyState v-else message="조회된 발주서가 없습니다."/>
     </BaseCard>
-
-    <!-- 발주서 작성 모달 -->
-    <BaseModal v-model="isModalOpen">
-      <template #header><h5>새 발주서 작성</h5></template>
-      <form @submit.prevent="handleSubmitOrder">
-        <div class="mb-3">
-          <label class="form-label">상품명 <span class="text-danger">*</span></label>
-          <select class="form-select" v-model="orderForm.productId"
-                  :class="{ 'is-invalid': !orderForm.productId && formSubmitted }">
-            <option disabled value="">상품 선택</option>
-            <option v-for="product in productStore.allProducts" :key="product.id" :value="product.id">{{ product.name }}
-              ({{ product.code }})
-            </option>
-          </select>
-          <div class="invalid-feedback">상품을 선택해주세요.</div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">수량 <span class="text-danger">*</span></label>
-          <input type="number" class="form-control" v-model.number="orderForm.quantity" min="1"
-                 :class="{ 'is-invalid': (!orderForm.quantity) && formSubmitted }">
-          <div class="invalid-feedback">수량을 입력해주세요</div>
-        </div>
-      </form>
-      <template #footer>
-        <button type="button" class="btn btn-secondary" @click="isModalOpen = false">취소</button>
-        <button type="button" class="btn btn-primary" @click="handleSubmitOrder">발주 요청</button>
-      </template>
-    </BaseModal>
 
     <!-- 실제 입고 처리 하기 전 모달 창 -->
     <BaseModal v-model="isCheckModalOpen">
