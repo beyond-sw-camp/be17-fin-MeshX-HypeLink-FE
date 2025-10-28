@@ -10,12 +10,13 @@ import FlatPickr from 'vue-flatpickr-component';
 import 'flatpickr/dist/flatpickr.css'; // 매출 코드와 동일
 import { Korean } from 'flatpickr/dist/l10n/ko.js';
 import { useToastStore } from '@/stores/toast';
-import { getPagedPromotions, createPromotion, updatePromotion, searchPromotions } from '@/api/promotion';
+import { getPagedPromotions, createPromotion, updatePromotion, searchPromotions, getPromotionStatusList } from '@/api/promotion';
 import { getAllCoupons } from '@/api/coupons';
 
 const toastStore = useToastStore();
 const router = useRouter();
 
+const promotionStatusList = ref([]);
 const allPromotions = ref([]);
 const isLoading = ref(true);
 const couponList = ref([]);
@@ -88,51 +89,70 @@ watch(
   }
 );
 
-// 검색어 변경 시 검색 실행 (debounce 적용)
-let searchTimeout = null;
-watch(searchTerm, () => {
-  // 기존 타이머 취소
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
-  // 500ms 후에 검색 실행 (사용자가 타이핑을 멈춘 후 검색)
-  searchTimeout = setTimeout(() => {
-    currentPage.value = 1; // 검색 시 첫 페이지로 이동
-    loadPromotions(1);
-  }, 500);
-});
+// 검색 실행 함수
+const handleSearch = () => {
+  currentPage.value = 1; // 검색 시 첫 페이지로 이동
+  loadPromotions(1);
+};
+
+
+// 프로모션 상태 목록 로드
+const loadPromotionStatusList = async () => {
+  const res = await getPromotionStatusList();
+  promotionStatusList.value = res.data.promotionStatusInfos;
+};
 
 // 데이터 로딩
 onMounted(async () => {
   await loadPromotions(1);
   await loadCoupons();
+  await loadPromotionStatusList();
 });
 
-// 쿠폰 목록 로드
+// 쿠폰 목록 로드 (모든 페이지 순회)
 const loadCoupons = async () => {
   try {
-    const res = await getAllCoupons();
+    console.log('🔍 쿠폰 로드 시작...');
+    let allCouponsData = [];
+    let currentPage = 0;
+    let totalPages = 1;
+    const pageSize = 10; // ✅ 한 번에 가져올 개수 (0이면 안됨!)
 
-    // 다양한 응답 구조 대응
-    let coupons = null;
-    if (res.data?.data?.content) {
-      coupons = res.data.data.content;
-    } else if (res.data?.data) {
-      coupons = res.data.data;
-    } else if (res.data) {
-      coupons = res.data;
-    }
+    // 모든 페이지를 순회하며 쿠폰 로드
+    do {
+      console.log(`📄 페이지 ${currentPage} 로드 중... (size: ${pageSize})`);
+      const res = await getAllCoupons(currentPage, pageSize);
+      console.log('📦 API 응답:', res);
+      
+      if (res.data && res.data.couponInfoResList) {
+        console.log('✅ couponInfoResList 발견:', res.data.couponInfoResList.length, '개');
+        const coupons = res.data.couponInfoResList.map(coupon => ({
+          id: coupon.id,
+          type: coupon.type?.toUpperCase(),
+          name: coupon.name,
+          value: coupon.value,
+        }));
+        allCouponsData = [...allCouponsData, ...coupons];
+        
+        // 페이지 정보 업데이트
+        totalPages = res.data.totalPages || 1;
+        console.log(`📊 현재: ${currentPage + 1}/${totalPages} 페이지, 누적: ${allCouponsData.length}개`);
+        currentPage++;
+      } else {
+        console.error('❌ 응답 구조가 예상과 다름:', res);
+        break; // 응답 구조가 다르면 중단
+      }
+    } while (currentPage < totalPages);
 
-    if (coupons && Array.isArray(coupons)) {
-      couponList.value = coupons.map(coupon => ({
-        id: coupon.id,
-        type: coupon.type?.toUpperCase(),
-        name: coupon.name,
-        value: coupon.value,
-      }));
-    }
+    couponList.value = allCouponsData;
+    console.log('✨ 쿠폰 목록 로드 완료:', couponList.value.length, '개');
+    console.log('📋 쿠폰 타입별:', 
+      'PERCENTAGE:', couponList.value.filter(c => c.type === 'PERCENTAGE').length,
+      'FIXED:', couponList.value.filter(c => c.type === 'FIXED').length
+    );
   } catch (error) {
-    console.error('쿠폰 목록 로드 실패:', error);
+    console.error('💥 쿠폰 목록 로드 실패:', error);
+    toastStore.showToast('쿠폰 목록을 불러오는데 실패했습니다.', 'danger');
   }
 };
 
@@ -142,13 +162,14 @@ const loadPromotions = async (page = 1) => {
 
     let res;
     // 검색어가 있으면 검색 API 호출, 없으면 일반 목록 조회
-    if (searchTerm.value.trim()) {
+    if (searchTerm.value.trim()||filterStatus.value !== 'all') {
       res = await searchPromotions(
         searchTerm.value.trim(),
+        filterStatus.value,
         page - 1,
         itemsPerPage.value,
         sortKey.value,
-        sortOrder.value
+        sortOrder.value,
       );
     } else {
       res = await getPagedPromotions(
@@ -354,9 +375,10 @@ const filteredCoupons = computed(() => {
   return couponList.value.filter(coupon => coupon.type === promoForm.couponType);
 });
 
-// 검색어 초기화
+// 검색어 초기화 및 전체 목록 다시 로드
 const clearSearch = () => {
   searchTerm.value = '';
+  handleSearch(); // 검색어 지우고 전체 목록 다시 로드
 };
 </script>
 
@@ -367,12 +389,13 @@ const clearSearch = () => {
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0">프로모션 목록</h5>
           <div class="d-flex">
-            <div class="me-2 position-relative">
+            <div class="me-2 position-relative" style="width: 250px;">
               <input
                 type="text"
                 class="form-control form-control-sm"
                 placeholder="프로모션명 검색"
                 v-model="searchTerm"
+                @keyup.enter="handleSearch"
                 style="padding-right: 30px;"
               />
               <button
@@ -388,11 +411,14 @@ const clearSearch = () => {
             <div class="me-2">
               <select class="form-select form-select-sm" v-model="filterStatus">
                 <option value="all">전체 상태</option>
-                <option value="진행중">진행중</option>
-                <option value="예정">예정</option>
-                <option value="종료">종료</option>
+                <option v-for="cat in promotionStatusList" :key="cat.description" :value="cat.description">
+                  {{ cat.description }}
+                </option>
               </select>
             </div>
+            <button class="btn btn-success btn-sm me-2" @click="handleSearch">
+              🔍 검색
+            </button>
             <button class="btn btn-primary btn-sm" @click="openPromotionModal()">
               + 새 프로모션 등록
             </button>
