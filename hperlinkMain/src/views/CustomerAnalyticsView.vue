@@ -35,7 +35,7 @@ const selectedCoupon = ref(null);
 const sortKey = ref('name');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 
 // --- 드릴다운 데이터 및 로직 ---
 const drillDown = ref({ title: null, items: [] });
@@ -107,11 +107,21 @@ const loadChartData = async () => {
   }
 };
 
+// --- 데이터 로딩 함수 ---
+const loadCustomersData = async (page = 0) => {
+  try {
+    await customerStore.fetchAllCustomers(page, itemsPerPage.value);
+  } catch (error) {
+    console.error('Failed to fetch customers:', error);
+    toastStore.showToast('고객 데이터 로딩에 실패했습니다.', 'error');
+  }
+};
+
 // --- 데이터 로딩 ---
 onMounted(async () => {
   isLoading.value = true;
   try {
-    await customerStore.fetchAllCustomers(); // Fetch customers from backend
+    await loadCustomersData(0); // Fetch customers from backend with pagination
     await couponStore.fetchAllCoupons(); // Fetch coupons from backend
     await loadChartData(); // Load chart data
   } catch (error) {
@@ -122,7 +132,7 @@ onMounted(async () => {
   }
 });
 
-// --- 필터링 및 정렬 로직 ---
+// --- 필터링 및 정렬 로직 (클라이언트 측) ---
 const filteredAndSortedCustomers = computed(() => {
   let customers = [...customerStore.allCustomers];
 
@@ -155,13 +165,31 @@ const filteredAndSortedCustomers = computed(() => {
   return customers;
 });
 
-// --- 페이지네이션 로직 ---
+// --- 페이지네이션 로직 (서버 페이징 사용) ---
 const paginatedCustomers = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedCustomers.value.slice(start, end);
+  return filteredAndSortedCustomers.value;
 });
-const totalPages = computed(() => Math.ceil(filteredAndSortedCustomers.value.length / itemsPerPage.value));
+const totalPages = computed(() => customerStore.totalPages || 1);
+
+// --- 표시할 페이지 버튼 계산 (최대 5개) ---
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 
 // --- 일괄 선택 로직 ---
 const isAllSelected = computed(() => {
@@ -177,7 +205,12 @@ const toggleSelectAll = () => {
 };
 
 // --- 이벤트 핸들러 ---
-const updatePage = (page) => { if (page > 0 && page <= totalPages.value) { currentPage.value = page; } };
+const updatePage = async (page) => {
+  if (page > 0 && page <= totalPages.value) {
+    currentPage.value = page;
+    await loadCustomersData(page - 1); // Convert to 0-based index for API
+  }
+};
 const updateSort = (key) => {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
@@ -221,7 +254,7 @@ const issueCoupon = async () => {
       toastStore.showToast('쿠폰이 성공적으로 발급되었습니다.', 'success');
       selectedCustomers.value.clear();
       selectedCoupon.value = null;
-      await customerStore.fetchAllCustomers();
+      await loadCustomersData(currentPage.value - 1);
     } catch (error) {
       console.error('쿠폰 발급 실패:', error);
       toastStore.showToast('쿠폰 발급에 실패했습니다.', 'error');
@@ -303,8 +336,20 @@ const issueCoupon = async () => {
                 <li class="page-item" :class="{ disabled: currentPage === 1 }">
                   <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
                 </li>
-                <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
+                <li class="page-item" v-if="visiblePages[0] > 1">
+                  <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+                </li>
+                <li class="page-item disabled" v-if="visiblePages[0] > 2">
+                  <span class="page-link">...</span>
+                </li>
+                <li class="page-item" :class="{ active: page === currentPage }" v-for="page in visiblePages" :key="page">
                   <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+                </li>
+                <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+                  <span class="page-link">...</span>
+                </li>
+                <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+                  <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
                 </li>
                 <li class="page-item" :class="{ disabled: currentPage === totalPages }">
                   <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>

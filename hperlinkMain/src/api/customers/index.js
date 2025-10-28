@@ -1,7 +1,7 @@
 import api from "@/plugins/axiosinterceptor";
 
-export const getAllCustomers = async () => {
-  const requestUrl = `/api/customer/list`;
+export const getAllCustomers = async (page = 0, size = 10) => {
+  const requestUrl = `api/customer/list?page=${page}&size=${size}`;
   let data = {};
   await api
     .get(requestUrl)

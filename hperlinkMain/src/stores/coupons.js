@@ -5,21 +5,29 @@ import { createCoupon, getAllCoupons, deleteCoupon as deleteCouponAPI } from '@/
 export const useCouponStore = defineStore('coupons', () => {
   const allCoupons = ref([]);
   const isLoading = ref(false);
+  const totalPages = ref(0);
+  const totalElements = ref(0);
+  const currentPage = ref(0);
+  const pageSize = ref(10);
 
-  // 전체 쿠폰 조회
-  const fetchAllCoupons = async () => {
+  // 전체 쿠폰 조회 (페이징)
+  const fetchAllCoupons = async (page = 0, size = 10) => {
     isLoading.value = true;
     try {
-      const response = await getAllCoupons();
-      if (response.data) {
+      const response = await getAllCoupons(page, size);
+      if (response.data && response.data.couponInfoResList) {
         // 백엔드 응답 형식을 프론트 형식으로 변환
-        allCoupons.value = response.data.map(coupon => ({
+        allCoupons.value = response.data.couponInfoResList.map(coupon => ({
           id: coupon.id,
           name: coupon.name,
-          type: coupon.type, // PERCENTAGE -> Percentage 변환은 뷰에서 처리
+          type: coupon.type,
           value: coupon.value,
           period: coupon.period,
         }));
+        totalPages.value = response.data.totalPages || 0;
+        totalElements.value = response.data.totalElements || 0;
+        currentPage.value = response.data.currentPage || 0;
+        pageSize.value = response.data.pageSize || size;
       }
     } catch (error) {
       console.error('쿠폰 조회 실패:', error);
@@ -29,12 +37,12 @@ export const useCouponStore = defineStore('coupons', () => {
   };
 
   // 쿠폰 추가
-  const addCoupon = async (coupon) => {
+  const addCoupon = async (coupon, page = 0) => {
     try {
       const response = await createCoupon(coupon);
       if (response.data) {
         // 추가 성공 후 목록 새로고침
-        await fetchAllCoupons();
+        await fetchAllCoupons(page, pageSize.value);
         return true;
       }
       return false;
@@ -45,12 +53,12 @@ export const useCouponStore = defineStore('coupons', () => {
   };
 
   // 쿠폰 삭제
-  const deleteCoupon = async (id) => {
+  const deleteCoupon = async (id, page = 0) => {
     try {
       const response = await deleteCouponAPI(id);
       if (response.data) {
         // 삭제 성공 후 목록 새로고침
-        await fetchAllCoupons();
+        await fetchAllCoupons(page, pageSize.value);
         return true;
       }
       return false;
@@ -60,5 +68,5 @@ export const useCouponStore = defineStore('coupons', () => {
     }
   };
 
-  return { allCoupons, isLoading, fetchAllCoupons, addCoupon, deleteCoupon };
+  return { allCoupons, isLoading, totalPages, totalElements, currentPage, pageSize, fetchAllCoupons, addCoupon, deleteCoupon };
 });

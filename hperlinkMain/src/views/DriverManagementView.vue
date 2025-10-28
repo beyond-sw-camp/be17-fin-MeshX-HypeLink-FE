@@ -51,8 +51,14 @@ onMounted(async () => {
 
 // --- Drag and Drop Logic ---
 const handleParcelDrop = async (driver, event) => {
+  // vuedraggable @change 이벤트 구조 확인
+  if (!event.added) {
+    console.log('Event structure:', event);
+    return;
+  }
+
   const droppedParcel = event.added.element;
-  
+
   try {
     const result = await driverStore.assignShipmentToDriver(droppedParcel.shipmentId, driver.id);
     if (result.success) {
@@ -117,10 +123,10 @@ const handleDeleteDriver = async (driver) => {
       <div class="col-md-5">
         <BaseCard>
           <template #header><h5>미배정 택배 목록</h5></template>
-          <draggable 
+          <draggable
             :list="driverStore.unassignedParcels"
             group="parcels"
-            item-key="id"
+            item-key="shipmentId"
             class="parcel-list"
           >
             <template #item="{element}">
@@ -164,9 +170,9 @@ const handleDeleteDriver = async (driver) => {
                 <draggable
                   :list="driver.assignedParcels"
                   group="parcels"
-                  item-key="id"
+                  item-key="shipmentId"
                   class="drop-zone border rounded p-2 mt-2"
-                  @add="handleParcelDrop(driver, $event)"
+                  @change="handleParcelDrop(driver, $event)"
                 >
                   <template #header>
                     <p v-if="driver.assignedParcels.length === 0" class="text-center text-muted small mb-0 p-4">

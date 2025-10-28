@@ -1,15 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import authApi from '@/api/auth'
-import { setAuthHeader, clearAuthHeader } from '@/plugins/axiosinterceptors'
+// import { setAuthHeader, clearAuthHeader } from '@/plugins/axiosinterceptors' // 더 이상 필요 없음
 import router from '@/router'
-import { getEmailFromToken, getRoleFromToken } from '@/utils/jwtUtils'
 
 export const useAuthStore = defineStore('auth', () => {
-  // State - Access token은 메모리에 저장. Refresh token은 secure HttpOnly cookie에 저장.
-  const user = ref(null)
+  // State - sessionStorage에서 사용자 정보를 복원.
+  const user = ref(JSON.parse(sessionStorage.getItem('user')) || null)
   const accessToken = ref(null)
-  const storeInfo = ref(null)
 
   // Getters
   const isAuthenticated = computed(() => !!accessToken.value)
@@ -23,8 +21,9 @@ export const useAuthStore = defineStore('auth', () => {
   function setNewAccessToken(newAccessToken) {
     console.log('[Token Refresh] New Access Token Issued.');
     accessToken.value = newAccessToken;
-    setAuthHeader(newAccessToken);
+    // setAuthHeader(newAccessToken); // Interceptor가 처리하므로 삭제
   }
+
 
   /**
    * 로그인
@@ -39,16 +38,12 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error('POS 시스템은 POS 직원만 접근 가능합니다.');
       }
 
-      // 응답에서 accessToken과 사용자 정보 추출
-      // refreshToken은 HttpOnly 쿠키로 자동 설정됨
       const { accessToken: newAccessToken, id, name, role } = data;
 
       accessToken.value = newAccessToken;
       user.value = { id, name, role };
-      setAuthHeader(newAccessToken);
-
-      // Store 정보 조회
-      await fetchStoreInfo();
+      sessionStorage.setItem('user', JSON.stringify(user.value));
+      // setAuthHeader(newAccessToken); // Interceptor가 처리하므로 삭제
 
       return true;
     } else {
@@ -58,59 +53,20 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * Store 정보 조회 및 user 정보 설정
-   */
-  async function fetchStoreInfo() {
-    try {
-      const response = await authApi.getMyStore();
-      if (response.success) {
-        storeInfo.value = response.data;
-        console.log('[Store Info] Loaded:', storeInfo.value);
-
-        // accessToken에서 email 추출
-        if (accessToken.value) {
-          const email = getEmailFromToken(accessToken.value);
-          const role = getRoleFromToken(accessToken.value);
-
-          // posDevices에서 현재 로그인한 사용자의 POS 찾기
-          const myPos = storeInfo.value.posDevices?.find(pos => pos.email === email);
-
-          if (myPos) {
-            // user 정보 설정
-            user.value = {
-              id: myPos.id,
-              name: myPos.name,
-              email: myPos.email,
-              role: role
-            };
-            console.log('[User Info] Restored from Store:', user.value);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('[Store Info] Failed to load:', error);
-    }
-  }
-
-  /**
    * 로그아웃
    */
   async function logout() {
     try {
-      const response = await authApi.logoutUser();
-      if (!response.success) {
-        console.error("Logout API call failed:", response.message);
-      }
+      await authApi.logoutUser();
     } catch (error) {
       console.error("Error during logout API call:", error);
     } finally {
-      // 로컬 상태 초기화
+      // 로컬 상태 및 sessionStorage 초기화
+      sessionStorage.removeItem('user');
       accessToken.value = null;
       user.value = null;
-      storeInfo.value = null;
-      clearAuthHeader();
+      // clearAuthHeader(); // Interceptor가 처리하므로 삭제
 
-      // 로그인 페이지로 이동
       await router.push('/login');
     }
   }
@@ -119,18 +75,14 @@ export const useAuthStore = defineStore('auth', () => {
    * 인증 확인 (앱 시작 시 자동 세션 복원용)
    */
   async function checkAuth() {
-    // accessToken이 이미 있으면 인증됨
     if (accessToken.value) {
       return true;
     }
 
-    // accessToken이 없으면 refreshToken으로 재발급 시도
     try {
       const response = await authApi.reissueToken();
       if (response.success) {
         setNewAccessToken(response.accessToken);
-        // 사용자 정보는 토큰에서 추출할 수 없으므로 Store 정보 조회로 확인
-        await fetchStoreInfo();
         return true;
       }
     } catch (error) {
@@ -144,7 +96,6 @@ export const useAuthStore = defineStore('auth', () => {
     // State
     user,
     accessToken,
-    storeInfo,
 
     // Getters
     isAuthenticated,
@@ -155,7 +106,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     checkAuth,
-    setNewAccessToken,
-    fetchStoreInfo
+    setNewAccessToken
   }
 })

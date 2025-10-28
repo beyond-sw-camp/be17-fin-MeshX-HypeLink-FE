@@ -54,9 +54,21 @@ export const getMyStore = async () => {
   }
 };
 
+export const getMyStoreId = async () => {
+  try {
+    const response = await api.get('/api/member/mystoreid');
+    // 백엔드에서 Integer를 직접 반환하므로 response.data가 바로 ID
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error("Store ID fetch failed:", error);
+    return { success: false, message: error.response?.data?.message || 'Store ID 조회 실패' };
+  }
+};
+
 export default {
     loginUser,
     reissueToken,
     logoutUser,
     getMyStore,
+    getMyStoreId,
 };
