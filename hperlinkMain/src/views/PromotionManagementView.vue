@@ -568,11 +568,15 @@ const clearSearch = () => {
 
         <!-- ✅ 쿠폰 선택 -->
         <div class="mb-3">
-          <label class="form-label fw-bold">쿠폰 선택 <span class="text-danger">*</span></label>
+          <label class="form-label fw-bold">
+            쿠폰 선택 <span class="text-danger">*</span>
+            <span class="badge bg-info ms-2">{{ filteredCoupons.length }}개</span>
+          </label>
           <select 
             v-model="promoForm.couponId" 
             class="form-select"
             :class="{ 'is-invalid': formSubmitted && !promoForm.couponId }"
+            size="6"
           >
             <option :value="null" disabled>쿠폰을 선택하세요</option>
             <option 
@@ -580,12 +584,15 @@ const clearSearch = () => {
               :key="coupon.id" 
               :value="coupon.id"
             >
-              {{ coupon.name }}
+              {{ coupon.name }} ({{ coupon.value }}{{ coupon.type === 'PERCENTAGE' ? '%' : '원' }})
             </option>
           </select>
           <div class="invalid-feedback">쿠폰을 선택해야 합니다.</div>
           <small class="text-muted d-block mt-1">
             {{ promoForm.couponType === 'PERCENTAGE' ? '퍼센트 할인' : '고정 할인' }} 타입의 쿠폰만 표시됩니다.
+            <span v-if="filteredCoupons.length === 0" class="text-danger fw-bold">
+              (해당 타입의 쿠폰이 없습니다)
+            </span>
           </small>
       </div>
         <div class="mb-3">
