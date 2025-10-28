@@ -3,26 +3,26 @@ import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useShipmentTable } from '@/js/useShipmentTable';
 import { useShipmentMap } from '@/js/useShipmentMap';
 import { useShipmentSocket } from '@/js/useShipmentSocket';
-import { useAuthStore } from '@/stores/auth';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 import BaseEmptyState from '@/components/BaseEmptyState.vue';
+
 import {useShipmentStore} from "@/stores/shipments.js";
+import { useAuthStore } from '@/stores/auth';
 
 const authStore = useAuthStore();
+const shipmentStore = useShipmentStore();
 
 // 로딩 상태
 const isLoading = ref(true);
-const shipmentStore = useShipmentStore();
 
 // 테이블 및 필터링 관련 상태
 const {
-  searchTerm, filterStatus, sortKey, sortOrder,
-  currentPage, itemsPerPage, filteredAndSortedShipments,
-  paginatedShipments, totalPages, updateSort, updatePage, statusClass
+  currentPage, filteredAndSortedShipments, paginatedShipments, totalPages,
+  updatePage, statusClass
 } = useShipmentTable();
 
-// 지도 관련 훅
+// 지도 관련 훅 + 드라이버 위치 + 매장 위치 핀 처리
 const { initMap, updateMapMarkers } = useShipmentMap(filteredAndSortedShipments);
 
 // 소켓 훅 (확장형)
@@ -76,15 +76,6 @@ onBeforeUnmount(() => {
           <template #header>
             <div class="d-flex justify-content-between align-items-center">
               <h5 class="mb-0">실시간 배송 현황</h5>
-              <div class="d-flex">
-                <input type="text" class="form-control form-control-sm me-2" placeholder="배송 ID/기사 검색" v-model="searchTerm">
-                <select class="form-select form-select-sm" v-model="filterStatus">
-                  <option value="all">전체 상태</option>
-                  <option value="배송중">배송중</option>
-                  <option value="지연">지연</option>
-                  <option value="완료">완료</option>
-                </select>
-              </div>
             </div>
           </template>
           <div id="map-container" style="height: 600px;"></div>
