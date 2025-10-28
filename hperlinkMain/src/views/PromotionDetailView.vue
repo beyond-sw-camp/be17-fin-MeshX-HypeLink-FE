@@ -1,13 +1,10 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
-import VueApexCharts from 'vue3-apexcharts';
 import { getPromotionDetail } from '@/api/promotion';
 import { useToastStore } from '@/stores/toast';
-
-const apexchart = VueApexCharts;
 const route = useRoute();
 const router = useRouter();
 const toastStore = useToastStore();
@@ -75,58 +72,6 @@ const statusClass = (status) => {
     default: return 'bg-light';
   }
 };
-
-// 매출 변화 차트 데이터 (임시 더미 데이터)
-const salesChartSeries = computed(() => {
-  if (!promotion.value) return [];
-  
-  // 백엔드에서 salesImpact 데이터가 오면 사용, 없으면 더미 데이터
-  if (promotion.value.salesImpact) {
-    return [
-      { name: '프로모션 전', data: promotion.value.salesImpact.before },
-      { name: '프로모션 중', data: promotion.value.salesImpact.during },
-      { name: '프로모션 후', data: promotion.value.salesImpact.after },
-    ];
-  }
-  
-  // 더미 데이터
-  return [
-    { name: '프로모션 전', data: [320, 350, 380, 420, 450] },
-    { name: '프로모션 중', data: [580, 620, 690, 750, 820] },
-    { name: '프로모션 후', data: [480, 510, 530, 560, 590] },
-  ];
-});
-
-const salesChartOptions = computed(() => ({
-  chart: { 
-    type: 'line', 
-    toolbar: { show: false },
-    fontFamily: 'inherit',
-  },
-  stroke: { 
-    curve: 'smooth',
-    width: 3,
-  },
-  xaxis: { 
-    categories: promotion.value?.salesImpact?.labels || ['1주차', '2주차', '3주차', '4주차', '5주차'],
-    title: { text: '기간' },
-  },
-  yaxis: { 
-    title: { text: '매출액 (만원)' },
-  },
-  colors: ['#6c757d', '#0d6efd', '#28a745'],
-  legend: {
-    position: 'top',
-    horizontalAlign: 'center',
-  },
-  tooltip: {
-    y: {
-      formatter: function (val) {
-        return val + '만원';
-      }
-    }
-  },
-}));
 </script>
 
 <template>
@@ -135,10 +80,7 @@ const salesChartOptions = computed(() => ({
     
     <BaseCard v-else-if="promotion">
       <template #header>
-        <div class="d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">{{ promotion.title }} 상세 정보</h5>
-          <button class="btn btn-sm btn-secondary" @click="router.back()">목록으로</button>
-        </div>
+        <h5 class="mb-0">{{ promotion.title }} 상세 정보</h5>
       </template>
       
       <div class="row">
@@ -175,15 +117,6 @@ const salesChartOptions = computed(() => ({
           <p class="text-muted">{{ promotion.description || '설명이 없습니다.' }}</p>
         </div>
       </div>
-
-      <hr class="my-4">
-      <h5 class="mb-3">📈 프로모션 매출 변화 분석</h5>
-      <apexchart 
-        type="line" 
-        height="350" 
-        :options="salesChartOptions" 
-        :series="salesChartSeries"
-      />
     </BaseCard>
     
     <BaseCard v-else>

@@ -28,7 +28,7 @@ const orderForm = reactive({
 const searchTerm = ref('');
 const filterCategory = ref('all');
 const sortKey = ref('id');
-const sortOrder = ref('asc');
+const sortOrder = ref('desc');
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
 const allProducts = ref([]);
@@ -47,7 +47,8 @@ const loadItems = async (page = 1) => {
   try {
     isLoading.value = true;
 
-    const response = await purchaseOrderApi.getHeadPurchaseOrder(page - 1, itemsPerPage.value, `${sortKey.value},${sortOrder.value}`);
+    const response = await purchaseOrderApi.getHeadPurchaseOrder(page - 1, itemsPerPage.value,
+        `${sortKey.value},${sortOrder.value}`, searchTerm.value, filterCategory.value);
     if (response.status === 200 && response.data) {
       const pageData = response.data.data;
       allProducts.value = pageData.content;
@@ -110,7 +111,7 @@ const handleSubmitHeadOfficeOrder = async () => {
     toastStore.showToast('모든 발주 정보를 올바르게 입력해주세요.', 'danger');
     return;
   }
-  await purchaseOrderApi.saveNewPurchaseOrder(orderForm);
+  await purchaseOrderApi.saveHeadPurchaseOrder(orderForm);
 
   alert('발주가 성공적으로 생성되었습니다.');
 
@@ -118,6 +119,11 @@ const handleSubmitHeadOfficeOrder = async () => {
   Object.assign(orderForm, { itemDetailId: '', quantity: 1});
   await loadItems(1);
 };
+
+const onSearch = async () => {
+  await loadItems(1);
+  searchTerm.value = '';
+}
 
 const isLightColor = (hex) => {
   if (!hex) return false;
@@ -165,6 +171,8 @@ const isLightColor = (hex) => {
                 </option>
               </select>
             </div>
+            <!-- 검색 버튼 -->
+            <button class="btn btn-primary btn-sm" @click="onSearch">검색</button>
           </div>
         </div>
       </template>
@@ -179,10 +187,9 @@ const isLightColor = (hex) => {
               <th @click="updateSort('name')" class="sortable">상품명(영문) <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="enName" /></th>
               <th @click="updateSort('category')" class="sortable">카테고리 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="category" /></th>
               <th>색상</th>
-              <th>현재고</th>
+              <th>현재 재고</th>
               <th>발주 재고</th>
               <th>발주</th>
-
             </tr>
           </thead>
           <tbody>

@@ -184,7 +184,7 @@ const orderStatusClass = (status) => {
             <th @click="updateSort('id')" class="sortable">발주 번호
               <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="id"/>
             </th>
-            <th v-if="authStore.isAdmin || authStore.isManager" @click="updateSort('deliveryRequest')" class="sortable">요청 매장
+            <th @click="updateSort('deliveryRequest')" class="sortable">요청 매장
               <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="storeName"/>
             </th>
             <th @click="updateSort('itemName')" class="sortable">상품명
@@ -211,14 +211,14 @@ const orderStatusClass = (status) => {
           <tbody>
           <tr v-for="order in allProducts" :key="order.id">
             <td>{{ order.id }}</td>
-            <td v-if="authStore.isAdmin || authStore.isManager">{{ order.deliveryRequest }}</td>
+            <td>{{ order.deliveryRequest }}</td>
             <td>{{ order.itemName }}</td>
             <td>{{ order.itemDetailCode }}</td>
             <td>{{ order.quantity }}</td>
             <td>{{ order.requestDay }}</td>
             <td>{{ order.detailState }}</td>
             <td><span class="badge" :class="orderStatusClass(order.status)">{{ order.status }}</span></td>
-            <td v-if="(authStore.isAdmin || authStore.isManager) && (order.status !== '수령 완료' && order.status !== '요청 취소')">
+            <td v-if="(order.status !== '수령 완료' && order.status !== '요청 취소')">
               <button class="btn btn-sm btn-success" @click="openCompleteModal(order, true)">처리</button>
               <button class="btn btn-sm btn-danger ms-2" @click="openCompleteModal(order, false)">취소
               </button>

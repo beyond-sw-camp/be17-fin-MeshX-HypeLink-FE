@@ -36,7 +36,7 @@ const chatBodyRef = ref(null); // 무한 스크롤을 위한 ref
 const fetchUsers = async () => {
   try {
     const response = await chatApi.getChatUserList();
-    if (response.success) {
+    if (response.data) {
       allUsers.value = response.data;
     } else {
       toastStore.showToast('대화 상대 목록을 불러오는데 실패했습니다.', 'danger');

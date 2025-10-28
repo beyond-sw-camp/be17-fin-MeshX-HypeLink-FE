@@ -1,6 +1,6 @@
 import api from "@/plugins/axiosinterceptor";
 
-export const saveNewPurchaseOrder = async (itemForm) => {
+export const saveHeadPurchaseOrder = async (itemForm) => {
     const requestUrl = `/api/order/head/create`
     let data = {}
     await api.post(requestUrl, itemForm)
@@ -13,11 +13,25 @@ export const saveNewPurchaseOrder = async (itemForm) => {
     return data
 }
 
-export const getHeadPurchaseOrder = async (page = 0, size = 10, sort = 'id,desc') => {
+export const savePurchaseOrder = async (itemForm) => {
+    const requestUrl = `/api/order/create`
+    let data = {}
+    await api.post(requestUrl, itemForm)
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
+export const getHeadPurchaseOrder = async (page = 0, size = 10, sort = 'id,desc',
+                                           keyWord='', category) => {
     const requestUrl = `/api/order/read/page/all`
     let data = {}
     await api.get(requestUrl,{
-        params: { page, size, sort },
+        params: { page, size, sort, keyWord, category },
     })
         .then((response) => {
             data = response
@@ -83,6 +97,6 @@ export const updatePurchaseOrder = async (updateFrom) => {
 }
 
 export default {
-    saveNewPurchaseOrder, getHeadPurchaseOrder, getPurchaseOrder, updatePurchaseOrder, getPurchaseOrderDetails,
-    getPurchaseOrderStates
+    saveHeadPurchaseOrder, getHeadPurchaseOrder, getPurchaseOrder, updatePurchaseOrder, getPurchaseOrderDetails,
+    getPurchaseOrderStates, savePurchaseOrder
 }
