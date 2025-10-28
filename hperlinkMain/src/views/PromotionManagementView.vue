@@ -10,7 +10,7 @@ import FlatPickr from 'vue-flatpickr-component';
 import 'flatpickr/dist/flatpickr.css'; // 매출 코드와 동일
 import { Korean } from 'flatpickr/dist/l10n/ko.js';
 import { useToastStore } from '@/stores/toast';
-import { getPagedPromotions, createPromotion, updatePromotion } from '@/api/promotion';
+import { getPagedPromotions, createPromotion, updatePromotion, searchPromotions } from '@/api/promotion';
 import { getAllCoupons } from '@/api/coupons';
 
 const toastStore = useToastStore();
@@ -88,6 +88,20 @@ watch(
   }
 );
 
+// 검색어 변경 시 검색 실행 (debounce 적용)
+let searchTimeout = null;
+watch(searchTerm, () => {
+  // 기존 타이머 취소
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  // 500ms 후에 검색 실행 (사용자가 타이핑을 멈춘 후 검색)
+  searchTimeout = setTimeout(() => {
+    currentPage.value = 1; // 검색 시 첫 페이지로 이동
+    loadPromotions(1);
+  }, 500);
+});
+
 // 데이터 로딩
 onMounted(async () => {
   await loadPromotions(1);
@@ -126,13 +140,25 @@ const loadPromotions = async (page = 1) => {
   try {
     isLoading.value = true;
 
-    // 0-based page index로 요청
-    const res = await getPagedPromotions(
-      page - 1,
-      itemsPerPage.value,
-      sortKey.value,
-      sortOrder.value
-    );
+    let res;
+    // 검색어가 있으면 검색 API 호출, 없으면 일반 목록 조회
+    if (searchTerm.value.trim()) {
+      res = await searchPromotions(
+        searchTerm.value.trim(),
+        page - 1,
+        itemsPerPage.value,
+        sortKey.value,
+        sortOrder.value
+      );
+    } else {
+      res = await getPagedPromotions(
+        page - 1,
+        itemsPerPage.value,
+        sortKey.value,
+        sortOrder.value
+      );
+    }
+
     // 응답 구조 자동 감지
     let pageData = null;
     if (res.content && Array.isArray(res.content)) {
@@ -327,6 +353,11 @@ const updateSort = (key) => {
 const filteredCoupons = computed(() => {
   return couponList.value.filter(coupon => coupon.type === promoForm.couponType);
 });
+
+// 검색어 초기화
+const clearSearch = () => {
+  searchTerm.value = '';
+};
 </script>
 
 <template>
@@ -336,13 +367,23 @@ const filteredCoupons = computed(() => {
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0">프로모션 목록</h5>
           <div class="d-flex">
-            <div class="me-2">
+            <div class="me-2 position-relative">
               <input
                 type="text"
                 class="form-control form-control-sm"
                 placeholder="프로모션명 검색"
                 v-model="searchTerm"
+                style="padding-right: 30px;"
               />
+              <button
+                v-if="searchTerm"
+                @click="clearSearch"
+                class="btn btn-sm position-absolute"
+                style="right: 2px; top: 50%; transform: translateY(-50%); border: none; background: transparent; padding: 0 8px; color: #6c757d;"
+                title="검색어 지우기"
+              >
+                ✕
+              </button>
             </div>
             <div class="me-2">
               <select class="form-select form-select-sm" v-model="filterStatus">
