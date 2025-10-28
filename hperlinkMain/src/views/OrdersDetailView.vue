@@ -92,14 +92,6 @@ const reasonChartSeries = ref([45, 20, 15, 10, 7, 3]);
 // 매장별 발주 현황
 const storeOrdersData = ref([]);
 
-// 실시간 미처리 주문 목록
-const pendingOrdersData = ref([
-  { id: 1, orderId: 'PO-2024-001', store: '강남점', product: '베이직 티셔츠', quantity: 50, amount: 1500000, requestedAt: '2시간 전', status: 'REQUESTED', sla: 'normal' },
-  { id: 2, orderId: 'PO-2024-002', store: '홍대점', product: '슬림 진', quantity: 30, amount: 1500000, requestedAt: '5시간 전', status: 'REQUESTED', sla: 'normal' },
-  { id: 3, orderId: 'PO-2024-003', store: '신촌점', product: '후드 집업', quantity: 25, amount: 2000000, requestedAt: '26시간 전', status: 'REQUESTED', sla: 'warning' },
-  { id: 4, orderId: 'PO-2024-004', store: '명동점', product: '크로스백', quantity: 40, amount: 1600000, requestedAt: '1시간 전', status: 'REQUESTED', sla: 'normal' },
-  { id: 5, orderId: 'PO-2024-005', store: '부산점', product: '코튼 팬츠', quantity: 35, amount: 1750000, requestedAt: '30시간 전', status: 'REQUESTED', sla: 'danger' }
-]);
 
 const formatCurrency = (value) => {
   if (value >= 10000000) {
@@ -110,23 +102,6 @@ const formatCurrency = (value) => {
   return `₩${value.toLocaleString()}`;
 };
 
-const getSLAClass = (sla) => {
-  const classes = {
-    normal: 'badge bg-success',
-    warning: 'badge bg-warning',
-    danger: 'badge bg-danger'
-  };
-  return classes[sla] || 'badge bg-secondary';
-};
-
-const getSLAText = (sla) => {
-  const texts = {
-    normal: '정상',
-    warning: '주의',
-    danger: 'SLA 위반'
-  };
-  return texts[sla] || '알 수 없음';
-};
 
 // 데이터 로드 함수
 const loadData = async () => {
@@ -356,50 +331,6 @@ onMounted(() => {
       <!-- Real-time Pending Orders -->
       <div class="row mb-4">
         <div class="col-12">
-          <BaseCard>
-            <template #header>
-              <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">⚡ 실시간 미처리 주문 목록</h5>
-                <span class="badge bg-danger">{{ pendingOrdersData.length }}건 처리 필요</span>
-              </div>
-            </template>
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th style="width: 80px">SLA</th>
-                    <th>주문 번호</th>
-                    <th>매장</th>
-                    <th>상품명</th>
-                    <th class="text-end">수량</th>
-                    <th class="text-end">금액</th>
-                    <th>요청 시각</th>
-                    <th style="width: 100px">액션</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="order in pendingOrdersData" :key="order.id" :class="{ 'table-danger': order.sla === 'danger' }">
-                    <td>
-                      <span :class="getSLAClass(order.sla)">
-                        {{ getSLAText(order.sla) }}
-                      </span>
-                    </td>
-                    <td class="fw-bold">{{ order.orderId }}</td>
-                    <td>{{ order.store }}</td>
-                    <td>{{ order.product }}</td>
-                    <td class="text-end">{{ order.quantity }}개</td>
-                    <td class="text-end">{{ formatCurrency(order.amount) }}</td>
-                    <td>{{ order.requestedAt }}</td>
-                    <td>
-                      <button class="btn btn-sm btn-primary w-100">
-                        처리
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </BaseCard>
         </div>
       </div>
     </div>
