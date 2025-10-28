@@ -14,11 +14,11 @@ export const saveNewItem = async (itemForm) => {
 }
 
 // dto 수정되었을수도?
-export const getItems = async (page = 0, size = 10, sort = 'id,desc') => {
+export const getItems = async (page = 0, size = 10, sort = 'id,desc', keyWord = '', category = 'all') => {
     const requestUrl = `/api/item/list`
     let data = {}
     await api.get(requestUrl, {
-        params: { page, size, sort },
+        params: { page, size, sort, keyWord, category },
     })
         .then((response) => {
             data = response
