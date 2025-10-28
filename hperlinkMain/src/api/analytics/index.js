@@ -377,6 +377,31 @@ export const getCategoryCustomerSales = async () => {
     return data
 }
 
+/**
+ * 일별 그룹화된 매출 데이터 조회 (Sales Management 페이지용)
+ * @param {string} startDate - 시작일 (yyyy-MM-dd)
+ * @param {string} endDate - 종료일 (yyyy-MM-dd)
+ * @param {number} storeId - 매장 ID (optional)
+ */
+export const getDailySalesGrouped = async (startDate, endDate, storeId) => {
+    const requestUrl = `/api/analytics/sales/daily-grouped`
+    let data = {}
+    const params = {}
+    if (startDate) params.startDate = startDate
+    if (endDate) params.endDate = endDate
+    if (storeId) params.storeId = storeId
+
+    await api.get(requestUrl, { params })
+        .then((response) => {
+            data = response.data
+        })
+        .catch((error) => {
+            console.error('Failed to fetch daily grouped sales:', error)
+            data = { data: [] }
+        })
+    return data
+}
+
 export default {
     getSalesOverview,
     getOrderOverview,
@@ -395,5 +420,6 @@ export default {
     getSalesChartData,
     getCustomerAnalytics,
     getAgeDistribution,
-    getCategoryCustomerSales
+    getCategoryCustomerSales,
+    getDailySalesGrouped
 }
