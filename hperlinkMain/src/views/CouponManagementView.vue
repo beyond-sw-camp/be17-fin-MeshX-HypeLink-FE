@@ -62,9 +62,19 @@ watch(
   }
 );
 
+// 데이터 로딩 함수
+const loadCouponsData = async (page = 0) => {
+  try {
+    await couponStore.fetchAllCoupons(page, itemsPerPage.value);
+  } catch (error) {
+    console.error('Failed to fetch coupons:', error);
+    toastStore.showToast('쿠폰 데이터 로딩에 실패했습니다.', 'error');
+  }
+};
+
 onMounted(async () => {
   isLoading.value = true;
-  await couponStore.fetchAllCoupons();
+  await loadCouponsData(0);
   isLoading.value = false;
 });
 
@@ -95,7 +105,7 @@ const saveCoupon = async () => {
     }
   }
 
-  const success = await couponStore.addCoupon(couponForm);
+  const success = await couponStore.addCoupon(couponForm, currentPage.value - 1);
   if (success) {
     toastStore.showToast('새 쿠폰이 등록되었습니다.', 'success');
     isModalOpen.value = false;
@@ -111,12 +121,13 @@ const deleteCoupon = async (id) => {
     isConfirmation: true,
   });
   if (confirmed) {
-    const success = await couponStore.deleteCoupon(id);
+    const success = await couponStore.deleteCoupon(id, currentPage.value - 1);
     if (success) {
       // 전체 페이지 수 계산 후 현재 페이지 조정
-      const total = Math.ceil(couponStore.allCoupons.length / itemsPerPage.value);
-      if (currentPage.value > total) {
-        currentPage.value = total > 0 ? total : 1;
+      const total = couponStore.totalPages;
+      if (currentPage.value > total && total > 0) {
+        currentPage.value = total;
+        await loadCouponsData(total - 1);
       }
       toastStore.showToast('쿠폰이 삭제되었습니다.', 'success');
     } else {
@@ -126,25 +137,45 @@ const deleteCoupon = async (id) => {
 };
 
 const formatValue = (type, value) => {
-  return type === 'Percentage' ? `${value}%` : `${value.toLocaleString()}원`;
+  const upperType = type?.toUpperCase();
+  return upperType === 'PERCENTAGE' ? `${value}%` : `${value.toLocaleString()}원`;
 };
 
-// 현재 페이지에 해당하는 쿠폰만 계산
+// 서버에서 가져온 현재 페이지의 쿠폰 (서버 페이징)
 const paginatedCoupons = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return couponStore.allCoupons.slice(start, end);
+  return couponStore.allCoupons;
 });
 
-// 전체 페이지 수 계산
-const totalPages = computed(() => Math.ceil(couponStore.allCoupons.length / itemsPerPage.value));
+// 서버에서 가져온 전체 페이지 수
+const totalPages = computed(() => couponStore.totalPages || 1);
 
 // 페이지 변경 함수
-const updatePage = (page) => {
+const updatePage = async (page) => {
   if (page > 0 && page <= totalPages.value) {
     currentPage.value = page;
+    await loadCouponsData(page - 1); // Convert to 0-based index for API
   }
 };
+
+// 표시할 페이지 버튼 계산 (최대 5개)
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 </script>
 
 <template>
@@ -205,8 +236,20 @@ const updatePage = (page) => {
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
             </li>
-            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
+            <li class="page-item" v-if="visiblePages[0] > 1">
+              <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[0] > 2">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in visiblePages" :key="page">
               <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+              <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
             </li>
             <li class="page-item" :class="{ disabled: currentPage === totalPages }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>

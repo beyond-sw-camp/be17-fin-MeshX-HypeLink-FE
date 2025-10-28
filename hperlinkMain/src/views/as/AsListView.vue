@@ -17,8 +17,17 @@ const statusFilter = ref('all');
 const currentPage = ref(1);
 const itemsPerPage = ref(15);
 
+// 데이터 로딩 함수
+const loadAsData = async (page = 0) => {
+  try {
+    await asStore.fetchAsRequests(page, itemsPerPage.value);
+  } catch (error) {
+    console.error('Failed to fetch AS requests:', error);
+  }
+};
+
 onMounted(() => {
-  asStore.fetchAsRequests();
+  loadAsData(0);
 });
 
 const goToDetail = (id) => {
@@ -60,11 +69,11 @@ const formatDate = (dateString) => {
   return `${year}.${month}.${day} ${hours}:${minutes}`;
 };
 
-// Filtered and searched requests
-const filteredRequests = computed(() => {
+// 서버에서 가져온 현재 페이지의 AS 요청 (서버 페이징)
+const paginatedRequests = computed(() => {
   let result = asStore.asRequests;
 
-  // Apply search filter
+  // 클라이언트 측 검색 필터 (필요한 경우)
   if (searchTerm.value.trim()) {
     const query = searchTerm.value.toLowerCase();
     result = result.filter(request => {
@@ -74,7 +83,7 @@ const filteredRequests = computed(() => {
     });
   }
 
-  // Apply status filter
+  // 클라이언트 측 상태 필터 (필요한 경우)
   if (statusFilter.value !== 'all') {
     result = result.filter(request => request.status === statusFilter.value);
   }
@@ -82,17 +91,8 @@ const filteredRequests = computed(() => {
   return result;
 });
 
-// Paginated requests
-const paginatedRequests = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredRequests.value.slice(start, end);
-});
-
-// Total pages
-const totalPages = computed(() => {
-  return Math.ceil(filteredRequests.value.length / itemsPerPage.value);
-});
+// 서버에서 가져온 전체 페이지 수
+const totalPages = computed(() => asStore.totalPages || 1);
 
 // Update handlers
 const updateSearchTerm = (term) => {
@@ -110,11 +110,32 @@ const updateItemsPerPage = (count) => {
   currentPage.value = 1;
 };
 
-const updatePage = (page) => {
+const updatePage = async (page) => {
   if (page > 0 && page <= totalPages.value) {
     currentPage.value = page;
+    await loadAsData(page - 1); // Convert to 0-based index for API
   }
 };
+
+// 표시할 페이지 버튼 계산 (최대 5개)
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 </script>
 
 <template>
@@ -222,13 +243,25 @@ const updatePage = (page) => {
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
             </li>
+            <li class="page-item" v-if="visiblePages[0] > 1">
+              <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[0] > 2">
+              <span class="page-link">...</span>
+            </li>
             <li
               class="page-item"
               :class="{ active: page === currentPage }"
-              v-for="page in totalPages"
+              v-for="page in visiblePages"
               :key="page"
             >
               <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+              <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
             </li>
             <li class="page-item" :class="{ disabled: currentPage === totalPages }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>

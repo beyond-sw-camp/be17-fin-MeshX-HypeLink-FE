@@ -8,6 +8,10 @@ const ordersStore = useOrdersStore()
 
 const orders = ref([])
 const loading = ref(false)
+const currentPage = ref(0)
+const totalPages = ref(1)
+const totalElements = ref(0)
+const pageSize = ref(10)
 
 const formatPrice = (price) => {
   return price.toLocaleString('ko-KR') + '원'
@@ -37,10 +41,10 @@ const getStatusClass = (status) => {
   return `status-${statusMap[status] || 'pending'}`
 }
 
-// 주문 내역 조회
+// 주문 내역 조회 (페이징)
 const fetchOrders = async () => {
   loading.value = true
-  const result = await ordersAPI.getOrdersByStore()
+  const result = await ordersAPI.getOrdersByStore(currentPage.value, pageSize.value)
 
   if (result.success) {
     // 백엔드 응답 데이터를 프론트 형식에 맞게 변환
@@ -57,11 +61,35 @@ const fetchOrders = async () => {
       paymentMethod: receipt.paymentMethod,
       createdAt: receipt.paidAt
     }))
+    totalPages.value = result.data.totalPages || 1
+    totalElements.value = result.data.totalElements || 0
   } else {
     console.error('주문 내역 조회 실패:', result.message)
   }
 
   loading.value = false
+}
+
+// 페이징 함수
+const nextPage = () => {
+  if (currentPage.value < totalPages.value - 1) {
+    currentPage.value++
+    fetchOrders()
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 0) {
+    currentPage.value--
+    fetchOrders()
+  }
+}
+
+const goToPage = (page) => {
+  if (page >= 0 && page < totalPages.value) {
+    currentPage.value = page
+    fetchOrders()
+  }
 }
 
 onMounted(() => {
@@ -76,7 +104,7 @@ onMounted(() => {
       <div class="summary">
         <div class="summary-item">
           <span class="label">총 주문 수</span>
-          <span class="value">{{ orders.length }}건</span>
+          <span class="value">{{ totalElements }}건</span>
         </div>
       </div>
     </div>
@@ -125,6 +153,17 @@ onMounted(() => {
               <span class="amount">{{ formatPrice(order.total) }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="orders.length > 0" class="pagination">
+          <button class="page-btn" :disabled="currentPage === 0" @click="prevPage">
+            ◀ 이전
+          </button>
+          <span class="page-info">{{ currentPage + 1 }} / {{ totalPages }}</span>
+          <button class="page-btn" :disabled="currentPage === totalPages - 1" @click="nextPage">
+            다음 ▶
+          </button>
         </div>
       </div>
     </div>
@@ -338,5 +377,46 @@ onMounted(() => {
   font-size: 24px;
   font-weight: 700;
   color: var(--primary-color);
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 20px;
+}
+
+.page-btn {
+  padding: 10px 20px;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: #f0f7ff;
+}
+
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 80px;
+  text-align: center;
 }
 </style>
