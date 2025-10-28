@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
@@ -151,6 +151,26 @@ const isLightColor = (hex) => {
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
   return brightness > 180; // 밝으면 true
 }
+
+// --- 표시할 페이지 버튼 계산 (최대 5개) ---
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 </script>
 
 <template>
@@ -225,8 +245,20 @@ const isLightColor = (hex) => {
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
             </li>
-            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
+            <li class="page-item" v-if="visiblePages[0] > 1">
+              <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[0] > 2">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in visiblePages" :key="page">
               <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+              <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
             </li>
             <li class="page-item" :class="{ disabled: currentPage === totalPages }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>

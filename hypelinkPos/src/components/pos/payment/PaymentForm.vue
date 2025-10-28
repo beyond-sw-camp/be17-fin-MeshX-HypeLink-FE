@@ -9,7 +9,7 @@ import CouponListModal from '../modals/CouponListModal.vue'
 import DiscountSummary from './DiscountSummary.vue'
 import PaymentSuccessMessage from './PaymentSuccessMessage.vue'
 import PortOne from '@portone/browser-sdk/v2'
-import api from '@/api/payment.js'
+import api from '@/api/payment'
 
 const props = defineProps({
   member: Object
@@ -129,15 +129,7 @@ const processPortOnePayment = async (currentOrder) => {
     // 2. 백엔드에 검증 요청할 주문 데이터 준비
     console.log('🔍 currentOrder 확인:', currentOrder)
 
-    // storeId를 authStore에서 가져오기
-    if (!authStore.storeInfo || !authStore.storeInfo.id) {
-      alert('매장 정보를 불러올 수 없습니다.')
-      isProcessing.value = false
-      return
-    }
-
     const orderData = {
-      storeId: authStore.storeInfo.id,
       memberId: props.member?.id || null,
       memberName: props.member?.name || "비회원",
       memberPhone: props.member?.phone || "",
@@ -164,12 +156,10 @@ const processPortOnePayment = async (currentOrder) => {
       })
     }
 
-    console.log('📤 백엔드로 보내는 storeId:', authStore.storeInfo.id)
-
     console.log('📤 백엔드로 보내는 orderData:', orderData)
 
     // 3. 백엔드 API 호출 - 결제 검증 및 주문 생성
-    const response = await api.validatePayment(portOnePayment.paymentId, orderData)
+    const response = await api.validatePayment(authStore.currentUser.name, portOnePayment.paymentId, orderData)
 
     console.log('✅ 백엔드 검증 결과:', response)
 

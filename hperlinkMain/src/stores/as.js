@@ -21,6 +21,10 @@ export const useAsStore = defineStore('as', () => {
     const selectedAsRequest = ref(null);
     const isLoading = ref(false);
     const error = ref(null);
+    const totalPages = ref(0);
+    const totalElements = ref(0);
+    const currentPage = ref(0);
+    const pageSize = ref(15);
 
     // Stores
     const authStore = useAuthStore();
@@ -30,13 +34,13 @@ export const useAsStore = defineStore('as', () => {
     // e.g., authStore.isAdmin, authStore.isManager, authStore.isBranchManager
 
     // Actions
-    const fetchAsRequests = async () => {
+    const fetchAsRequests = async (page = 0, size = 15) => {
         isLoading.value = true;
         error.value = null;
         try {
             let response;
             if (authStore.isAdmin || authStore.isManager) {
-                response = await getHeadOfficeAsList();
+                response = await getHeadOfficeAsList(page, size);
             } else if (authStore.isBranchManager) {
                 response = await getStoreAsList();
             } else {
@@ -44,7 +48,17 @@ export const useAsStore = defineStore('as', () => {
             }
 
             if (response.success) {
-                asRequests.value = response.data;
+                // 페이징 응답 처리
+                if (response.data.asListResList) {
+                    asRequests.value = response.data.asListResList;
+                    totalPages.value = response.data.totalPages || 0;
+                    totalElements.value = response.data.totalElements || 0;
+                    currentPage.value = response.data.currentPage || 0;
+                    pageSize.value = response.data.pageSize || size;
+                } else {
+                    // 기존 비페이징 응답 (branch manager용)
+                    asRequests.value = response.data;
+                }
             } else {
                 throw new Error(response.message || 'AS 목록을 불러오는데 실패했습니다.');
             }
@@ -182,6 +196,10 @@ export const useAsStore = defineStore('as', () => {
         selectedAsRequest,
         isLoading,
         error,
+        totalPages,
+        totalElements,
+        currentPage,
+        pageSize,
         fetchAsRequests,
         fetchAsRequestDetail,
         createAsRequest,

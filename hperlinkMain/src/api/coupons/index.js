@@ -19,8 +19,8 @@ export const createCoupon = async (payload) => {
   return data;
 };
 
-export const getAllCoupons = async () => {
-  const requestUrl = `/api/coupon/read/all`;
+export const getAllCoupons = async (page = 0, size = 10) => {
+  const requestUrl = `/api/coupon/list?page=${page}&size=${size}`;
   let data = {};
   await api
     .get(requestUrl)

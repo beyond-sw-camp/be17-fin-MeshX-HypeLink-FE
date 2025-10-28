@@ -1,11 +1,12 @@
 import api from "@/plugins/axiosinterceptors.js";
 
 
-const validatePayment = async (paymentId, orderData) => {
+const validatePayment = async ( name, paymentId, orderData) => {
     const url = "/api/payments/validate"
     let data = {}
 
     const requestData = {
+        name: name,
         paymentId: paymentId,
         orderData: orderData
     }

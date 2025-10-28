@@ -70,8 +70,7 @@ const fetchCategories = async () => {
 
 onMounted(() => {
   fetchCategories()
-  // TODO: 실제 storeId로 변경 필요
-  productsStore.fetchProducts(1) // 초기 상품 목록 로드
+  productsStore.fetchProducts() // 초기 상품 목록 로드
 })
 </script>
 
@@ -127,7 +126,6 @@ onMounted(() => {
 
     <AddProductModal
       v-if="productGrid.showAddProductModal.value"
-      :store-id="1"
       @close="productGrid.closeAddProductModal"
       @select="productGrid.addProductToSlot"
     />
