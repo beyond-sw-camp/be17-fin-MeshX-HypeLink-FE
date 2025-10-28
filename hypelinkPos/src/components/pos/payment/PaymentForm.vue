@@ -134,6 +134,7 @@ const processPortOnePayment = async (currentOrder) => {
       memberName: props.member?.name || "비회원",
       memberPhone: props.member?.phone || "",
       couponDiscount: couponDiscount.value,
+      customerCouponId: selectedCoupon.value?.id || null,
       items: currentOrder.map(item => {
         console.log('🔍 item 확인:', {
           productId: item.productId,
