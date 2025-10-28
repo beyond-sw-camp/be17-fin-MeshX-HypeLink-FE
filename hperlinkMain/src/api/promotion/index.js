@@ -47,6 +47,26 @@ export const getPagedPromotions = async (page, size, sortKey, sortOrder) => {
   }
 };
 
+// ✅ 프로모션 검색 (페이징 지원)
+export const searchPromotions = async (keyword, status, page = 0, size = 10, sortKey = 'createdAt', sortOrder = 'desc') => {
+  const requestUrl = `/api/promotion/search`;
+  const params = {
+    keyword,
+    status,
+    page,
+    size,
+    sort: `${sortKey},${sortOrder}`,
+  };
+
+  try {
+    const response = await api.get(requestUrl, { params });
+    return response.data.data; // ✅ BaseResponse.data까지만 반환
+  } catch (error) {
+    console.error('Failed to search promotions:', error);
+    return error.response?.data || error.message;
+  }
+};
+
 
 // ✅ 단일 프로모션 상세 조회
 export const getPromotionDetail = async (id) => {
@@ -92,12 +112,25 @@ export const deletePromotion = async (id) => {
     });
   return data;
 };
+//상태 목록
+export const getPromotionStatusList = async () => {
+  const requestUrl = `/api/promotion/status`;
+  let data = {};
+  await api
+    .get(requestUrl)
+    .then((response) => {
+      data = response.data;
+    })
+  return data;
+};
 
 export default {
   createPromotion,
   getAllPromotionsList,
   getPagedPromotions,
+  searchPromotions,
   getPromotionDetail,
   updatePromotion,
   deletePromotion,
+  getPromotionStatusList,
 };
