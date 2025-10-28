@@ -1,28 +1,84 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { usePosManagementStore } from '@/stores/store';
+import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import { useModalStore } from '@/stores/modal';
+import usersApi from '@/api/users';
+import authApi from '@/api/auth';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 
 const posStore = usePosManagementStore();
+const authStore = useAuthStore();
 const toastStore = useToastStore();
 const modalStore = useModalStore();
 
 const isModalOpen = ref(false);
 const formSubmitted = ref(false);
+const isLoading = ref(false);
+
+// Branch Manager용 state
+const myStoreData = ref(null);
 
 // --- Data Model for New POS ---
 const newPosDefaults = { email: '', password: '', posCode: '', name: '' };
 const newPos = reactive({ ...newPosDefaults });
 
+// 현재 선택된/표시중인 지점과 POS 기기 목록 (role에 따라 다른 소스 사용)
+const currentStore = computed(() => {
+  if (authStore.isBranchManager) {
+    return myStoreData.value;
+  } else {
+    return posStore.selectedStore;
+  }
+});
+
+const currentPosDevices = computed(() => {
+  if (authStore.isBranchManager) {
+    return myStoreData.value?.posDevices || [];
+  } else {
+    return posStore.posDevices;
+  }
+});
+
+const currentStoreId = computed(() => {
+  if (authStore.isBranchManager) {
+    return myStoreData.value?.id || null;
+  } else {
+    return posStore.selectedStoreId;
+  }
+});
+
 // --- Lifecycle Hooks ---
 onMounted(async () => {
-  // Fetch all data once when the component mounts
-  await posStore.fetchData();
+  if (authStore.isBranchManager) {
+    // 지점장인 경우 자기 지점 정보만 가져오기
+    await fetchMyStore();
+  } else {
+    // 총관리자/중간관리자인 경우 모든 지점 정보 가져오기
+    await posStore.fetchData();
+  }
 });
+
+// 지점장용: 자기 지점 정보 가져오기
+const fetchMyStore = async () => {
+  isLoading.value = true;
+  try {
+    const response = await usersApi.getMyStore();
+    if (response.success && response.data) {
+      myStoreData.value = response.data;
+    } else {
+      console.error("Failed to fetch my store data:", response.message);
+      myStoreData.value = null;
+    }
+  } catch (error) {
+    console.error("Error fetching my store data:", error);
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 // --- Methods ---
 const openAddPosModal = () => {
@@ -42,19 +98,28 @@ const handleAddPos = async () => {
     email: newPos.email,
     password: newPos.password,
     name: newPos.name,
-    posCode: newPos.posCode, // Assuming RegisterReqDto can carry posCode
+    posCode: newPos.posCode,
     role: 'POS_MEMBER',
-    storeId: posStore.selectedStoreId,
-    // Region will be derived from the selected store's manager in the backend
+    storeId: currentStoreId.value,
   };
 
-  const success = await posStore.addPosDevice(payload);
-
-  if (success) {
-    toastStore.showToast('새로운 POS 기기가 등록되었습니다.', 'success');
-    isModalOpen.value = false;
-  } else {
-    toastStore.showToast('POS 기기 등록에 실패했습니다.', 'danger');
+  try {
+    const response = await authApi.registerUser(payload);
+    if (response.success) {
+      toastStore.showToast('새로운 POS 기기가 등록되었습니다.', 'success');
+      isModalOpen.value = false;
+      // 데이터 새로고침
+      if (authStore.isBranchManager) {
+        await fetchMyStore();
+      } else {
+        await posStore.fetchData();
+      }
+    } else {
+      toastStore.showToast('POS 기기 등록에 실패했습니다.', 'danger');
+    }
+  } catch (error) {
+    console.error('Error adding POS:', error);
+    toastStore.showToast('POS 기기 등록 중 오류가 발생했습니다.', 'danger');
   }
 };
 
@@ -66,11 +131,22 @@ const handleDeletePos = async (pos) => {
   });
 
   if (confirmed) {
-    const success = await posStore.deletePosDevice(pos.id);
-    if (success) {
-      toastStore.showToast('POS 기기가 삭제되었습니다.', 'success');
-    } else {
-      toastStore.showToast('POS 기기 삭제에 실패했습니다.', 'danger');
+    try {
+      const response = await usersApi.deletePos(pos.id);
+      if (response.success) {
+        toastStore.showToast('POS 기기가 삭제되었습니다.', 'success');
+        // 데이터 새로고침
+        if (authStore.isBranchManager) {
+          await fetchMyStore();
+        } else {
+          await posStore.fetchData();
+        }
+      } else {
+        toastStore.showToast('POS 기기 삭제에 실패했습니다.', 'danger');
+      }
+    } catch (error) {
+      console.error('Error deleting POS:', error);
+      toastStore.showToast('POS 기기 삭제 중 오류가 발생했습니다.', 'danger');
     }
   }
 };
@@ -79,8 +155,8 @@ const handleDeletePos = async (pos) => {
 
 <template>
   <div>
-    <!-- Store Selector Card -->
-    <BaseCard class="mb-4">
+    <!-- Store Selector Card (총관리자/중간관리자만 표시) -->
+    <BaseCard v-if="!authStore.isBranchManager" class="mb-4">
       <template #header><h5>지점 선택</h5></template>
       <div class="row align-items-center">
         <div class="col-md-4">
@@ -95,14 +171,14 @@ const handleDeletePos = async (pos) => {
       </div>
     </BaseCard>
 
-    <div v-if="posStore.selectedStoreId">
-      <BaseSpinner v-if="posStore.isLoading" />
-      
+    <div v-if="currentStoreId">
+      <BaseSpinner v-if="isLoading || posStore.isLoading" />
+
       <!-- POS Devices Card -->
       <BaseCard v-else>
         <template #header>
           <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">'{{ posStore.selectedStore.name }}' POS 기기 목록</h5>
+            <h5 class="mb-0">'{{ currentStore.name }}' POS 기기 목록</h5>
             <button class="btn btn-primary" @click="openAddPosModal">+ POS 추가</button>
           </div>
         </template>
@@ -118,7 +194,7 @@ const handleDeletePos = async (pos) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="pos in posStore.posDevices" :key="pos.id">
+              <tr v-for="pos in currentPosDevices" :key="pos.id">
                 <td>{{ pos.name }}</td>
                 <td>{{ pos.email }}</td>
                 <td>{{ pos.posCode }}</td>
@@ -129,11 +205,11 @@ const handleDeletePos = async (pos) => {
             </tbody>
           </table>
         </div>
-        <p v-if="posStore.posDevices.length === 0" class="text-center text-muted mt-3">등록된 POS 기기가 없습니다.</p>
+        <p v-if="currentPosDevices.length === 0" class="text-center text-muted mt-3">등록된 POS 기기가 없습니다.</p>
       </BaseCard>
     </div>
 
-    <div v-else class="text-center text-muted">
+    <div v-else-if="!authStore.isBranchManager" class="text-center text-muted">
       <p>먼저 관리할 지점을 선택해주세요.</p>
     </div>
 

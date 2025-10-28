@@ -232,8 +232,9 @@ watch(() => route.params.id, (newId, oldId) => {
         </div>
         <div class="mb-3">
           <label class="form-label">POS 코드 <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" v-model="newPos.posCode" :class="{ 'is-invalid': formSubmitted && !newPos.posCode }" placeholder="예: 01, 02">
-          <div class="form-text">해당 지점 내에서 사용할 고유한 코드를 입력하세요. (예: 01)</div>
+          <input type="text" class="form-control" v-model="newPos.posCode" :class="{ 'is-invalid': formSubmitted && !newPos.posCode }" placeholder="POS코드 입력 예: POS123_12">
+          <div class="form-text">대문자3자리+숫자3자리+언더스코어+숫자2자리 형식이어야 합니다.
+            POSCode 지점에서 사용할 고유한 POS기 번호 입니다.</div>
         </div>
       </form>
       <template #footer>
