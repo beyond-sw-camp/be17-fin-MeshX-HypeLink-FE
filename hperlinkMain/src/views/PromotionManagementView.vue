@@ -380,6 +380,26 @@ const clearSearch = () => {
   searchTerm.value = '';
   handleSearch(); // 검색어 지우고 전체 목록 다시 로드
 };
+  
+// 표시할 페이지 버튼 계산 (최대 5개)
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 </script>
 
 <template>
@@ -426,105 +446,116 @@ const clearSearch = () => {
         </div>
       </template>
 
-      <div v-if="allPromotions.length > 0">
-        <table class="table table-hover">
-          <thead>
-          <tr>
-            <th @click="updateSort('title')" class="sortable">
-              프로모션명
-              <SortIcon
-                :sortKey="sortKey"
-                :sortOrder="sortOrder"
-                currentKey="title"
-              />
-            </th>
-            <th @click="updateSort('period')" class="sortable">
-              기간
-              <SortIcon
-                :sortKey="sortKey"
-                :sortOrder="sortOrder"
-                currentKey="period"
-              />
-            </th>
-            <th @click="updateSort('couponType')" class="sortable">
-              쿠폰 타입
-              <SortIcon
-                :sortKey="sortKey"
-                :sortOrder="sortOrder"
-                currentKey="couponType"
-              />
-            </th>
-            <th @click="updateSort('status')" class="sortable">
-              상태
-              <SortIcon
-                :sortKey="sortKey"
-                :sortOrder="sortOrder"
-                currentKey="status"
-              />
-            </th>
-            <th>관리</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="promo in allPromotions" :key="promo.id">
-            <td>
-              <router-link :to="`/promotions/${promo.id}`">{{
-                  promo.title
-                }}</router-link>
-            </td>
-            <td>{{ promo.period }}</td>
-            <td>{{ getCouponTypeLabel(promo.couponType) }}</td>
-            <td>
-                <span class="badge" :class="statusClass(promo.status)">{{getStatusLabel(promo.status)}}</span>
-            </td>
-            <td>
-              <button
-                class="btn btn-sm btn-outline-secondary"
-                @click="openPromotionModal(promo)"
-              >
-                수정
-              </button>
-            </td>
-          </tr>
-          </tbody>
-        </table>
+      <table class="table table-hover" v-if="allPromotions.length > 0">
+        <thead>
+        <tr>
+          <th @click="updateSort('title')" class="sortable">
+            프로모션명
+            <SortIcon
+              :sortKey="sortKey"
+              :sortOrder="sortOrder"
+              currentKey="title"
+            />
+          </th>
+          <th @click="updateSort('period')" class="sortable">
+            기간
+            <SortIcon
+              :sortKey="sortKey"
+              :sortOrder="sortOrder"
+              currentKey="period"
+            />
+          </th>
+          <th @click="updateSort('couponType')" class="sortable">
+            쿠폰 타입
+            <SortIcon
+              :sortKey="sortKey"
+              :sortOrder="sortOrder"
+              currentKey="couponType"
+            />
+          </th>
+          <th @click="updateSort('status')" class="sortable">
+            상태
+            <SortIcon
+              :sortKey="sortKey"
+              :sortOrder="sortOrder"
+              currentKey="status"
+            />
+          </th>
+          <th>관리</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="promo in allPromotions" :key="promo.id">
+          <td>
+            <router-link :to="`/promotions/${promo.id}`">{{
+                promo.title
+              }}</router-link>
+          </td>
+          <td>{{ promo.period }}</td>
+          <td>{{ getCouponTypeLabel(promo.couponType) }}</td>
+          <td>
+              <span class="badge" :class="statusClass(promo.status)">{{getStatusLabel(promo.status)}}</span>
+          </td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              @click="openPromotionModal(promo)"
+            >
+              수정
+            </button>
+          </td>
+        </tr>
+        </tbody>
+      </table>
 
-        <!-- 페이지네이션 -->
-        <nav v-if="totalPages > 1">
-          <ul class="pagination justify-content-center">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <a
-                class="page-link"
-                href="#"
-                @click.prevent="updatePage(currentPage - 1)"
-              >이전</a
-              >
-            </li>
-            <li
-              class="page-item"
-              :class="{ active: page === currentPage }"
-              v-for="page in totalPages"
-              :key="page"
-            >
-              <a class="page-link" href="#" @click.prevent="updatePage(page)">{{
-                  page
-                }}</a>
-            </li>
-            <li
-              class="page-item"
-              :class="{ disabled: currentPage === totalPages }"
-            >
-              <a
-                class="page-link"
-                href="#"
-                @click.prevent="updatePage(currentPage + 1)"
-              >다음</a
-              >
-            </li>
-          </ul>
-        </nav>
-      </div>
       <BaseEmptyState v-else message="조회된 프로모션이 없습니다." />
+
+      <!-- 페이지네이션 -->
+      <nav v-if="totalPages >= 1">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <a
+              class="page-link"
+              href="#"
+              @click.prevent="updatePage(currentPage - 1)"
+            >이전</a
+            >
+          </li>
+          <li class="page-item" v-if="visiblePages[0] > 1">
+            <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+          </li>
+          <li class="page-item disabled" v-if="visiblePages[0] > 2">
+            <span class="page-link">...</span>
+          </li>
+          <li
+            class="page-item"
+            :class="{ active: page === currentPage }"
+            v-for="page in visiblePages"
+            :key="page"
+          >
+            <a class="page-link" href="#" @click.prevent="updatePage(page)">{{
+                page
+              }}</a>
+          </li>
+          <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+            <span class="page-link">...</span>
+          </li>
+          <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+            <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
+          </li>
+          <li
+            class="page-item"
+            :class="{ disabled: currentPage === totalPages }"
+          >
+            <a
+              class="page-link"
+              href="#"
+              @click.prevent="updatePage(currentPage + 1)"
+            >다음</a
+            >
+          </li>
+        </ul>
+      </nav>
     </BaseCard>
 
     <!-- 프로모션 등록/수정 모달 -->

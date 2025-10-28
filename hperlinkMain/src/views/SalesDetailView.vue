@@ -221,7 +221,7 @@ const loadData = async () => {
     const trendResponse = await getSalesTrend(selectedPeriod.value);
     if (trendResponse?.data && Array.isArray(trendResponse.data)) {
       const categories = trendResponse.data.map(item => item.date || item.period || '');
-      const currentData = trendResponse.data.map(item => (item.revenue || 0) / 10000); // 만원 단위
+      const currentData = trendResponse.data.map(item => (item.totalRevenue || 0) / 10000); // 만원 단위
 
       salesTrendOptions.value.xaxis.categories = categories;
       salesTrendSeries.value = [
@@ -250,7 +250,7 @@ const loadData = async () => {
     const categoryResponse = await getCategoryPerformance(selectedPeriod.value);
     if (categoryResponse?.data && Array.isArray(categoryResponse.data)) {
       const labels = categoryResponse.data.map(cat => cat.categoryName || '기타');
-      const revenues = categoryResponse.data.map(cat => cat.totalRevenue || 0);
+      const revenues = categoryResponse.data.map(cat => cat.revenue || 0);
 
       categoryChartOptions.value.labels = labels;
       categoryChartSeries.value = revenues;
@@ -259,11 +259,29 @@ const loadData = async () => {
     // 5. 시간대별 매출 히트맵
     const heatmapResponse = await getSalesHeatmap(selectedPeriod.value);
     if (heatmapResponse?.data && Array.isArray(heatmapResponse.data)) {
-      // 백엔드 데이터 구조에 맞게 변환
-      timeHeatmapSeries.value = heatmapResponse.data.map(item => ({
-        name: item.dayOfWeek || item.label,
-        data: item.hourlyData || []
-      }));
+      // 백엔드 데이터를 요일별로 그룹화
+      const groupedByDay = {};
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+      heatmapResponse.data.forEach(item => {
+        const day = item.dayOfWeek || 0;
+        if (!groupedByDay[day]) {
+          groupedByDay[day] = new Array(6).fill(0); // 6개 시간대
+        }
+        // hourOfDay를 시간대 인덱스로 변환 (0-5: 06-09시, 09-12시, 12-15시, 15-18시, 18-21시, 21-24시)
+        const timeSlot = Math.min(Math.floor((item.hourOfDay - 6) / 3), 5);
+        if (timeSlot >= 0 && timeSlot < 6) {
+          groupedByDay[day][timeSlot] += (item.totalRevenue || 0) / 10000; // 만원 단위
+        }
+      });
+
+      // ApexCharts 형식으로 변환
+      timeHeatmapSeries.value = Object.keys(groupedByDay)
+        .sort((a, b) => a - b)
+        .map(day => ({
+          name: dayNames[day] || '알수없음',
+          data: groupedByDay[day]
+        }));
     }
 
   } catch (error) {

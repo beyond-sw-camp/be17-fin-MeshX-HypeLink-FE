@@ -28,7 +28,7 @@ const loginStore = ref(0);
 // paging 처리하는데 필요한 변수
 const totalPages = ref(0);
 const currentPage = ref(0);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 const sortKey = ref('id');
 const sortOrder = ref('asc');
 const isLoading = ref(null);
@@ -169,6 +169,26 @@ const isLightColor = (hex) => {
   return brightness > 180; // 밝으면 true
 }
 
+// 페이지네이션에서 보여줄 페이지 번호들 계산
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+})
+
 onMounted(() => {
   getStores();
   getOrderDetails();
@@ -211,15 +231,18 @@ onMounted(() => {
             </option>
           </select>
 
-          <select class="form-select form-select-sm" v-model="filterCategory">
-            <option value="all">전체 카테고리</option>
-            <option v-for="cat in categories" :key="cat.category" :value="cat.category">
-              {{ cat.category }}
-            </option>
-          </select>
-
+          <div class="me-2">
+            <select class="form-select form-select-sm" v-model="filterCategory">
+              <option value="all">전체 카테고리</option>
+              <option v-for="cat in categories" :key="cat.category" :value="cat.category">
+                {{ cat.category }}
+              </option>
+            </select>
+          </div>
+          <div class="me-2">
           <!-- 검색 버튼 -->
-          <button class="btn btn-primary btn-sm" @click="loadItems(1)">검색</button>
+            <button class="btn btn-primary btn-sm" @click="loadItems(1)">검색</button>
+          </div>
         </div>
       </div>
     </template>
@@ -268,6 +291,33 @@ onMounted(() => {
         </tr>
       </tbody>
     </table>
+
+    <!-- 페이지네이션 -->
+    <nav v-if="totalPages >= 1" class="mt-3">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" :class="{ disabled: currentPage === 1 }">
+          <a class="page-link" href="#" @click.prevent="loadItems(currentPage - 1)">이전</a>
+        </li>
+        <li class="page-item" v-if="visiblePages[0] > 1">
+          <a class="page-link" href="#" @click.prevent="loadItems(1)">1</a>
+        </li>
+        <li class="page-item disabled" v-if="visiblePages[0] > 2">
+          <span class="page-link">...</span>
+        </li>
+        <li class="page-item" :class="{ active: page === currentPage }" v-for="page in visiblePages" :key="page">
+          <a class="page-link" href="#" @click.prevent="loadItems(page)">{{ page }}</a>
+        </li>
+        <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+          <span class="page-link">...</span>
+        </li>
+        <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+          <a class="page-link" href="#" @click.prevent="loadItems(totalPages)">{{ totalPages }}</a>
+        </li>
+        <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+          <a class="page-link" href="#" @click.prevent="loadItems(currentPage + 1)">다음</a>
+        </li>
+      </ul>
+    </nav>
   </BaseCard>
 
   <!-- 발주 모달 -->

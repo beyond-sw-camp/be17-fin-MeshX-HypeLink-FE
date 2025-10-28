@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
@@ -244,7 +244,8 @@ const loadItems = async (page = 1) => {
   try {
     isLoading.value = true;
 
-    const response = await itemApi.getItems(page - 1, itemsPerPage.value, `${sortKey.value},${sortOrder.value}`);
+    const response = await itemApi.getItems(page - 1, itemsPerPage.value,
+        `${sortKey.value},${sortOrder.value}`, searchTerm.value, filterCategory.value);
     if (response.status === 200 && response.data) {
       const pageData = response.data.data;
       allProducts.value = pageData.content;
@@ -268,11 +269,35 @@ const getCategories = async () => {
   categories.value = res.data.data.categories;
 }
 
+const onSearch = async () => {
+  await loadItems(1);
+}
+
 // === 페이지 이동 ===
 const updatePage = async (page) => {
   if (page < 1 || page > totalPages.value) return;
   await loadItems(page);
 };
+
+// 표시할 페이지 버튼 계산 (최대 5개)
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 
 </script>
 
@@ -294,85 +319,99 @@ const updatePage = async (page) => {
                 </option>
               </select>
             </div>
+            <div class="me-2">
+              <button class="btn btn-primary btn-sm" @click="onSearch">검색</button>
+            </div>
             <button class="btn btn-primary btn-sm" @click="openProductModal()">+ 새 상품 등록</button>
           </div>
         </div>
       </template>
-      
-      <div v-if="allProducts.length > 0">
-        <table class="table table-hover text-center align-middle">
-          <thead class="table-light">
-          <tr>
-            <th @click="updateSort('id')" class="sortable">
-              ID
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="id" />
-            </th>
-            <th @click="updateSort('itemCode')" class="sortable">
-              상품 코드
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemCode" />
-            </th>
-            <th @click="updateSort('koName')" class="sortable">
-              한글명
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemDetailCode" />
-            </th>
-            <th @click="updateSort('enName')" class="sortable">
-              영문명
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="enName" />
-            </th>
-            <th @click="updateSort('company')" class="sortable">
-              회사
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="company" />
-            </th>
-            <th @click="updateSort('category')" class="sortable">
-              카테고리
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="category" />
-            </th>
-            <th @click="updateSort('amount')" class="sortable">
-              가격
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="amount" />
-            </th>
-            <th @click="updateSort('unitPrice')" class="sortable">
-              원가
-              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="unitPrice" />
-            </th>
-            <th>관리</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="product in allProducts" :key="product.id">
-            <td>{{ product.id }}</td>
-            <td>{{ product.itemCode }}</td>
-            <td>{{ product.koName }}</td>
-            <td>{{ product.enName }}</td>
-            <td>{{ product.company }}</td>
-            <td>{{ product.category }}</td>
-            <td>{{ product.amount.toLocaleString() }}원</td>
-            <td>{{ product.unitPrice.toLocaleString() }}원</td>
-            <td>
-              <button class="btn btn-sm btn-outline-secondary" @click="openProductModal(product)">
-                수정
-              </button>
-            </td>
-          </tr>
-          </tbody>
-        </table>
 
-        <!-- 페이지네이션 -->
-        <nav v-if="totalPages >= 1">
-          <ul class="pagination justify-content-center">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
-            </li>
-            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
-              <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
-            </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-              <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
-            </li>
-          </ul>
-        </nav>
-      </div>
+      <table class="table table-hover text-center align-middle" v-if="allProducts.length > 0">
+        <thead class="table-light">
+        <tr>
+          <th @click="updateSort('id')" class="sortable">
+            ID
+            <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="id" />
+          </th>
+          <th @click="updateSort('itemCode')" class="sortable">
+            상품 코드
+            <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemCode" />
+          </th>
+          <th @click="updateSort('koName')" class="sortable">
+            한글명
+            <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="itemDetailCode" />
+          </th>
+          <th @click="updateSort('enName')" class="sortable">
+            영문명
+            <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="enName" />
+          </th>
+          <th @click="updateSort('company')" class="sortable">
+            회사
+            <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="company" />
+          </th>
+          <th @click="updateSort('category')" class="sortable">
+            카테고리
+            <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="category" />
+          </th>
+          <th @click="updateSort('amount')" class="sortable">
+            가격
+            <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="amount" />
+          </th>
+          <th @click="updateSort('unitPrice')" class="sortable">
+            원가
+            <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="unitPrice" />
+          </th>
+          <th>관리</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="product in allProducts" :key="product.id">
+          <td>{{ product.id }}</td>
+          <td>{{ product.itemCode }}</td>
+          <td>{{ product.koName }}</td>
+          <td>{{ product.enName }}</td>
+          <td>{{ product.company }}</td>
+          <td>{{ product.category }}</td>
+          <td>{{ product.amount.toLocaleString() }}원</td>
+          <td>{{ product.unitPrice.toLocaleString() }}원</td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary" @click="openProductModal(product)">
+              수정
+            </button>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
       <BaseEmptyState v-else message="조회된 상품이 없습니다." />
+
+      <!-- 페이지네이션 -->
+      <nav v-if="totalPages >= 1">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
+          </li>
+          <li class="page-item" v-if="visiblePages[0] > 1">
+            <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+          </li>
+          <li class="page-item disabled" v-if="visiblePages[0] > 2">
+            <span class="page-link">...</span>
+          </li>
+          <li class="page-item" :class="{ active: page === currentPage }" v-for="page in visiblePages" :key="page">
+            <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+          </li>
+          <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+            <span class="page-link">...</span>
+          </li>
+          <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+            <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
+          </li>
+          <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+            <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
+          </li>
+        </ul>
+      </nav>
     </BaseCard>
 
     <!-- 상품 등록/수정 모달 -->

@@ -195,82 +195,80 @@ const visiblePages = computed(() => {
         <i class="bi bi-exclamation-triangle me-2"></i>{{ asStore.error }}
       </div>
 
-      <div v-else-if="paginatedRequests.length > 0">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th style="width: 8%">번호</th>
-              <th style="width: 30%">제목</th>
-              <th style="width: 18%">매장</th>
-              <th style="width: 12%">상태</th>
-              <th style="width: 18%">접수일</th>
-              <th style="width: 14%" class="text-center">관리</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(request, index) in paginatedRequests" :key="request.id">
-              <td class="fw-medium">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
-              <td>
-                <div class="text-truncate" style="max-width: 300px;" :title="request.title">
-                  {{ request.title || '제목 없음' }}
-                </div>
-              </td>
-              <td>
-                <i class="bi bi-shop me-2 text-primary"></i>
-                {{ request.storeName }}
-              </td>
-              <td>
-                <span :class="['badge', getStatusBadgeClass(request.status)]">
-                  {{ getStatusText(request.status) }}
-                </span>
-              </td>
-              <td>
-                <i class="bi bi-calendar-check me-2 text-muted"></i>
-                {{ formatDate(request.createdAt) }}
-              </td>
-              <td class="text-center">
-                <button class="btn btn-sm btn-outline-primary" @click="goToDetail(request.id)">
-                  <i class="bi bi-eye me-1"></i>상세보기
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <table class="table table-hover" v-if="paginatedRequests.length > 0">
+        <thead>
+          <tr>
+            <th style="width: 8%">번호</th>
+            <th style="width: 30%">제목</th>
+            <th style="width: 18%">매장</th>
+            <th style="width: 12%">상태</th>
+            <th style="width: 18%">접수일</th>
+            <th style="width: 14%" class="text-center">관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(request, index) in paginatedRequests" :key="request.id">
+            <td class="fw-medium">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
+            <td>
+              <div class="text-truncate" style="max-width: 300px;" :title="request.title">
+                {{ request.title || '제목 없음' }}
+              </div>
+            </td>
+            <td>
+              <i class="bi bi-shop me-2 text-primary"></i>
+              {{ request.storeName }}
+            </td>
+            <td>
+              <span :class="['badge', getStatusBadgeClass(request.status)]">
+                {{ getStatusText(request.status) }}
+              </span>
+            </td>
+            <td>
+              <i class="bi bi-calendar-check me-2 text-muted"></i>
+              {{ formatDate(request.createdAt) }}
+            </td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-primary" @click="goToDetail(request.id)">
+                <i class="bi bi-eye me-1"></i>상세보기
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-        <!-- Pagination -->
-        <nav v-if="totalPages > 1">
-          <ul class="pagination justify-content-center">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
-            </li>
-            <li class="page-item" v-if="visiblePages[0] > 1">
-              <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
-            </li>
-            <li class="page-item disabled" v-if="visiblePages[0] > 2">
-              <span class="page-link">...</span>
-            </li>
-            <li
-              class="page-item"
-              :class="{ active: page === currentPage }"
-              v-for="page in visiblePages"
-              :key="page"
-            >
-              <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
-            </li>
-            <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
-              <span class="page-link">...</span>
-            </li>
-            <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
-              <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
-            </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-              <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
-            </li>
-          </ul>
-        </nav>
-      </div>
+      <BaseEmptyState v-else-if="!asStore.error" message="조회된 AS 요청이 없습니다." />
 
-      <BaseEmptyState v-else message="조회된 AS 요청이 없습니다." />
+      <!-- Pagination -->
+      <nav v-if="totalPages >= 1">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
+          </li>
+          <li class="page-item" v-if="visiblePages[0] > 1">
+            <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+          </li>
+          <li class="page-item disabled" v-if="visiblePages[0] > 2">
+            <span class="page-link">...</span>
+          </li>
+          <li
+            class="page-item"
+            :class="{ active: page === currentPage }"
+            v-for="page in visiblePages"
+            :key="page"
+          >
+            <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+          </li>
+          <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+            <span class="page-link">...</span>
+          </li>
+          <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+            <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
+          </li>
+          <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+            <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
+          </li>
+        </ul>
+      </nav>
     </BaseCard>
   </div>
 </template>

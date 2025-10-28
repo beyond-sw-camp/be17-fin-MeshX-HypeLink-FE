@@ -198,40 +198,40 @@ const visiblePages = computed(() => {
 
       <BaseSpinner v-if="isLoading" />
 
-      <div v-else-if="couponStore.allCoupons.length > 0" class="coupon-table-container">
-        <div class="table-wrapper">
-          <table class="table table-hover">
-            <thead>
-            <tr>
-              <th>쿠폰명</th>
-              <th>타입</th>
-              <th>할인 값</th>
-              <th>유효 기간</th>
-              <th>관리</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="coupon in paginatedCoupons" :key="coupon.id">
-              <td>{{ coupon.name }}</td>
-              <td>{{ coupon.type }}</td>
-              <td>{{ formatValue(coupon.type, coupon.value) }}</td>
-              <td>{{ coupon.period }}</td>
-              <td>
-                <button
-                  v-if="authStore.isAdmin || authStore.isManager"
-                  class="btn btn-sm btn-danger"
-                  @click="deleteCoupon(coupon.id)"
-                >
-                  삭제
-                </button>
-              </td>
-            </tr>
-            </tbody>
-          </table>
-        </div>
+      <template v-else>
+        <table class="table table-hover" v-if="couponStore.allCoupons.length > 0">
+          <thead>
+          <tr>
+            <th>쿠폰명</th>
+            <th>타입</th>
+            <th>할인 값</th>
+            <th>유효 기간</th>
+            <th>관리</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="coupon in paginatedCoupons" :key="coupon.id">
+            <td>{{ coupon.name }}</td>
+            <td>{{ coupon.type }}</td>
+            <td>{{ formatValue(coupon.type, coupon.value) }}</td>
+            <td>{{ coupon.period }}</td>
+            <td>
+              <button
+                v-if="authStore.isAdmin || authStore.isManager"
+                class="btn btn-sm btn-danger"
+                @click="deleteCoupon(coupon.id)"
+              >
+                삭제
+              </button>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+
+        <BaseEmptyState v-else message="생성된 쿠폰이 없습니다." />
 
         <!-- 페이지네이션 -->
-        <nav v-if="totalPages > 1" class="pagination-wrapper">
+        <nav v-if="totalPages >= 1">
           <ul class="pagination justify-content-center">
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
@@ -256,9 +256,7 @@ const visiblePages = computed(() => {
             </li>
           </ul>
         </nav>
-      </div>
-
-      <BaseEmptyState v-else message="생성된 쿠폰이 없습니다." />
+      </template>
     </BaseCard>
 
     <!-- 쿠폰 생성 모달 -->

@@ -122,7 +122,6 @@ const handleSubmitHeadOfficeOrder = async () => {
 
 const onSearch = async () => {
   await loadItems(1);
-  searchTerm.value = '';
 }
 
 const isLightColor = (hex) => {
