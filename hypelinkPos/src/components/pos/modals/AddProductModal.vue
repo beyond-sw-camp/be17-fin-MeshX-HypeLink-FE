@@ -3,13 +3,6 @@ import { ref, computed, onMounted } from 'vue'
 import itemAPI from '@/api/item'
 import categoryAPI from '@/api/category'
 
-const props = defineProps({
-  storeId: {
-    type: Number,
-    required: true
-  }
-})
-
 const emit = defineEmits(['close', 'select'])
 
 // State
@@ -31,15 +24,15 @@ const fetchItems = async () => {
 
   // 검색어가 있으면 검색 API (한글명, 영문명, 바코드)
   if (searchQuery.value.trim()) {
-    result = await itemAPI.searchItems(props.storeId, searchQuery.value.trim(), currentPage.value, 12)
+    result = await itemAPI.searchItems(searchQuery.value.trim(), currentPage.value, 12)
   }
   // 카테고리 선택되었으면 카테고리 API
   else if (selectedCategory.value !== 'all') {
-    result = await itemAPI.getItemsByCategory(props.storeId, selectedCategory.value, currentPage.value, 12)
+    result = await itemAPI.getItemsByCategory(selectedCategory.value, currentPage.value, 12)
   }
   // 전체 조회
   else {
-    result = await itemAPI.getItemList(props.storeId, currentPage.value, 12)
+    result = await itemAPI.getItemList(currentPage.value, 12)
   }
 
   if (result.success) {

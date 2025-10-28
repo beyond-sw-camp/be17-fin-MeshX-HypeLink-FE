@@ -78,8 +78,8 @@ export const useProductsStore = defineStore('products', () => {
     return products.value.find(p => p.id === productId)
   }
 
-  const fetchProducts = async (storeId) => {
-    const result = await itemAPI.getItemList(storeId)
+  const fetchProducts = async () => {
+    const result = await itemAPI.getItemList()
     if (result.success) {
       console.log('📦 백엔드에서 받은 상품 데이터 샘플:', result.data.content[0])
 
