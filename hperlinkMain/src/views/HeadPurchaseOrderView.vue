@@ -30,7 +30,7 @@ const filterCategory = ref('all');
 const sortKey = ref('id');
 const sortOrder = ref('desc');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 const allProducts = ref([]);
 const totalPages = ref(0);
 const currentItem = ref(null);
@@ -191,7 +191,7 @@ const visiblePages = computed(() => {
               </select>
             </div>
             <!-- 검색 버튼 -->
-            <button class="btn btn-primary btn-sm" @click="onSearch">검색</button>
+            <button class="btn btn-success btn-sm me-2" @click="onSearch">🔍 검색</button>
           </div>
         </div>
       </template>

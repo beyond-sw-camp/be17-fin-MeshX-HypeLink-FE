@@ -12,6 +12,7 @@ import { Korean } from 'flatpickr/dist/l10n/ko.js';
 import { useToastStore } from '@/stores/toast';
 import { getPagedPromotions, createPromotion, updatePromotion, searchPromotions, getPromotionStatusList } from '@/api/promotion';
 import { getAllCoupons } from '@/api/coupons';
+import { uploadPromotionImage } from '@/api/image';
 
 const toastStore = useToastStore();
 const router = useRouter();
@@ -32,7 +33,13 @@ const promoForm = reactive({
   couponId: null,            // 선택된 쿠폰 ID
   status: 'UPCOMING',
   description: '',
+  images: [],
 });
+
+// 이미지 관련 상태
+const selectedFiles = ref([]);
+const imagePreviewUrls = ref([]);
+const isUploading = ref(false);
 
 const getCouponTypeLabel = (type) => {
   switch (type) {
@@ -57,7 +64,7 @@ const filterStatus = ref('all');
 const sortKey = ref('title');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 const totalPages = ref(0);
 
 
@@ -197,6 +204,7 @@ const loadPromotions = async (page = 1) => {
         couponId: item.couponId,
         status: item.status,
         description: item.contents,
+        images: item.images || [],
       }));
 
       totalPages.value = pageData.totalPages;
@@ -249,8 +257,27 @@ const updatePage = async (page) => {
   await loadPromotions(page);
 };
 
+// 이미지 파일 선택 핸들러
+const handleImageSelect = (event) => {
+  const files = Array.from(event.target.files);
+  selectedFiles.value = files;
+
+  // 미리보기 URL 생성
+  imagePreviewUrls.value = files.map(file => URL.createObjectURL(file));
+};
+
+// 이미지 제거
+const removeImage = (index) => {
+  selectedFiles.value.splice(index, 1);
+  URL.revokeObjectURL(imagePreviewUrls.value[index]);
+  imagePreviewUrls.value.splice(index, 1);
+};
+
 const openPromotionModal = (promo = null) => {
   formSubmitted.value = false;
+  selectedFiles.value = [];
+  imagePreviewUrls.value = [];
+
   if (promo) {
     isEditing.value = true;
     const clonedPromo = { ...promo };
@@ -266,7 +293,13 @@ const openPromotionModal = (promo = null) => {
       couponId: clonedPromo.couponId || null,
       status: clonedPromo.status,
       description: clonedPromo.description,
+      images: clonedPromo.images || [],
     });
+
+    // 기존 이미지가 있으면 미리보기에 표시
+    if (clonedPromo.images && clonedPromo.images.length > 0) {
+      imagePreviewUrls.value = clonedPromo.images.map(img => img.imageUrl);
+    }
   } else {
     isEditing.value = false;
     Object.assign(promoForm, {
@@ -277,6 +310,7 @@ const openPromotionModal = (promo = null) => {
       couponId: null,
       status: 'UPCOMING',
       description: '',
+      images: [],
     });
   }
   isModalOpen.value = true;
@@ -284,13 +318,13 @@ const openPromotionModal = (promo = null) => {
 
 const savePromotion = async () => {
   formSubmitted.value = true;
-  
+
   // 기본 필수 항목 검사
   if (!promoForm.title || !promoForm.period) {
     toastStore.showToast('프로모션명과 기간은 필수입니다.', 'danger');
     return;
   }
-  
+
   // 쿠폰 선택 필수 검사
   if (!promoForm.couponId) {
     toastStore.showToast('쿠폰을 선택해야 합니다.', 'danger');
@@ -306,19 +340,53 @@ const savePromotion = async () => {
     }
   }
 
-const [startDate, endDate] = promoForm.period.split(' ~ ');
-
-const payload = {
-  title: promoForm.title,
-  contents: promoForm.description,
-    couponType: promoForm.couponType,
-    couponId: promoForm.couponId,
-  startDate,
-  endDate,
-  status: promoForm.status
-};
-
   try {
+    isUploading.value = true;
+
+    // 이미지 업로드 처리
+    let uploadedImages = [];
+    if (selectedFiles.value.length > 0) {
+      toastStore.showToast('이미지 업로드 중...', 'info');
+
+      for (const file of selectedFiles.value) {
+        try {
+          const imageData = await uploadPromotionImage(file);
+          uploadedImages.push(imageData);
+        } catch (error) {
+          console.error('이미지 업로드 실패:', error);
+          toastStore.showToast(`이미지 업로드 실패: ${file.name}`, 'warning');
+        }
+      }
+    }
+
+    // 기존 이미지 유지 또는 변환
+    let finalImages;
+    if (isEditing.value) {
+      if (selectedFiles.value.length > 0) {
+        // 수정 모드에서 새 이미지를 선택한 경우
+        finalImages = uploadedImages;
+      } else {
+        // 수정 모드에서 새 이미지를 선택하지 않은 경우, 기존 이미지 정보를 변환
+        finalImages = promoForm.images.map(img => ({ id: img.id, originalName: img.originalName }));
+      }
+    } else {
+      // 생성 모드
+      finalImages = uploadedImages;
+    }
+
+    const [startDate, endDate] = promoForm.period.split(' ~ ');
+
+    const payload = {
+      title: promoForm.title,
+      contents: promoForm.description,
+      couponType: promoForm.couponType,
+      couponId: promoForm.couponId,
+      startDate,
+      endDate,
+      status: promoForm.status,
+      images: finalImages
+    };
+
     if (isEditing.value) {
       await updatePromotion(promoForm.id, payload);
       toastStore.showToast('프로모션이 수정되었습니다.', 'success');
@@ -329,21 +397,26 @@ const payload = {
 
     isModalOpen.value = false;
     await loadPromotions(currentPage.value); // ✅ 현재 페이지 유지하며 새로고침
+
+    // ✅ 폼 리셋
+    selectedFiles.value = [];
+    imagePreviewUrls.value = [];
+    Object.assign(promoForm, {
+      id: null,
+      title: '',
+      period: '',
+      couponType: 'PERCENTAGE',
+      couponId: null,
+      status: 'UPCOMING',
+      description: '',
+      images: [],
+    });
   } catch (err) {
     console.error(err);
     toastStore.showToast('저장 중 오류가 발생했습니다.', 'danger');
+  } finally {
+    isUploading.value = false;
   }
-
-  // ✅ 폼 리셋
-  Object.assign(promoForm, {
-    id: null,
-    title: '',
-    period: '',
-    couponType: 'PERCENTAGE',
-    couponId: null,
-    status: 'UPCOMING',
-    description: '',
-  });
 };
 
 
@@ -642,17 +715,50 @@ const visiblePages = computed(() => {
             v-model="promoForm.description"
           ></textarea>
         </div>
+        <div class="mb-3">
+          <label class="form-label">이미지 첨부</label>
+          <input
+            type="file"
+            class="form-control"
+            accept="image/*"
+            multiple
+            @change="handleImageSelect"
+          >
+          <small class="text-muted">여러 이미지를 선택할 수 있습니다.</small>
+        </div>
+        <!-- 이미지 미리보기 -->
+        <div v-if="imagePreviewUrls.length > 0" class="mb-3">
+          <label class="form-label">미리보기</label>
+          <div class="image-preview-container">
+            <div
+              v-for="(url, index) in imagePreviewUrls"
+              :key="index"
+              class="image-preview-item"
+            >
+              <img :src="url" alt="미리보기" class="preview-thumbnail">
+              <button
+                type="button"
+                class="btn btn-sm btn-danger remove-btn"
+                @click="removeImage(index)"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
       </form>
       <template #footer>
         <button
           type="button"
           class="btn btn-secondary"
           @click="isModalOpen = false"
+          :disabled="isUploading"
         >
           취소
         </button>
-        <button type="button" class="btn btn-primary" @click="savePromotion">
-          저장
+        <button type="button" class="btn btn-primary" @click="savePromotion" :disabled="isUploading">
+          <span v-if="isUploading" class="spinner-border spinner-border-sm me-1"></span>
+          {{ isUploading ? '업로드 중...' : '저장' }}
         </button>
       </template>
     </BaseModal>
@@ -672,5 +778,41 @@ const visiblePages = computed(() => {
 .flatpickr-input.active {
   border-color: #007bff;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* 이미지 미리보기 컨테이너 */
+.image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.image-preview-item {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.preview-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.remove-btn {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
 }
 </style>

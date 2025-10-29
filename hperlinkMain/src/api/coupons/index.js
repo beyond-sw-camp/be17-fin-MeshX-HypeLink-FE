@@ -75,10 +75,30 @@ export const deleteCoupon = async (id) => {
   return data;
 };
 
+export const updateCoupon = async (id, payload) => {
+  const requestUrl = `/api/coupon/update/${id}`;
+  let data = {};
+  await api
+    .patch(requestUrl, {
+      name: payload.name,
+      couponType: payload.type.toUpperCase(), // Percentage -> PERCENTAGE
+      value: payload.value,
+      period: payload.period,
+    })
+    .then((response) => {
+      data = response.data;
+    })
+    .catch((error) => {
+      data = error.response?.data || error.message;
+    });
+  return data;
+};
+
 export default {
   createCoupon,
   getAllCoupons,
   getPagedCoupons,
   getCouponDetail,
   deleteCoupon,
+  updateCoupon,
 };

@@ -9,6 +9,12 @@ const isLoading = ref(true);
 const selectedStockLevel = ref('all');
 const selectedCategory = ref('all');
 
+// 페이징 관련 변수
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+const totalPages = ref(0);
+const totalItems = ref(0);
+
 // Inventory KPIs
 const inventoryKPIs = ref({
   totalSKUs: { label: '총 SKU 수', value: 1856, change: 12, unit: '개' },
@@ -240,31 +246,37 @@ const createBulkReorder = () => {
 };
 
 // 데이터 로드 함수
-const loadData = async () => {
+const loadData = async (page = 1) => {
   isLoading.value = true;
   try {
-    // 재고 부족 품목 가져오기 (threshold: 20)
-    const inventoryResponse = await getLowStockItems(20);
-    if (inventoryResponse?.data && Array.isArray(inventoryResponse.data)) {
-      lowStockItems.value = inventoryResponse.data.map(item => ({
-        productId: item.productId || item.itemId || '',
-        name: item.productName || item.itemName || '알 수 없음',
-        category: item.categoryName || item.category || '기타',
-        store: item.storeName || item.store || '정보 없음',
-        currentStock: item.currentStock || item.stock || 0,
-        minStock: item.minimumStock || item.minStock || 20,
-        reorderQty: item.reorderQuantity || item.reorderQty || 50,
-        urgency: item.urgency || (item.currentStock <= 3 ? 'critical' : item.currentStock <= 10 ? 'high' : 'medium'),
-        daysUntilOut: item.daysUntilOut || Math.floor(item.currentStock / 2)
-      }));
+    // 재고 부족 품목 가져오기 (threshold: 20, page, size)
+    const inventoryResponse = await getLowStockItems(20, page - 1, itemsPerPage.value);
+    if (inventoryResponse?.data) {
+      const pageData = inventoryResponse.data;
 
-      // KPI 업데이트
-      const totalItems = lowStockItems.value.length;
-      const criticalItems = lowStockItems.value.filter(item => item.urgency === 'critical').length;
+      // 페이지 데이터인 경우
+      if (pageData.content && Array.isArray(pageData.content)) {
+        lowStockItems.value = pageData.content.map(item => ({
+          productId: item.productId || item.itemId || '',
+          name: item.productName || item.itemName || '알 수 없음',
+          category: item.categoryName || item.category || '기타',
+          store: item.storeName || item.store || '정보 없음',
+          currentStock: item.currentStock || item.stock || 0,
+          minStock: item.minimumStock || item.minStock || 20,
+          reorderQty: item.reorderQuantity || item.reorderQty || 50,
+          urgency: item.urgency || (item.currentStock <= 3 ? 'critical' : item.currentStock <= 10 ? 'high' : 'medium'),
+          daysUntilOut: item.daysUntilOut || Math.floor(item.currentStock / 2)
+        }));
 
-      inventoryKPIs.value.lowStock.value = totalItems;
-      inventoryKPIs.value.outOfStock.value = criticalItems;
-      inventoryKPIs.value.reorderNeeded.value = lowStockItems.value.filter(item => item.currentStock < item.minStock).length;
+        totalPages.value = pageData.totalPages || 0;
+        totalItems.value = pageData.totalElements || 0;
+        currentPage.value = page;
+
+        // KPI 업데이트 (전체 아이템 수 기준)
+        inventoryKPIs.value.lowStock.value = totalItems.value;
+        inventoryKPIs.value.outOfStock.value = lowStockItems.value.filter(item => item.urgency === 'critical').length;
+        inventoryKPIs.value.reorderNeeded.value = lowStockItems.value.filter(item => item.currentStock < item.minStock).length;
+      }
     }
   } catch (error) {
     console.error('Failed to load inventory data:', error);
@@ -272,6 +284,26 @@ const loadData = async () => {
     isLoading.value = false;
   }
 };
+
+// 페이지네이션에서 보여줄 페이지 번호들 계산
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 
 onMounted(() => {
   loadData();
@@ -380,7 +412,7 @@ onMounted(() => {
           <BaseCard>
             <template #header>
               <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h6 class="mb-0">⚠️ 재고 부족 품목 ({{ lowStockItems.length }}개)</h6>
+                <h6 class="mb-0">⚠️ 재고 부족 품목 ({{ totalItems }}개)</h6>
                 <div class="d-flex gap-2">
                   <select class="form-select form-select-sm" v-model="selectedStockLevel" style="width: 180px;">
                     <option v-for="level in stockLevels" :key="level.value" :value="level.value">
@@ -449,6 +481,33 @@ onMounted(() => {
                 </tbody>
               </table>
             </div>
+
+            <!-- 페이지네이션 -->
+            <nav v-if="totalPages >= 1" class="mt-3">
+              <ul class="pagination justify-content-center">
+                <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                  <button class="page-link" @click="loadData(currentPage - 1)" :disabled="currentPage === 1">이전</button>
+                </li>
+                <li class="page-item" v-if="visiblePages[0] > 1">
+                  <button class="page-link" @click="loadData(1)">1</button>
+                </li>
+                <li class="page-item disabled" v-if="visiblePages[0] > 2">
+                  <span class="page-link">...</span>
+                </li>
+                <li class="page-item" :class="{ active: page === currentPage }" v-for="page in visiblePages" :key="page">
+                  <button class="page-link" @click="loadData(page)">{{ page }}</button>
+                </li>
+                <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+                  <span class="page-link">...</span>
+                </li>
+                <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+                  <button class="page-link" @click="loadData(totalPages)">{{ totalPages }}</button>
+                </li>
+                <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                  <button class="page-link" @click="loadData(currentPage + 1)" :disabled="currentPage === totalPages">다음</button>
+                </li>
+              </ul>
+            </nav>
           </BaseCard>
         </div>
       </div>

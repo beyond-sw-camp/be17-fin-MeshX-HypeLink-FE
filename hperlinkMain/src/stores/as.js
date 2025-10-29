@@ -1,17 +1,18 @@
-import { ref } from 'vue';
-import { defineStore } from 'pinia';
-import { useAuthStore } from '@/stores/auth';
-import { useToastStore } from '@/stores/toast';
+import {ref} from 'vue';
+import {defineStore} from 'pinia';
+import {useAuthStore} from '@/stores/auth';
+import {useToastStore} from '@/stores/toast';
 import {
-    getHeadOfficeAsList,
-    getHeadOfficeAsDetail,
-    updateHeadOfficeAsStatus,
     addHeadOfficeAsComment,
-    getStoreAsList,
-    getStoreAsDetail,
     createStoreAsRequest,
-    updateStoreAsRequest,
-    deleteStoreAsRequest
+    deleteStoreAsRequest,
+    getASStatus,
+    getHeadOfficeAsDetail,
+    getHeadOfficeAsList,
+    getStoreAsDetail,
+    getStoreAsList,
+    updateHeadOfficeAsStatus,
+    updateStoreAsRequest
 } from '@/api/as';
 import router from "@/router";
 
@@ -34,22 +35,29 @@ export const useAsStore = defineStore('as', () => {
     // e.g., authStore.isAdmin, authStore.isManager, authStore.isBranchManager
 
     // Actions
-    const fetchAsRequests = async (page = 0, size = 15) => {
+    const fetchAsRequests = async (page = 0, size = 15, keyWord = '', status = 'all') => {
         isLoading.value = true;
         error.value = null;
         try {
             let response;
             if (authStore.isAdmin || authStore.isManager) {
-                response = await getHeadOfficeAsList(page, size);
+                response = await getHeadOfficeAsList(page, size, keyWord, status);
             } else if (authStore.isBranchManager) {
-                response = await getStoreAsList();
+                response = await getStoreAsList(page, size, keyWord, status);
             } else {
                 throw new Error("AS 요청을 조회할 권한이 없습니다.");
             }
-
+            console.log(response);
             if (response.success) {
                 // 페이징 응답 처리
-                if (response.data.asListResList) {
+                if(typeof response.data === 'undefined') {
+                    console.log("success")
+                    asRequests.value = [];
+                    totalPages.value = 0;
+                    totalElements.value = 0;
+                    currentPage.value = 0;
+                    pageSize.value = size;
+                } else if (response.data.asListResList) {
                     asRequests.value = response.data.asListResList;
                     totalPages.value = response.data.totalPages || 0;
                     totalElements.value = response.data.totalElements || 0;
@@ -191,6 +199,19 @@ export const useAsStore = defineStore('as', () => {
         }
     };
 
+    const getASStatusList = async () => {
+        isLoading.value = true;
+        error.value = null;
+        try {
+            return await getASStatus();
+        } catch (err) {
+            error.value = err.message;
+            return { success: false, message: err.message };
+        } finally {
+            isLoading.value = false;
+        }
+    };
+
     return {
         asRequests,
         selectedAsRequest,
@@ -207,5 +228,6 @@ export const useAsStore = defineStore('as', () => {
         deleteAsRequest,
         updateAsStatus,
         addAsComment,
+        getASStatusList,
     };
 });

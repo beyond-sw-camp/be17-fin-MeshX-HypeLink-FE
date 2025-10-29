@@ -17,10 +17,15 @@ const statusFilter = ref('all');
 const currentPage = ref(1);
 const itemsPerPage = ref(15);
 
+// 서버에서 데이터 받아온 곳
+const asStatus = ref([]);
+
 // 데이터 로딩 함수
 const loadAsData = async (page = 0) => {
   try {
-    await asStore.fetchAsRequests(page, itemsPerPage.value);
+    await asStore.fetchAsRequests(page, itemsPerPage.value, searchTerm.value, statusFilter.value);
+    let res = await asStore.getASStatusList();
+    asStatus.value = res.data.status;
   } catch (error) {
     console.error('Failed to fetch AS requests:', error);
   }
@@ -69,28 +74,6 @@ const formatDate = (dateString) => {
   return `${year}.${month}.${day} ${hours}:${minutes}`;
 };
 
-// 서버에서 가져온 현재 페이지의 AS 요청 (서버 페이징)
-const paginatedRequests = computed(() => {
-  let result = asStore.asRequests;
-
-  // 클라이언트 측 검색 필터 (필요한 경우)
-  if (searchTerm.value.trim()) {
-    const query = searchTerm.value.toLowerCase();
-    result = result.filter(request => {
-      const title = (request.title || '').toLowerCase();
-      const storeName = (request.storeName || '').toLowerCase();
-      return title.includes(query) || storeName.includes(query);
-    });
-  }
-
-  // 클라이언트 측 상태 필터 (필요한 경우)
-  if (statusFilter.value !== 'all') {
-    result = result.filter(request => request.status === statusFilter.value);
-  }
-
-  return result;
-});
-
 // 서버에서 가져온 전체 페이지 수
 const totalPages = computed(() => asStore.totalPages || 1);
 
@@ -116,6 +99,10 @@ const updatePage = async (page) => {
     await loadAsData(page - 1); // Convert to 0-based index for API
   }
 };
+
+const onSearch = async () => {
+  await loadAsData();
+}
 
 // 표시할 페이지 버튼 계산 (최대 5개)
 const visiblePages = computed(() => {
@@ -163,10 +150,9 @@ const visiblePages = computed(() => {
                 @change="updateStatusFilter($event.target.value)"
               >
                 <option value="all">전체 상태</option>
-                <option value="PENDING">대기중</option>
-                <option value="APPROVED">처리중</option>
-                <option value="REJECTED">거절</option>
-                <option value="COMPLETED">완료</option>
+                <option v-for="status in asStatus" :key="status.description" :value="status.description">
+                  {{ status.description }}
+                </option>
               </select>
             </div>
             <div class="me-2">
@@ -180,13 +166,18 @@ const visiblePages = computed(() => {
                 <option :value="20">20개씩</option>
               </select>
             </div>
-            <button
-              v-if="authStore.isBranchManager"
-              class="btn btn-primary btn-sm"
-              @click="goToCreate"
-            >
-              + AS 신청
-            </button>
+            <div class="me-2">
+              <button class="btn btn-success btn-sm me-2" @click="onSearch">🔍 검색</button>
+            </div>
+            <div class="me-2">
+              <button
+                v-if="authStore.isBranchManager"
+                class="btn btn-primary btn-sm"
+                @click="goToCreate"
+              >
+                + AS 신청
+              </button>
+            </div>
           </div>
         </div>
       </template>
@@ -195,7 +186,7 @@ const visiblePages = computed(() => {
         <i class="bi bi-exclamation-triangle me-2"></i>{{ asStore.error }}
       </div>
 
-      <table class="table table-hover" v-if="paginatedRequests.length > 0">
+      <table class="table table-hover" v-if="asStore.asRequests.length > 0">
         <thead>
           <tr>
             <th style="width: 8%">번호</th>
@@ -207,28 +198,28 @@ const visiblePages = computed(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(request, index) in paginatedRequests" :key="request.id">
-            <td class="fw-medium">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
+          <tr v-for="asData in asStore.asRequests" :key="asData.id">
+            <td class="fw-medium">{{ (currentPage - 1) * itemsPerPage + asData.id }}</td>
             <td>
-              <div class="text-truncate" style="max-width: 300px;" :title="request.title">
-                {{ request.title || '제목 없음' }}
+              <div class="text-truncate" style="max-width: 300px;" :title="asData.title">
+                {{ asData.title || '제목 없음' }}
               </div>
             </td>
             <td>
               <i class="bi bi-shop me-2 text-primary"></i>
-              {{ request.storeName }}
+              {{ asData.storeName }}
             </td>
             <td>
-              <span :class="['badge', getStatusBadgeClass(request.status)]">
-                {{ getStatusText(request.status) }}
+              <span :class="['badge', getStatusBadgeClass(asData.status)]">
+                {{ getStatusText(asData.status) }}
               </span>
             </td>
             <td>
               <i class="bi bi-calendar-check me-2 text-muted"></i>
-              {{ formatDate(request.createdAt) }}
+              {{ formatDate(asData.createdAt) }}
             </td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-primary" @click="goToDetail(request.id)">
+              <button class="btn btn-sm btn-outline-primary" @click="goToDetail(asData.id)">
                 <i class="bi bi-eye me-1"></i>상세보기
               </button>
             </td>
@@ -278,3 +269,4 @@ const visiblePages = computed(() => {
   padding: 20px;
 }
 </style>
+

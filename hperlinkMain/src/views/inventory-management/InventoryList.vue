@@ -241,7 +241,7 @@ onMounted(() => {
           </div>
           <div class="me-2">
           <!-- 검색 버튼 -->
-            <button class="btn btn-primary btn-sm" @click="loadItems(1)">검색</button>
+            <button class="btn btn-success btn-sm me-2" @click="loadItems(1)">🔍 검색</button>
           </div>
         </div>
       </div>
