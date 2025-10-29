@@ -180,13 +180,18 @@ const visiblePages = computed(() => {
                 <option :value="20">20개씩</option>
               </select>
             </div>
-            <button
-              v-if="authStore.isBranchManager"
-              class="btn btn-primary btn-sm"
-              @click="goToCreate"
-            >
-              + AS 신청
-            </button>
+            <div class="me-2">
+              <button class="btn btn-success btn-sm me-2" @click="handleSearch">🔍 검색</button>
+            </div>
+            <div class="me-2">
+              <button
+                v-if="authStore.isBranchManager"
+                class="btn btn-primary btn-sm"
+                @click="goToCreate"
+              >
+                + AS 신청
+              </button>
+            </div>
           </div>
         </div>
       </template>
