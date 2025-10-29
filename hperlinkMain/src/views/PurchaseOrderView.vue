@@ -26,7 +26,7 @@ const filterStatus = ref('all');
 const sortKey = ref('id');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 const allProducts = ref([]);
 const totalPages = ref(0);
 

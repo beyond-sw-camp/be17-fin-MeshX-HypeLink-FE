@@ -73,7 +73,7 @@ const filterRole = ref('all');
 const sortKey = ref('name');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 
 // --- 데이터 로딩 ---
 onMounted(async () => {

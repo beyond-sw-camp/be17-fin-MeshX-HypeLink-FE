@@ -37,6 +37,7 @@ onMounted(async () => {
         couponName: data.couponName || '쿠폰 정보 없음',
         status: data.status,
         description: data.contents,
+        images: data.images || [],
       };
     }
   } catch (error) {
@@ -117,6 +118,16 @@ const statusClass = (status) => {
           <p class="text-muted">{{ promotion.description || '설명이 없습니다.' }}</p>
         </div>
       </div>
+
+      <!-- 이미지 영역 -->
+      <div v-if="promotion.images && promotion.images.length > 0" class="mt-4">
+        <p><strong>이미지:</strong></p>
+        <div class="image-gallery">
+          <div v-for="image in promotion.images" :key="image.id" class="image-item">
+            <img :src="image.imageUrl" :alt="image.originalName" class="img-fluid rounded shadow-sm">
+          </div>
+        </div>
+      </div>
     </BaseCard>
     
     <BaseCard v-else>
@@ -124,3 +135,22 @@ const statusClass = (status) => {
     </BaseCard>
   </div>
 </template>
+
+<style scoped>
+.image-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.image-item {
+  width: 100%;
+  text-align: center;
+}
+
+.img-fluid {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #eee;
+}
+</style>

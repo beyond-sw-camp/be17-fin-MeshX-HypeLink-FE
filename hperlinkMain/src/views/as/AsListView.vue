@@ -278,3 +278,4 @@ const visiblePages = computed(() => {
   padding: 20px;
 }
 </style>
+

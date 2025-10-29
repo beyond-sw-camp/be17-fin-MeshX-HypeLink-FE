@@ -56,10 +56,10 @@ const loadQuickViewData = async () => {
       }));
     }
 
-    // 재고 부족 TOP 3
-    const lowStockResponse = await getLowStockItems(20);
-    if (lowStockResponse.data) {
-      quickViewLowStock.value = lowStockResponse.data.slice(0, 3).map(item => ({
+    // 재고 부족 TOP 3 (첫 페이지에서 3개만 가져오기)
+    const lowStockResponse = await getLowStockItems(20, 0, 3);
+    if (lowStockResponse.data && lowStockResponse.data.content) {
+      quickViewLowStock.value = lowStockResponse.data.content.map(item => ({
         name: item.itemName,
         stock: item.currentStock,
         store: '본사' // TODO: 매장 정보 없음

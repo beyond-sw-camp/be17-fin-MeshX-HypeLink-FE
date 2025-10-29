@@ -117,21 +117,23 @@ export const getCategoryPerformance = async (period = 'weekly') => {
 }
 
 /**
- * 재고 부족 품목 조회
+ * 재고 부족 품목 조회 (페이지네이션)
  * @param {number} threshold - 재고 기준값
+ * @param {number} page - 페이지 번호
+ * @param {number} size - 페이지 크기
  */
-export const getLowStockItems = async (threshold = 20) => {
+export const getLowStockItems = async (threshold = 20, page = 0, size = 10) => {
     const requestUrl = `/api/analytics/inventory/low-stock`
     let data = {}
     await api.get(requestUrl, {
-        params: { threshold },
+        params: { threshold, page, size },
     })
         .then((response) => {
             data = response.data
         })
         .catch((error) => {
             console.error('Failed to fetch low stock items:', error)
-            data = { data: [] }
+            data = { data: { content: [], totalElements: 0, totalPages: 0 } }
         })
     return data
 }
