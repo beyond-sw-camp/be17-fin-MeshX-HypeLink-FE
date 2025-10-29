@@ -1,19 +1,23 @@
 <script setup>
-import { useCouponsStore } from '@/stores/coupons'
+import { computed } from 'vue'
+import { useMembershipStore } from '@/stores/membership'
 
 defineProps({
-  memberPhone: String,
-  currentMember: Object
+  memberPhone: String
 })
 
 const emit = defineEmits(['openPhoneKeypad', 'clearMember'])
 
-const couponsStore = useCouponsStore()
+const membershipStore = useMembershipStore()
+
+const availableCoupons = computed(() => {
+  return membershipStore.getAvailableCoupons()
+})
 </script>
 
 <template>
   <div class="membership-section">
-    <div v-if="!currentMember" class="membership-search">
+    <div v-if="!membershipStore.currentMember" class="membership-search">
       <input
         :value="memberPhone"
         type="tel"
@@ -27,10 +31,9 @@ const couponsStore = useCouponsStore()
     </div>
     <div v-else class="member-info">
       <div class="member-details">
-        <span class="member-name">👤 {{ currentMember.name }}</span>
-        <span class="member-points">💰 {{ currentMember.points.toLocaleString() }}P</span>
-        <span class="member-coupons" v-if="couponsStore.getAvailableCoupons(currentMember.id, 0).length > 0">
-          🎟️ {{ couponsStore.getAvailableCoupons(currentMember.id, 0).length }}장
+        <span class="member-name">👤 {{ membershipStore.currentMember.name }}</span>
+        <span class="member-coupons">
+          🎟️ 쿠폰 {{ availableCoupons.length }}장
         </span>
       </div>
       <button class="member-clear-btn" @click="emit('clearMember')">✕</button>
@@ -93,6 +96,7 @@ const couponsStore = useCouponsStore()
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 12px;
 }
 
 .member-details {
@@ -105,12 +109,6 @@ const couponsStore = useCouponsStore()
   font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
-}
-
-.member-points {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--primary-color);
 }
 
 .member-coupons {

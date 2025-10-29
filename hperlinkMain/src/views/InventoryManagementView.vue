@@ -54,7 +54,7 @@ const filteredAndSortedInventory = computed(() => {
   let inventory = [...allInventory.value];
 
   // 역할에 따른 필터링 (점주는 자신의 매장만)
-  if (authStore.isStoreManager) {
+  if (authStore.isBranchManager) {
     inventory = inventory.filter(item => item.storeName === authStore.user.name);
   }
 

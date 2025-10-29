@@ -6,7 +6,7 @@ export const useCouponsStore = defineStore('coupons', () => {
     {
       id: 1,
       memberId: 1,
-      name: '5,000원 할인 쿠폰',
+      name: '아우터 5,000원 할인',
       type: 'amount', // 'amount' or 'percent'
       value: 5000,
       minPurchase: 10000, // 최소 구매 금액
@@ -17,7 +17,7 @@ export const useCouponsStore = defineStore('coupons', () => {
     {
       id: 2,
       memberId: 1,
-      name: '10% 할인 쿠폰',
+      name: '전품목 10% 할인',
       type: 'percent',
       value: 10,
       minPurchase: 20000,
@@ -28,7 +28,7 @@ export const useCouponsStore = defineStore('coupons', () => {
     {
       id: 3,
       memberId: 1,
-      name: '3,000원 할인 쿠폰',
+      name: '봄맞이 3,000원 할인',
       type: 'amount',
       value: 3000,
       minPurchase: 5000,
@@ -39,7 +39,7 @@ export const useCouponsStore = defineStore('coupons', () => {
     {
       id: 4,
       memberId: 2,
-      name: '신규 가입 쿠폰',
+      name: '신규 회원 웰컴 쿠폰',
       type: 'amount',
       value: 2000,
       minPurchase: 0,

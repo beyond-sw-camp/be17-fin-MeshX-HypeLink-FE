@@ -1,25 +1,24 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseModal from '@/components/BaseModal.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 import BaseEmptyState from '@/components/BaseEmptyState.vue';
 import SortIcon from '@/components/SortIcon.vue';
-import { useProductStore } from '@/stores/products';
-import { useAuthStore } from '@/stores/auth';
-import { useToastStore } from '@/stores/toast';
-import { useOrderStore } from '@/stores/orders';
+import {useAuthStore} from '@/stores/auth';
+import {useToastStore} from '@/stores/toast';
 
-const productStore = useProductStore();
+import purchaseOrderApi from '@/api/purchase-order'
+
 const authStore = useAuthStore();
 const toastStore = useToastStore();
-const orderStore = useOrderStore();
 
 const isLoading = ref(true);
+const orderStates = ref([]);
 
-const isModalOpen = ref(false);
-const formSubmitted = ref(false);
-const orderForm = reactive({ productId: '', quantity: 1 });
+const checkOrder = ref(false);
+const currentOrder = ref(null);
+const isCheckModalOpen = ref(false);
 
 // 검색, 필터, 정렬, 페이지네이션 상태
 const searchTerm = ref('');
@@ -27,56 +26,36 @@ const filterStatus = ref('all');
 const sortKey = ref('id');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
+const allProducts = ref([]);
+const totalPages = ref(0);
 
 // --- 데이터 로딩 시뮬레이션 ---
 onMounted(() => {
-  setTimeout(() => {
+  loadItems(1); // 초기 로드 시 서버에서 페이징 데이터 불러오기
+  getOrderStates();
+});
+
+const loadItems = async (page = 1) => {
+  try {
+    isLoading.value = true;
+
+    const response = await purchaseOrderApi.searchPurchaseOrder(page - 1, itemsPerPage.value,
+        `${sortKey.value},${sortOrder.value}`, searchTerm.value, filterStatus.value);
+    if (response.status === 200 && response.data) {
+      const pageData = response.data.data;
+      allProducts.value = pageData.content;
+      totalPages.value = pageData.totalPages;
+      currentPage.value = pageData.currentPage + 1; // Spring Pageable은 0-based
+    } else {
+      console.error('상품 목록 로딩 실패:', response);
+    }
+  } catch (e) {
+    console.error('서버 통신 오류:', e);
+  } finally {
     isLoading.value = false;
-  }, 500);
-});
-
-// --- 검색, 필터링, 정렬 로직 ---
-const filteredAndSortedOrders = computed(() => {
-  let orders = [...orderStore.allOrders];
-
-  if (authStore.isStoreManager) {
-    orders = orders.filter(order => order.storeName === authStore.user.name);
   }
-
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase();
-    orders = orders.filter(order => 
-      order.productName.toLowerCase().includes(term) || 
-      order.storeName.toLowerCase().includes(term)
-    );
-  }
-
-  if (filterStatus.value !== 'all') {
-    orders = orders.filter(order => order.status === filterStatus.value);
-  }
-
-  if (sortKey.value) {
-    orders.sort((a, b) => {
-      const valA = a[sortKey.value];
-      const valB = b[sortKey.value];
-      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
-
-  return orders;
-});
-
-// --- 페이지네이션 로직 ---
-const paginatedOrders = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedOrders.value.slice(start, end);
-});
-
-const totalPages = computed(() => Math.ceil(filteredAndSortedOrders.value.length / itemsPerPage.value));
+};
 
 // --- 이벤트 핸들러 ---
 const updateSort = (key) => {
@@ -88,56 +67,89 @@ const updateSort = (key) => {
   }
   currentPage.value = 1;
 };
-const updatePage = (page) => { 
-  if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page; 
+
+const updatePage = async (page) => {
+  if (page < 1 || page > totalPages.value) return;
+  await loadItems(page);
+};
+
+const openCompleteModal = (order, check) => {
+  currentOrder.value = order;
+  checkOrder.value = !!check;
+  isCheckModalOpen.value = true;
+}
+
+const closeCompleteModal = () => {
+  isCheckModalOpen.value = false;
+}
+
+const getOrderStates = async () => {
+  let res = await purchaseOrderApi.getPurchaseOrderStates();
+  if(res.status !== 200) {
+    toastStore.showToast(res.message, "danger")
   }
-};
-
-const openOrderModal = () => {
-  formSubmitted.value = false;
-  orderForm.productId = '';
-  orderForm.quantity = 1;
-  isModalOpen.value = true;
-};
-
-const handleSubmitOrder = () => {
-  formSubmitted.value = true;
-  if (!orderForm.productId || orderForm.quantity <= 0) {
-    toastStore.showToast('상품과 수량을 올바르게 입력해주세요.', 'danger');
-    return;
-  }
-  const product = productStore.allProducts.find(p => p.id === orderForm.productId);
-  if (!product) {
-    toastStore.showToast('선택된 상품을 찾을 수 없습니다.', 'danger');
-    return;
-  }
-
-  orderStore.submitOrder({
-    ...orderForm,
-    productName: product.name,
-    storeName: authStore.user.name
-  });
-
-  isModalOpen.value = false;
-  toastStore.showToast('발주 요청이 완료되었습니다.', 'success');
-};
-
-const handleUpdateOrderStatus = (id, newStatus) => {
-  orderStore.updateOrderStatus(id, newStatus);
-  toastStore.showToast(`발주 #${id} 상태가 ${newStatus}(으)로 변경되었습니다.`, 'success');
-};
+  orderStates.value = res.data.data.purchaseOrderStates;
+}
 
 const orderStatusClass = (status) => {
   switch (status) {
-    case '요청 완료': return 'bg-primary';
-    case '처리중': return 'bg-info';
-    case '배송중': return 'bg-warning';
-    case '완료': return 'bg-success';
-    case '취소': return 'bg-danger';
-    default: return 'bg-secondary';
+    case '발주 요청됨':
+      return 'bg-primary';
+    case '수령 완료':
+      return 'bg-success';
+    case '요청 취소':
+      return 'bg-danger';
+    default:
+      return 'bg-secondary';
   }
 };
+
+const onSearch = async () => {
+  await loadItems(1);
+}
+
+// --- 표시할 페이지 버튼 계산 (최대 5개) ---
+const handleUpdateOrderStatus = async (orderId, status) => {
+  try {
+    const response = await purchaseOrderApi.updatePurchaseOrder({
+      orderId: orderId,
+      orderState: status
+    });
+
+    if (response.status === 200) {
+      toastStore.showToast(
+        checkOrder.value ? '입고 처리되었습니다.' : '입고 취소되었습니다.',
+        'success'
+      );
+      closeCompleteModal();
+      await loadItems(currentPage.value); // 목록 새로고침
+    } else {
+      toastStore.showToast(response.message || '처리 실패', 'danger');
+    }
+  } catch (e) {
+    console.error('상태 업데이트 오류:', e);
+    toastStore.showToast('서버 오류가 발생했습니다.', 'danger');
+  }
+};
+
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 </script>
 
 <template>
@@ -147,57 +159,92 @@ const orderStatusClass = (status) => {
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0">발주서 목록</h5>
           <div class="d-flex">
-            <input type="text" class="form-control form-control-sm me-2" placeholder="상품명/매장명 검색" v-model="searchTerm">
-            <select class="form-select form-select-sm me-2" v-model="filterStatus">
-              <option value="all">전체 상태</option>
-              <option value="요청 완료">요청 완료</option>
-              <option value="처리중">처리중</option>
-              <option value="배송중">배송중</option>
-              <option value="완료">완료</option>
-              <option value="취소">취소</option>
-            </select>
-            <button v-if="authStore.isStoreManager" class="btn btn-primary btn-sm" @click="openOrderModal()">+ 새 발주서 작성</button>
+            <div class="me-2">
+              <input type="text" class="form-control form-control-sm me-2" placeholder="상품명/매장명 검색" v-model="searchTerm">
+            </div>
+            <div class="me-2">
+              <select class="form-select form-select-sm me-2" v-model="filterStatus">
+                <option value="all">전체 상태</option>
+                <option v-for="cat in orderStates" :key="cat.description" :value="cat.description">
+                  {{ cat.description }}
+                </option>
+              </select>
+            </div>
+            <button class="btn btn-success btn-sm me-2" @click="onSearch">🔍 검색</button>
           </div>
         </div>
       </template>
-      
-      <div v-if="paginatedOrders.length > 0">
+
+      <div v-if="allProducts.length > 0">
         <table class="table table-hover">
           <thead>
-            <tr>
-              <th @click="updateSort('id')" class="sortable">발주 번호 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="id" /></th>
-              <th v-if="authStore.isAdmin || authStore.isSubAdmin" @click="updateSort('storeName')" class="sortable">요청 매장 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="storeName" /></th>
-              <th @click="updateSort('productName')" class="sortable">상품명 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="productName" /></th>
-              <th @click="updateSort('quantity')" class="sortable">수량 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="quantity" /></th>
-              <th @click="updateSort('requestDate')" class="sortable">요청일 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="requestDate" /></th>
-              <th @click="updateSort('status')" class="sortable">상태 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="status" /></th>
-              <th v-if="authStore.isAdmin || authStore.isSubAdmin">관리</th>
-            </tr>
+          <tr>
+            <th @click="updateSort('id')" class="sortable">발주 번호
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="id"/>
+            </th>
+            <th @click="updateSort('deliveryRequest')" class="sortable">요청 매장
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="storeName"/>
+            </th>
+            <th @click="updateSort('itemName')" class="sortable">상품명
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="productName"/>
+            </th>
+            <th @click="updateSort('itemDetailCode')" class="sortable">상품 상세 코드
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="productName"/>
+            </th>
+            <th @click="updateSort('quantity')" class="sortable">수량
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="quantity"/>
+            </th>
+            <th @click="updateSort('requestDay')" class="sortable">요청일
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="requestDate"/>
+            </th>
+            <th @click="updateSort('detailState')" class="sortable">발주 내역
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="detailState"/>
+            </th>
+            <th @click="updateSort('status')" class="sortable">상태
+              <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="status"/>
+            </th>
+            <th v-if="authStore.isAdmin || authStore.isManager">관리</th>
+          </tr>
           </thead>
           <tbody>
-            <tr v-for="order in paginatedOrders" :key="order.id">
-              <td>{{ order.id }}</td>
-              <td v-if="authStore.isAdmin || authStore.isSubAdmin">{{ order.storeName }}</td>
-              <td>{{ order.productName }}</td>
-              <td>{{ order.quantity }}</td>
-              <td>{{ order.requestDate }}</td>
-              <td><span class="badge" :class="orderStatusClass(order.status)">{{ order.status }}</span></td>
-              <td v-if="authStore.isAdmin || authStore.isSubAdmin">
-                <button class="btn btn-sm btn-success" @click="handleUpdateOrderStatus(order.id, '처리중')">처리</button>
-                <button class="btn btn-sm btn-danger ms-2" @click="handleUpdateOrderStatus(order.id, '취소')">취소</button>
-              </td>
-            </tr>
+          <tr v-for="order in allProducts" :key="order.id">
+            <td>{{ order.id }}</td>
+            <td>{{ order.deliveryRequest }}</td>
+            <td>{{ order.itemName }}</td>
+            <td>{{ order.itemDetailCode }}</td>
+            <td>{{ order.quantity }}</td>
+            <td>{{ order.requestDay }}</td>
+            <td>{{ order.detailState }}</td>
+            <td><span class="badge" :class="orderStatusClass(order.status)">{{ order.status }}</span></td>
+            <td v-if="(order.status !== '수령 완료' && order.status !== '요청 취소')">
+              <button class="btn btn-sm btn-success" @click="openCompleteModal(order, true)">처리</button>
+              <button class="btn btn-sm btn-danger ms-2" @click="openCompleteModal(order, false)">취소
+              </button>
+            </td>
+          </tr>
           </tbody>
         </table>
 
         <!-- 페이지네이션 -->
-        <nav v-if="totalPages > 1">
+        <nav v-if="totalPages >= 1">
           <ul class="pagination justify-content-center">
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
             </li>
-            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
+            <li class="page-item" v-if="visiblePages[0] > 1">
+              <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[0] > 2">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in visiblePages" :key="page">
               <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+              <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
             </li>
             <li class="page-item" :class="{ disabled: currentPage === totalPages }">
               <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
@@ -205,33 +252,33 @@ const orderStatusClass = (status) => {
           </ul>
         </nav>
       </div>
-      <BaseEmptyState v-else message="조회된 발주서가 없습니다." />
+      <BaseEmptyState v-else message="조회된 발주서가 없습니다."/>
     </BaseCard>
 
-    <!-- 발주서 작성 모달 -->
-    <BaseModal v-model="isModalOpen">
-      <template #header><h5>새 발주서 작성</h5></template>
-      <form @submit.prevent="handleSubmitOrder">
-        <div class="mb-3">
-          <label class="form-label">상품명 <span class="text-danger">*</span></label>
-          <select class="form-select" v-model="orderForm.productId" :class="{ 'is-invalid': !orderForm.productId && formSubmitted }">
-            <option disabled value="">상품 선택</option>
-            <option v-for="product in productStore.allProducts" :key="product.id" :value="product.id">{{ product.name }} ({{ product.code }})</option>
-          </select>
-          <div class="invalid-feedback">상품을 선택해주세요.</div>
+    <!-- 실제 입고 처리 하기 전 모달 창 -->
+    <BaseModal v-model="isCheckModalOpen">
+      <template #header>
+        <h5>{{ checkOrder ? '입고 처리' : '입고 취소' }}</h5>
+      </template>
+
+      <div class="mb-3">
+        <div class="p-2 border rounded bg-light fw-bold text-dark">
+          {{ checkOrder ? '입고 처리 하시겠습니까?' : '입고 취소 하시겠습니까?' }}
         </div>
-        <div class="mb-3">
-          <label class="form-label">수량 <span class="text-danger">*</span></label>
-          <input type="number" class="form-control" v-model.number="orderForm.quantity" min="1" :class="{ 'is-invalid': (!orderForm.quantity || orderForm.quantity <= 0) && formSubmitted }">
-          <div class="invalid-feedback">수량은 1개 이상이어야 합니다.</div>
-        </div>
-      </form>
+      </div>
+
       <template #footer>
-        <button type="button" class="btn btn-secondary" @click="isModalOpen = false">취소</button>
-        <button type="button" class="btn btn-primary" @click="handleSubmitOrder">발주 요청</button>
+        <button class="btn btn-secondary" @click="closeCompleteModal">닫기</button>
+        <button
+            class="btn"
+            :class="checkOrder ? 'btn-primary' : 'btn-danger'"
+            @click="handleUpdateOrderStatus(currentOrder.id, checkOrder ? 'COMPLETED' : 'CANCELED')"
+        >
+          {{ checkOrder ? '입고' : '취소' }}
+        </button>
       </template>
     </BaseModal>
 
-    <BaseSpinner v-if="isLoading" height="200px" />
+    <BaseSpinner v-if="isLoading" height="200px"/>
   </div>
 </template>

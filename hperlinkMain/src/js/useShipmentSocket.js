@@ -7,9 +7,12 @@ export function useShipmentSocket(updateMapMarkers) {
     const subscriptions = new Map(); // topic → subscription 객체
 
     /** 🌐 WebSocket 연결 */
-    const connectWebSocket = () => {
+    const connectWebSocket = (token) => {
         stompClient = new Client({
-            brokerURL: 'ws://localhost:8080/ws',
+            brokerURL: `ws://localhost:8080/ws?token=${token}`,
+            connectHeaders: {
+                Authorization: `Bearer ${token}`,
+            },
             reconnectDelay: 5000,
             heartbeatIncoming: 4000,
             heartbeatOutgoing: 4000,

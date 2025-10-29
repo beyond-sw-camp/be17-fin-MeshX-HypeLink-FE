@@ -2,7 +2,10 @@
 import { ref, onMounted, watch } from 'vue';
 import { Modal } from 'bootstrap';
 
-const props = defineProps({ modelValue: Boolean });
+const props = defineProps({
+  modelValue: Boolean,
+  size: { type: String, default: '' }
+});
 const emit = defineEmits(['update:modelValue']);
 
 const modalRef = ref(null);
@@ -33,7 +36,12 @@ watch(() => props.modelValue, (newValue) => {
 
 <template>
   <div class="modal fade" ref="modalRef" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered" :class="{
+    'modal-sm': props.size === 'sm',
+    'modal-lg': props.size === 'lg',
+    'modal-xl': props.size === 'xl',
+    'modal-xxl': props.size === 'xxl'
+    }">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">

@@ -1,4 +1,4 @@
-import { getAllStoreList } from '@/api/store';
+import {getStoreWithAddress} from '@/api/users';
 
 let map = null;
 let driverMarkers = {}; // 기사 마커
@@ -8,73 +8,95 @@ export function useShipmentMap(filteredAndSortedShipments) {
 
     /** 지도 초기화 */
     const initMap = async () => {
+        if (!window.naver?.maps) {
+            console.error('Naver Maps SDK가 로드되지 않았습니다.');
+            return;
+        }
+
+        // 지도 생성
         map = new naver.maps.Map('map-container', {
             center: new naver.maps.LatLng(36.5, 127.5),
             zoom: 7,
             mapTypeControl: true
         });
 
-        // ✅ 기존 마커 전부 제거
+        clearAllMarkers();
+
+        // 매장 핀 세팅
+        await loadStoreMarkers();
+
+        // 기사 핀 세팅
+        updateDriverMarkers();
+
+        console.log('지도 초기화 완료');
+    };
+
+    /** 모든 마커 제거 */
+    const clearAllMarkers = () => {
         Object.values(driverMarkers).forEach(m => m.setMap(null));
         Object.values(storeMarkers).forEach(m => m.setMap(null));
         driverMarkers = {};
         storeMarkers = {};
-
-        // 매장 마커 먼저 로딩
-        await loadStoreMarkers();
-        // 기사 마커 초기화
-        updateDriverMarkers();
     };
 
     /** 매장 마커 로딩 */
     const loadStoreMarkers = async () => {
         try {
-            const stores = await getAllStoreList();
+            const res = await getStoreWithAddress();
+            const stores = res?.data?.stores ?? [];
+
             if (!Array.isArray(stores)) {
                 console.warn('매장 데이터 형식이 올바르지 않습니다:', stores);
                 return;
             }
 
-            // 기존 매장 마커 제거
-            Object.values(storeMarkers).forEach(marker => marker.setMap(null));
+            // 기존 마커 제거
+            Object.values(storeMarkers).forEach(m => m.setMap(null));
             storeMarkers = {};
 
             stores.forEach(store => {
-                if (store.latitude && store.longitude) {
-                    const pos = new naver.maps.LatLng(store.latitude, store.longitude);
+                // 서버 응답이 lat/lon 이므로 일관화
+                const { id, storeName, lat, lon, address } = store;
+                if (!lat || !lon) return;
 
-                    const marker = new naver.maps.Marker({
-                        position: pos,
-                        map: map,
-                        icon: {
-                            content: `
-                                <div style="
-                                    padding:4px 6px;
-                                    background:#28a745;
-                                    color:#fff;
-                                    border-radius:4px;
-                                    font-size:12px;
-                                ">
-                                    ${store.name}
-                                </div>`
-                        }
-                    });
+                const position = new naver.maps.LatLng(lat, lon);
 
-                    const info = new naver.maps.InfoWindow({
+                // 매장 마커 (초록색)
+                const marker = new naver.maps.Marker({
+                    position,
+                    map,
+                    icon: {
                         content: `
-                            <div style="padding:5px;font-size:13px;">
-                                <b>${store.name}</b><br>
-                                코드: ${store.storeCode}<br>
-                                주소: ${store.address ?? '정보 없음'}
+                            <div style="
+                                background:#28a745;
+                                color:white;
+                                padding:4px 6px;
+                                border-radius:4px;
+                                font-size:12px;
+                                font-weight:500;
+                                box-shadow:0 1px 4px rgba(0,0,0,0.2);
+                                white-space:nowrap;
+                            ">
+                                🏪 ${storeName}
                             </div>`
-                    });
+                    }
+                });
 
-                    naver.maps.Event.addListener(marker, 'click', () => {
-                        info.open(map, marker);
-                    });
+                // 정보창
+                const info = new naver.maps.InfoWindow({
+                    content: `
+                        <div style="padding:6px;font-size:13px;line-height:1.4;">
+                            <b>${storeName}</b><br>
+                            ID: ${id}<br>
+                            주소: ${address ?? '정보 없음'}
+                        </div>`
+                });
 
-                    storeMarkers[store.storeCode] = marker;
-                }
+                naver.maps.Event.addListener(marker, 'click', () => {
+                    info.open(map, marker);
+                });
+
+                storeMarkers[id] = marker;
             });
 
             console.log(`매장 ${stores.length}개 마커 표시 완료`);
@@ -88,51 +110,56 @@ export function useShipmentMap(filteredAndSortedShipments) {
         const newMarkers = {};
 
         filteredAndSortedShipments.value.forEach(shipment => {
-            if (shipment.status !== '완료' && shipment.latitude && shipment.longitude) {
-                const driverId = shipment.driverId;
-                const targetPos = new naver.maps.LatLng(shipment.latitude, shipment.longitude);
+            const { driverId, latitude, longitude, name, status } = shipment;
 
-                if (driverMarkers[driverId]) {
-                    animateMarker(driverMarkers[driverId], targetPos);
-                } else {
-                    const marker = new naver.maps.Marker({
-                        position: targetPos,
-                        map: map,
-                        icon: {
-                            content: `
-                                <div style="
-                                    padding:4px 6px;
-                                    background:#0066ff;
-                                    color:#fff;
-                                    border-radius:4px;
-                                    font-size:12px;
-                                ">
-                                    ${shipment.name}
-                                </div>`
-                        }
-                    });
+            if (!latitude || !longitude || status === '완료') return;
 
-                    const info = new naver.maps.InfoWindow({
+            const pos = new naver.maps.LatLng(latitude, longitude);
+
+            // 기존 마커 있으면 애니메이션으로 이동
+            if (driverMarkers[driverId]) {
+                animateMarker(driverMarkers[driverId], pos);
+            } else {
+                // 새 마커 생성 (파란색)
+                const marker = new naver.maps.Marker({
+                    position: pos,
+                    map,
+                    icon: {
                         content: `
-                            <div style="padding:5px;font-size:13px;">
-                                <b>${shipment.driverId}</b><br>
-                                ${shipment.name} 기사<br>
-                                상태: ${shipment.status}
+                            <div style="
+                                background:#0066ff;
+                                color:white;
+                                padding:4px 6px;
+                                border-radius:4px;
+                                font-size:12px;
+                                font-weight:500;
+                                box-shadow:0 1px 4px rgba(0,0,0,0.2);
+                                white-space:nowrap;
+                            ">
+                                🚚 ${name}
                             </div>`
-                    });
+                    }
+                });
 
-                    naver.maps.Event.addListener(marker, 'click', () => {
-                        info.open(map, marker);
-                    });
+                const info = new naver.maps.InfoWindow({
+                    content: `
+                        <div style="padding:6px;font-size:13px;line-height:1.4;">
+                            <b>${driverId}</b> (${name})<br>
+                            상태: ${status}
+                        </div>`
+                });
 
-                    driverMarkers[driverId] = marker;
-                }
+                naver.maps.Event.addListener(marker, 'click', () => {
+                    info.open(map, marker);
+                });
 
-                newMarkers[driverId] = driverMarkers[driverId];
+                driverMarkers[driverId] = marker;
             }
+
+            newMarkers[driverId] = driverMarkers[driverId];
         });
 
-        // 불필요한 마커 제거
+        // 사라진 기사 마커 제거
         Object.keys(driverMarkers).forEach(id => {
             if (!newMarkers[id]) {
                 driverMarkers[id].setMap(null);
@@ -141,15 +168,14 @@ export function useShipmentMap(filteredAndSortedShipments) {
         });
     };
 
-    /** 기사 마커 애니메이션 */
+    /** 기사 마커 애니메이션 (부드러운 이동) */
     const animateMarker = (marker, targetPos) => {
         const startPos = marker.getPosition();
         const startTime = performance.now();
-        const duration = 4000;
+        const duration = 3000;
 
         const step = now => {
-            const elapsed = now - startTime;
-            const progress = Math.min(elapsed / duration, 1);
+            const progress = Math.min((now - startTime) / duration, 1);
             const lat = startPos.lat() + (targetPos.lat() - startPos.lat()) * progress;
             const lng = startPos.lng() + (targetPos.lng() - startPos.lng()) * progress;
             marker.setPosition(new naver.maps.LatLng(lat, lng));

@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useMembershipStore } from '@/stores/membership'
 
 export function useMembership() {
@@ -6,7 +6,6 @@ export function useMembership() {
 
   // State
   const memberPhone = ref('')
-  const currentMember = ref(null)
   const showMembershipRegisterModal = ref(false)
   const newMemberName = ref('')
   const newMemberPhone = ref('')
@@ -15,12 +14,15 @@ export function useMembership() {
   const showRegisterPhoneKeypad = ref(false)
   const showNameKeypad = ref(false)
 
+  // Computed - membershipStore의 currentMember를 직접 참조
+  const currentMember = computed(() => membershipStore.currentMember)
+
   // Actions
   const openPhoneKeypad = () => {
     showPhoneKeypad.value = true
   }
 
-  const confirmPhoneSearch = (phone) => {
+  const confirmPhoneSearch = async (phone) => {
     memberPhone.value = phone
     showPhoneKeypad.value = false
 
@@ -29,10 +31,11 @@ export function useMembership() {
       return
     }
 
-    const member = membershipStore.findMemberByPhone(phone)
-    if (member) {
-      currentMember.value = member
-      alert(`${member.name}님 환영합니다!\n보유 포인트: ${member.points.toLocaleString()}P`)
+    const result = await membershipStore.findMemberByPhone(phone)
+
+    if (result.success) {
+      const coupons = membershipStore.getAvailableCoupons()
+      alert(`${result.member.name}님 환영합니다!\n사용 가능한 쿠폰: ${coupons.length}장`)
     } else {
       if (confirm('등록되지 않은 회원입니다.\n멤버십에 가입하시겠습니까?')) {
         newMemberPhone.value = phone
@@ -42,7 +45,7 @@ export function useMembership() {
   }
 
   const clearMember = () => {
-    currentMember.value = null
+    membershipStore.clearCurrentMember()
     memberPhone.value = ''
   }
 
@@ -64,7 +67,7 @@ export function useMembership() {
     showNameKeypad.value = false
   }
 
-  const registerMember = () => {
+  const registerMember = async () => {
     if (!newMemberName.value.trim()) {
       alert('이름을 입력해주세요.')
       return
@@ -80,16 +83,27 @@ export function useMembership() {
       return
     }
 
-    const result = membershipStore.registerMember(
+    const result = await membershipStore.registerMember(
       newMemberName.value,
       newMemberPhone.value,
       newMemberBirthdate.value
     )
 
     if (result.success) {
-      currentMember.value = result.member
-      memberPhone.value = newMemberPhone.value
-      alert(`${result.member.name}님, 멤버십 가입을 환영합니다!`)
+      // 가입 후 바로 조회하여 currentMember에 설정
+      const loginResult = await membershipStore.findMemberByPhone(newMemberPhone.value)
+
+      if (loginResult.success) {
+        memberPhone.value = newMemberPhone.value
+
+        // 조회 성공 후 환영 메시지
+        const coupons = membershipStore.getAvailableCoupons()
+        alert(`${newMemberName.value}님, 멤버십 가입을 환영합니다!\n사용 가능한 쿠폰: ${coupons.length}장`)
+      } else {
+        console.error('자동 로그인 실패:', loginResult)
+        alert(`${newMemberName.value}님, 회원가입이 완료되었습니다!\n전화번호로 다시 조회해주세요.`)
+      }
+
       showMembershipRegisterModal.value = false
       newMemberName.value = ''
       newMemberPhone.value = ''

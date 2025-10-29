@@ -1,70 +1,18 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import itemAPI from '@/api/item'
 
 export const useProductsStore = defineStore('products', () => {
-  const products = ref([
-    {
-      id: '1',
-      name: '아메리카노',
-      price: 4500,
-      category: 'coffee',
-      stock: 100,
-      barcode: '8801234567890'
-    },
-    {
-      id: '2',
-      name: '카페라떼',
-      price: 5000,
-      category: 'coffee',
-      stock: 100
-    },
-    {
-      id: '3',
-      name: '카푸치노',
-      price: 5000,
-      category: 'coffee',
-      stock: 100
-    },
-    {
-      id: '4',
-      name: '녹차라떼',
-      price: 5500,
-      category: 'tea',
-      stock: 80
-    },
-    {
-      id: '5',
-      name: '초코케이크',
-      price: 6500,
-      category: 'dessert',
-      stock: 30
-    },
-    {
-      id: '6',
-      name: '치즈케이크',
-      price: 7000,
-      category: 'dessert',
-      stock: 25
-    }
-  ])
+  // 실제 DB에서 가져온 상품만 저장
+  const products = ref([])
 
   // POS 화면에 표시될 품목 슬롯 설정 (24칸)
   // slotIndex: productId 매핑
-  const posSlots = ref({
-    0: '1',   // 아메리카노
-    1: '2',   // 카페라떼
-    2: '3',   // 카푸치노
-    3: '4',   // 녹차라떼
-    4: '5',   // 초코케이크
-    5: '6'    // 치즈케이크
-    // 나머지 슬롯(6-23)은 비어있음
-  })
+  const posSlots = ref({})
 
+  // 카테고리는 API에서 가져옴
   const categories = ref([
-    { id: 'all', name: '전체' },
-    { id: 'coffee', name: '커피', color: '#6B4423' },
-    { id: 'tea', name: '차', color: '#2E7D32' },
-    { id: 'dessert', name: '디저트', color: '#D84315' }
+    { id: 'all', name: '전체' }
   ])
 
   const getProductById = (id) => {
@@ -77,10 +25,12 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   const addProduct = (product) => {
+    // 이미 id가 있으면 그대로 사용, 없으면 새로 생성
     const newProduct = {
       ...product,
-      id: Date.now().toString()
+      id: product.id || Date.now().toString()
     }
+    console.log('✅ products store에 상품 추가:', newProduct)
     products.value.push(newProduct)
     return newProduct
   }
@@ -110,6 +60,10 @@ export const useProductsStore = defineStore('products', () => {
     categories.value.push(category)
   }
 
+  const setCategories = (newCategories) => {
+    categories.value = newCategories
+  }
+
   const assignProductToSlot = (slotIndex, productId) => {
     posSlots.value[slotIndex] = productId
   }
@@ -124,6 +78,27 @@ export const useProductsStore = defineStore('products', () => {
     return products.value.find(p => p.id === productId)
   }
 
+  const fetchProducts = async () => {
+    const result = await itemAPI.getItemList()
+    if (result.success) {
+      console.log('📦 백엔드에서 받은 상품 데이터 샘플:', result.data.content[0])
+
+      // Assuming result.data.content is the array of products from PageRes
+      products.value = result.data.content.map(item => ({
+            id: item.id.toString(), // Use StoreItemDetail ID (고유 ID)
+            storeItemId: item.storeItemId.toString(), // StoreItem ID (백엔드 결제용)
+            name: item.productName,
+            price: item.price,
+            category: item.category,
+            stock: item.stock // Assuming stock is directly available, not stockQuantity
+          }))
+
+      console.log('✅ products store에 저장된 상품 샘플:', products.value[0])
+    } else {
+      console.error('Failed to fetch products:', result.message)
+    }
+  }
+
   return {
     products,
     categories,
@@ -135,8 +110,10 @@ export const useProductsStore = defineStore('products', () => {
     deleteProduct,
     updateStock,
     addCategory,
+    setCategories,
     assignProductToSlot,
     removeProductFromSlot,
-    getProductBySlot
+    getProductBySlot,
+    fetchProducts
   }
 })

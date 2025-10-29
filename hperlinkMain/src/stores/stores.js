@@ -1,15 +1,35 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import usersApi from '@/api/users'; // Add this import
 
 export const useStoreStore = defineStore('stores', () => {
-  const allStores = ref([
-    { id: 1, name: 'HypeLink 강남점', address: '서울시 강남구 테헤란로', owner: '최민성', phone: '010-1234-5678', status: '운영중' },
-    { id: 2, name: 'HypeLink 홍대점', address: '서울시 마포구 양화로', owner: '강병욱', phone: '010-2345-6789', status: '운영중' },
-    { id: 3, name: 'HypeLink 부산점', address: '부산시 해운대구', owner: '김성인', phone: '010-3456-7890', status: '휴점' },
-    { id: 4, name: 'HypeLink 제주점', address: '제주시 첨단로', owner: '이시욱', phone: '010-4567-8901', status: '운영중' },
-    { id: 5, name: 'HypeLink 명동점', address: '서울시 중구 명동', owner: '박지민', phone: '010-5678-1234', status: '운영중' },
-    { id: 6, name: 'HypeLink 대구점', address: '대구시 중구 동성로', owner: '정호석', phone: '010-6789-1234', status: '휴점' },
-  ]);
+  const allStores = ref([]); // Initialize as empty array
+
+  const fetchStores = async () => {
+    const response = await usersApi.getStoresList();
+    if (response.success) {
+      allStores.value = response.data.map(store => ({
+        id: store.storeId,
+        name: store.storeName,
+        address: store.storeAddress,
+        phone: store.storePhone,
+        status: mapStoreStateToDescription(store.storeState),
+      }));
+    } else {
+      // 에러를 다시 던져서 인터셉터의 에러 처리 로직이 동작하도록 함
+      throw new Error(response.message || "Failed to fetch stores.");
+    }
+  };
+
+  // Helper function to map StoreState enum to description
+  const mapStoreStateToDescription = (state) => {
+    switch (state) {
+      case 'OPEN': return '영업 중';
+      case 'CLOSED': return '영업 종료';
+      case 'TEMP_CLOSED': return '휴점';
+      default: return state;
+    }
+  };
 
   const addStore = (store) => {
     const newId = allStores.value.length > 0 ? Math.max(...allStores.value.map(s => s.id)) + 1 : 1;
@@ -23,9 +43,17 @@ export const useStoreStore = defineStore('stores', () => {
     }
   };
 
-  const deleteStore = (id) => {
-    allStores.value = allStores.value.filter(s => s.id !== id);
+  const deleteStore = async (id) => {
+    const response = await usersApi.deleteStore(id);
+    if (response.success) {
+      // 삭제 성공 후, 전체 매장 목록을 다시 불러옵니다.
+      await fetchStores();
+      return true;
+    } else {
+      // API 호출 실패 시 에러를 발생시켜 컴포넌트에서 처리할 수 있도록 합니다.
+      throw new Error(response.message || '매장 삭제에 실패했습니다.');
+    }
   };
 
-  return { allStores, addStore, updateStore, deleteStore };
+  return { allStores, addStore, updateStore, deleteStore, fetchStores };
 });

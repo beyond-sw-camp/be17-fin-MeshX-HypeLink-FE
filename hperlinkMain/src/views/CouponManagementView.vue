@@ -20,6 +20,12 @@ const authStore = useAuthStore();
 const isLoading = ref(true);
 const isModalOpen = ref(false);
 const formSubmitted = ref(false);
+const isEditMode = ref(false);
+const editingCouponId = ref(null);
+
+// 페이징 상태
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
 
 const couponForm = reactive({
   name: '',
@@ -58,19 +64,44 @@ watch(
   }
 );
 
-onMounted(() => {
-  setTimeout(() => {
-    isLoading.value = false;
-  }, 500);
+// 데이터 로딩 함수
+const loadCouponsData = async (page = 0) => {
+  try {
+    await couponStore.fetchAllCoupons(page, itemsPerPage.value);
+  } catch (error) {
+    console.error('Failed to fetch coupons:', error);
+    toastStore.showToast('쿠폰 데이터 로딩에 실패했습니다.', 'error');
+  }
+};
+
+onMounted(async () => {
+  isLoading.value = true;
+  await loadCouponsData(0);
+  isLoading.value = false;
 });
 
 const openCouponModal = () => {
   formSubmitted.value = false;
+  isEditMode.value = false;
+  editingCouponId.value = null;
   Object.assign(couponForm, { name: '', type: 'Percentage', value: 0, period: '' });
   isModalOpen.value = true;
 };
 
-const saveCoupon = () => {
+const openEditModal = (coupon) => {
+  formSubmitted.value = false;
+  isEditMode.value = true;
+  editingCouponId.value = coupon.id;
+  Object.assign(couponForm, {
+    name: coupon.name,
+    type: coupon.type,
+    value: coupon.value,
+    period: coupon.period
+  });
+  isModalOpen.value = true;
+};
+
+const saveCoupon = async () => {
   formSubmitted.value = true;
   if (!couponForm.name || !couponForm.value || !couponForm.period) {
     toastStore.showToast('모든 필드를 올바르게 입력해주세요.', 'danger');
@@ -91,26 +122,92 @@ const saveCoupon = () => {
     }
   }
 
-  couponStore.addCoupon(couponForm);
-  toastStore.showToast('새 쿠폰이 등록되었습니다.', 'success');
-  isModalOpen.value = false;
-};
-
-const deleteCoupon = async (id) => {
-  const confirmed = await modalStore.show({
-    title: '삭제 확인',
-    message: '정말 이 쿠폰을 삭제하시겠습니까?',
-    isConfirmation: true,
-  });
-  if (confirmed) {
-    couponStore.deleteCoupon(id);
-    toastStore.showToast('쿠폰이 삭제되었습니다.', 'success');
+  let success;
+  if (isEditMode.value) {
+    success = await couponStore.updateCoupon(editingCouponId.value, couponForm, currentPage.value - 1);
+    if (success) {
+      toastStore.showToast('쿠폰이 수정되었습니다.', 'success');
+      isModalOpen.value = false;
+    } else {
+      toastStore.showToast('쿠폰 수정에 실패했습니다.', 'danger');
+    }
+  } else {
+    success = await couponStore.addCoupon(couponForm, currentPage.value - 1);
+    if (success) {
+      toastStore.showToast('새 쿠폰이 등록되었습니다.', 'success');
+      isModalOpen.value = false;
+    } else {
+      toastStore.showToast('쿠폰 등록에 실패했습니다.', 'danger');
+    }
   }
 };
 
+
 const formatValue = (type, value) => {
-  return type === 'Percentage' ? `${value}%` : `${value.toLocaleString()}원`;
+  const upperType = type?.toUpperCase();
+  return upperType === 'PERCENTAGE' ? `${value}%` : `${value.toLocaleString()}원`;
 };
+
+// 쿠폰 상태 계산 함수
+const getCouponStatus = (period) => {
+  if (!period || !period.includes(' ~ ')) {
+    return { text: '알 수 없음', class: 'text-secondary' };
+  }
+
+  const [start, end] = period.split(' ~ ');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 설정
+
+  const startDate = new Date(start);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(end);
+  endDate.setHours(0, 0, 0, 0);
+
+  if (today < startDate) {
+    return { text: '예정', class: 'text-info' };
+  } else if (today > endDate) {
+    return { text: '기간 만료', class: 'text-danger' };
+  } else {
+    return { text: '사용가능', class: 'text-success' };
+  }
+};
+
+// 서버에서 가져온 현재 페이지의 쿠폰 (서버 페이징)
+const paginatedCoupons = computed(() => {
+  return couponStore.allCoupons;
+});
+
+// 서버에서 가져온 전체 페이지 수
+const totalPages = computed(() => couponStore.totalPages || 1);
+
+// 페이지 변경 함수
+const updatePage = async (page) => {
+  if (page > 0 && page <= totalPages.value) {
+    currentPage.value = page;
+    await loadCouponsData(page - 1); // Convert to 0-based index for API
+  }
+};
+
+// 표시할 페이지 버튼 계산 (최대 5개)
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const maxVisible = 5;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let start = Math.max(1, current - Math.floor(maxVisible / 2));
+  let end = Math.min(total, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+});
 </script>
 
 <template>
@@ -121,7 +218,7 @@ const formatValue = (type, value) => {
           <h5 class="mb-0">쿠폰 관리</h5>
           <div class="d-flex">
             <button
-              v-if="authStore.isSuperAdmin || authStore.isSubAdmin"
+              v-if="authStore.isAdmin || authStore.isManager"
               class="btn btn-primary btn-sm"
               @click="openCouponModal"
             >
@@ -133,43 +230,76 @@ const formatValue = (type, value) => {
 
       <BaseSpinner v-if="isLoading" />
 
-      <div v-else-if="couponStore.allCoupons.length > 0">
-        <table class="table table-hover">
+      <template v-else>
+        <table class="table table-hover" v-if="couponStore.allCoupons.length > 0">
           <thead>
           <tr>
             <th>쿠폰명</th>
             <th>타입</th>
             <th>할인 값</th>
             <th>유효 기간</th>
+            <th>상태</th>
             <th>관리</th>
           </tr>
           </thead>
           <tbody>
-          <tr v-for="coupon in couponStore.allCoupons" :key="coupon.id">
+          <tr v-for="coupon in paginatedCoupons" :key="coupon.id">
             <td>{{ coupon.name }}</td>
             <td>{{ coupon.type }}</td>
             <td>{{ formatValue(coupon.type, coupon.value) }}</td>
             <td>{{ coupon.period }}</td>
             <td>
+              <span :class="['badge', getCouponStatus(coupon.period).class]">
+                {{ getCouponStatus(coupon.period).text }}
+              </span>
+            </td>
+            <td>
               <button
-                v-if="authStore.isSuperAdmin || authStore.isSubAdmin"
-                class="btn btn-sm btn-danger"
-                @click="deleteCoupon(coupon.id)"
+                v-if="authStore.isAdmin || authStore.isManager"
+                class="btn btn-sm btn-warning me-2"
+                @click="openEditModal(coupon)"
               >
-                삭제
+                수정
               </button>
             </td>
           </tr>
           </tbody>
         </table>
-      </div>
 
-      <BaseEmptyState v-else message="생성된 쿠폰이 없습니다." />
+        <BaseEmptyState v-else message="생성된 쿠폰이 없습니다." />
+
+        <!-- 페이지네이션 -->
+        <nav v-if="totalPages >= 1">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }">
+              <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
+            </li>
+            <li class="page-item" v-if="visiblePages[0] > 1">
+              <a class="page-link" href="#" @click.prevent="updatePage(1)">1</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[0] > 2">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in visiblePages" :key="page">
+              <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
+            </li>
+            <li class="page-item disabled" v-if="visiblePages[visiblePages.length - 1] < totalPages - 1">
+              <span class="page-link">...</span>
+            </li>
+            <li class="page-item" v-if="visiblePages[visiblePages.length - 1] < totalPages">
+              <a class="page-link" href="#" @click.prevent="updatePage(totalPages)">{{ totalPages }}</a>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+              <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
+            </li>
+          </ul>
+        </nav>
+      </template>
     </BaseCard>
 
-    <!-- 쿠폰 생성 모달 -->
+    <!-- 쿠폰 생성/수정 모달 -->
     <BaseModal v-model="isModalOpen">
-      <template #header><h5>새 쿠폰 생성</h5></template>
+      <template #header><h5>{{ isEditMode ? '쿠폰 수정' : '새 쿠폰 생성' }}</h5></template>
       <form @submit.prevent="saveCoupon">
         <div class="mb-3">
           <label class="form-label"
@@ -245,5 +375,25 @@ const formatValue = (type, value) => {
 .flatpickr-input.active {
   border-color: #007bff;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* 쿠폰 테이블 컨테이너 - 최소 높이 설정 */
+.coupon-table-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 600px; /* 최소 높이 설정 */
+}
+
+/* 테이블 래퍼 - 자동으로 남은 공간 차지 */
+.table-wrapper {
+  flex: 1;
+  min-height: 500px; /* 테이블 최소 높이 */
+}
+
+/* 페이지네이션 래퍼 - 하단 고정 */
+.pagination-wrapper {
+  margin-top: auto; /* 자동으로 하단으로 밀기 */
+  padding: 1rem 0;
+  border-top: 1px solid #dee2e6;
 }
 </style>

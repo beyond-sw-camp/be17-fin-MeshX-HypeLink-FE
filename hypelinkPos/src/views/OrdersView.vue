@@ -1,11 +1,17 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useOrdersStore } from '@/stores/orders'
 import { format } from 'date-fns'
+import ordersAPI from '@/api/orders'
 
 const ordersStore = useOrdersStore()
 
-const orders = computed(() => ordersStore.orders)
+const orders = ref([])
+const loading = ref(false)
+const currentPage = ref(0)
+const totalPages = ref(1)
+const totalElements = ref(0)
+const pageSize = ref(10)
 
 const formatPrice = (price) => {
   return price.toLocaleString('ko-KR') + '원'
@@ -17,16 +23,78 @@ const formatDate = (date) => {
 
 const getStatusLabel = (status) => {
   const labels = {
-    completed: '완료',
-    pending: '대기',
-    cancelled: '취소'
+    PAID: '완료',
+    CANCELLED: '취소',
+    REFUNDED: '환불',
+    PENDING: '대기'
   }
   return labels[status] || status
 }
 
 const getStatusClass = (status) => {
-  return `status-${status}`
+  const statusMap = {
+    PAID: 'completed',
+    CANCELLED: 'cancelled',
+    REFUNDED: 'cancelled',
+    PENDING: 'pending'
+  }
+  return `status-${statusMap[status] || 'pending'}`
 }
+
+// 주문 내역 조회 (페이징)
+const fetchOrders = async () => {
+  loading.value = true
+  const result = await ordersAPI.getOrdersByStore(currentPage.value, pageSize.value)
+
+  if (result.success) {
+    // 백엔드 응답 데이터를 프론트 형식에 맞게 변환
+    orders.value = result.data.receipts.map(receipt => ({
+      id: receipt.merchantUid,
+      items: receipt.items.map(item => ({
+        productId: item.id,
+        productName: item.productName,
+        quantity: item.quantity,
+        subtotal: item.totalPrice
+      })),
+      total: receipt.finalAmount,
+      status: receipt.status,
+      paymentMethod: receipt.paymentMethod,
+      createdAt: receipt.paidAt
+    }))
+    totalPages.value = result.data.totalPages || 1
+    totalElements.value = result.data.totalElements || 0
+  } else {
+    console.error('주문 내역 조회 실패:', result.message)
+  }
+
+  loading.value = false
+}
+
+// 페이징 함수
+const nextPage = () => {
+  if (currentPage.value < totalPages.value - 1) {
+    currentPage.value++
+    fetchOrders()
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 0) {
+    currentPage.value--
+    fetchOrders()
+  }
+}
+
+const goToPage = (page) => {
+  if (page >= 0 && page < totalPages.value) {
+    currentPage.value = page
+    fetchOrders()
+  }
+}
+
+onMounted(() => {
+  fetchOrders()
+})
 </script>
 
 <template>
@@ -36,13 +104,18 @@ const getStatusClass = (status) => {
       <div class="summary">
         <div class="summary-item">
           <span class="label">총 주문 수</span>
-          <span class="value">{{ orders.length }}건</span>
+          <span class="value">{{ totalElements }}건</span>
         </div>
       </div>
     </div>
 
     <div class="orders-container">
-      <div v-if="orders.length === 0" class="empty-state">
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>주문 내역을 불러오는 중...</p>
+      </div>
+
+      <div v-else-if="orders.length === 0" class="empty-state">
         <div class="empty-icon">📋</div>
         <p>아직 주문 내역이 없습니다</p>
       </div>
@@ -80,6 +153,17 @@ const getStatusClass = (status) => {
               <span class="amount">{{ formatPrice(order.total) }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="orders.length > 0" class="pagination">
+          <button class="page-btn" :disabled="currentPage === 0" @click="prevPage">
+            ◀ 이전
+          </button>
+          <span class="page-info">{{ currentPage + 1 }} / {{ totalPages }}</span>
+          <button class="page-btn" :disabled="currentPage === totalPages - 1" @click="nextPage">
+            다음 ▶
+          </button>
         </div>
       </div>
     </div>
@@ -133,6 +217,29 @@ const getStatusClass = (status) => {
   border-radius: 12px;
   border: 1px solid var(--border-color);
   min-height: 400px;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: var(--text-secondary);
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .empty-state {
@@ -270,5 +377,46 @@ const getStatusClass = (status) => {
   font-size: 24px;
   font-weight: 700;
   color: var(--primary-color);
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 20px;
+}
+
+.page-btn {
+  padding: 10px 20px;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: #f0f7ff;
+}
+
+.page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 80px;
+  text-align: center;
 }
 </style>

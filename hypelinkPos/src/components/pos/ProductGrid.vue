@@ -43,7 +43,7 @@ const productSlots = computed(() => {
           slots[i] = product
         } else {
           const query = props.searchQuery.toLowerCase()
-          if (product.name.toLowerCase().includes(query) || product.barcode?.includes(query)) {
+          if (product.name.toLowerCase().includes(query)) {
             slots[i] = product
           }
         }
@@ -78,7 +78,7 @@ const formatPrice = (price) => {
         <input
           :value="searchQuery"
           type="text"
-          placeholder="상품명 또는 바코드로 검색"
+          placeholder="상품명으로 검색"
           class="search-input"
           @input="emit('update:searchQuery', $event.target.value)"
         />
@@ -370,29 +370,29 @@ const formatPrice = (price) => {
 }
 
 .product-name {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: 3px;
   color: var(--text-primary);
   word-break: keep-all;
   line-height: 1.3;
 }
 
 .product-price {
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--primary-color);
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .product-stock {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .add-product-btn {
-  font-size: 56px;
+  font-size: 40px;
   color: var(--primary-color);
   font-weight: 300;
 }

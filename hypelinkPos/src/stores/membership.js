@@ -1,95 +1,70 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+import customerApi from '@/api/customer'
 
 export const useMembershipStore = defineStore('membership', () => {
-  const members = ref([
-    {
-      id: 1,
-      name: '김철수',
-      phone: '01012345678',
-      birthdate: '1985-03-15',
-      points: 5000,
-      totalSpent: 150000,
-      visitCount: 12,
-      joinedAt: '2024-01-15',
-      lastVisit: '2024-03-10'
-    },
-    {
-      id: 2,
-      name: '이영희',
-      phone: '01098765432',
-      birthdate: '1990-07-22',
-      points: 3200,
-      totalSpent: 89000,
-      visitCount: 8,
-      joinedAt: '2024-02-20',
-      lastVisit: '2024-03-09'
-    }
-  ])
+  const currentMember = ref(null)
 
-  const nextId = ref(3)
-
-  // 전화번호로 멤버 찾기
-  const findMemberByPhone = (phone) => {
+  // 전화번호로 멤버 조회 (백엔드 API 연동)
+  const findMemberByPhone = async (phone) => {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
-    return members.value.find(m => m.phone === cleanPhone)
+    console.log('멤버 조회 시도:', cleanPhone)
+
+    // 1. 기본 회원 정보 조회
+    const response = await customerApi.getCustomerByPhone(cleanPhone)
+    console.log('멤버 조회 응답:', response)
+
+    if (response.success && response.data) {
+      // 2. 사용 가능한 쿠폰만 조회
+      const couponResponse = await customerApi.getCustomerWithAvailableCoupons(cleanPhone)
+      console.log('쿠폰 조회 응답:', couponResponse)
+
+      // 백엔드 응답 구조에 맞게 변환
+      currentMember.value = {
+        id: response.data.customerId,
+        name: response.data.name,
+        phone: response.data.phone,
+        birthDate: response.data.birthday,
+        coupons: couponResponse.success ? (couponResponse.data.customerCoupons || []) : []
+      }
+      console.log('currentMember 설정 완료:', currentMember.value)
+      return { success: true, member: currentMember.value }
+    }
+
+    console.log('멤버 조회 실패:', response.message)
+    return { success: false, message: response.message || '등록되지 않은 회원입니다.' }
   }
 
-  // 멤버십 등록
-  const registerMember = (name, phone, birthdate) => {
+  // 멤버십 등록 (백엔드 API 연동)
+  const registerMember = async (name, phone, birthDate) => {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
 
-    // 이미 존재하는지 확인
-    const existing = findMemberByPhone(cleanPhone)
-    if (existing) {
-      return { success: false, message: '이미 등록된 회원입니다.' }
-    }
-
-    const newMember = {
-      id: nextId.value++,
+    const response = await customerApi.signupCustomer({
       name,
       phone: cleanPhone,
-      birthdate,
-      points: 0,
-      totalSpent: 0,
-      visitCount: 0,
-      joinedAt: new Date().toISOString().split('T')[0],
-      lastVisit: null
-    }
+      birthDate
+    })
 
-    members.value.push(newMember)
-    return { success: true, member: newMember }
+    return response
   }
 
-  // 포인트 적립 (결제 금액의 1%)
-  const earnPoints = (memberId, amount) => {
-    const member = members.value.find(m => m.id === memberId)
-    if (member) {
-      const earnedPoints = Math.floor(amount * 0.01)
-      member.points += earnedPoints
-      member.totalSpent += amount
-      member.visitCount += 1
-      member.lastVisit = new Date().toISOString().split('T')[0]
-      return earnedPoints
-    }
-    return 0
+  // 현재 멤버 초기화
+  const clearCurrentMember = () => {
+    currentMember.value = null
   }
 
-  // 포인트 사용
-  const usePoints = (memberId, points) => {
-    const member = members.value.find(m => m.id === memberId)
-    if (member && member.points >= points) {
-      member.points -= points
-      return { success: true }
-    }
-    return { success: false, message: '포인트가 부족합니다.' }
+  // 사용 가능한 쿠폰 목록 조회
+  const getAvailableCoupons = () => {
+    if (!currentMember.value || !currentMember.value.coupons) return []
+    // 백엔드에서 이미 필터링된 쿠폰만 받아오므로 그대로 반환
+    return currentMember.value.coupons
   }
 
   return {
-    members,
+    currentMember,
     findMemberByPhone,
     registerMember,
-    earnPoints,
-    usePoints
+    clearCurrentMember,
+    getAvailableCoupons
   }
 })

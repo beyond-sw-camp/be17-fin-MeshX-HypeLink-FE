@@ -7,36 +7,41 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const loginForm = ref({
-  username: '',
+  email: '',
   password: ''
 })
 
 const isLoading = ref(false)
+const errorMessage = ref('')
 
 const handleLogin = async () => {
-  if (!loginForm.value.username) {
-    alert('아이디를 입력해주세요.')
+  errorMessage.value = ''
+
+  if (!loginForm.value.email) {
+    errorMessage.value = '이메일을 입력해주세요.'
     return
   }
   if (!loginForm.value.password) {
-    alert('비밀번호를 입력해주세요.')
+    errorMessage.value = '비밀번호를 입력해주세요.'
     return
   }
 
   isLoading.value = true
 
-  // 임시 로그인 로직 (나중에 API로 교체)
-  setTimeout(() => {
-    const success = authStore.login(loginForm.value.username, loginForm.value.password)
+  try {
+    await authStore.login({
+      email: loginForm.value.email,
+      password: loginForm.value.password
+    })
 
-    if (success) {
-      router.push('/')
-    } else {
-      alert('아이디 또는 비밀번호가 올바르지 않습니다.')
-    }
-
+    // 로그인 성공
+    router.push('/')
+  } catch (error) {
+    errorMessage.value = error.message || '로그인에 실패했습니다.'
+    console.error('Login failed:', error)
+  } finally {
     isLoading.value = false
-  }, 500)
+  }
 }
 
 const handleKeyPress = (e) => {
@@ -56,12 +61,16 @@ const handleKeyPress = (e) => {
         </div>
 
         <form class="login-form" @submit.prevent="handleLogin">
+          <div v-if="errorMessage" class="error-message">
+            {{ errorMessage }}
+          </div>
+
           <div class="form-group">
-            <label>지점 아이디</label>
+            <label>이메일</label>
             <input
-              v-model="loginForm.username"
-              type="text"
-              placeholder="지점 아이디를 입력하세요"
+              v-model="loginForm.email"
+              type="email"
+              placeholder="이메일을 입력하세요 (예: pos1_1@store.com)"
               @keypress="handleKeyPress"
               :disabled="isLoading"
             />
@@ -136,6 +145,17 @@ const handleKeyPress = (e) => {
 
 .login-form {
   margin-bottom: 24px;
+}
+
+.error-message {
+  padding: 12px 16px;
+  background: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  text-align: center;
 }
 
 .form-group {

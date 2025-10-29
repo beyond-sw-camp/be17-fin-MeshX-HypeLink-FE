@@ -1,63 +1,139 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import usersApi from '@/api/users';
+import authApi from '@/api/auth'; // Import authApi
+import { fetchUnassignedParcels, fetchAssignedParcels, assignShipment } from '@/api/shipment'; // 배송 API 임포트
 
 export const useDriverStore = defineStore('drivers', () => {
-  const allDrivers = ref([
-    { id: 1, name: '김기사', phone: '010-1111-1111', region: '서울/경기' },
-    { id: 2, name: '이기사', phone: '010-2222-2222', region: '서울/경기' },
-    { id: 3, name: '박기사', phone: '010-3333-3333', region: '부산/경남' },
-    { id: 4, name: '최기사', phone: '010-4444-4444', region: '제주' },
-  ]);
+  // State
+  const drivers = ref([]);
+  const unassignedParcels = ref([]); // 미배정 택배 상태 추가
+  const isLoading = ref(false);
 
-  const stores = ref([
-    { id: 1, name: 'HypeLink 강남점', address: '서울시 강남구 테헤란로', drivers: [] },
-    { id: 2, name: 'HypeLink 홍대점', address: '서울시 마포구 양화로', drivers: [] },
-    { id: 3, name: 'HypeLink 부산점', address: '부산시 해운대구', drivers: [] },
-    { id: 4, name: 'HypeLink 제주점', address: '제주시 첨단로', drivers: [] },
-  ]);
-
-  const addDriver = (driver) => {
-    allDrivers.value.push({ id: Date.now(), ...driver });
-  };
-
-  const deleteDriver = (id) => {
-    allDrivers.value = allDrivers.value.filter(driver => driver.id !== id);
-    stores.value.forEach(store => {
-      store.drivers = store.drivers.filter(driver => driver.id !== id);
-    });
-  };
-
-  const assignDriverToStore = (driver, store) => {
-    // 다른 매장에서 기사 이동 시, 이전 매장에서 제거
-    stores.value.forEach(s => {
-      s.drivers = s.drivers.filter(d => d.id !== driver.id);
-    });
-
-    // 대상 매장에 이미 기사가 있다면, 그 기사를 전체 목록으로 이동
-    if (store.drivers.length > 0) {
-      const existingDriver = store.drivers[0];
-      if (!allDrivers.value.some(d => d.id === existingDriver.id)) {
-        allDrivers.value.push(existingDriver);
+  // Actions
+  const fetchDrivers = async () => {
+    isLoading.value = true;
+    try {
+      const response = await usersApi.getDrivers();
+      if (response.success && response.data) {
+        // The API returns a list of drivers, assuming each has an empty assignedParcels array for the UI
+        drivers.value = response.data.map(driver => ({ ...driver, assignedParcels: [] }));
+      } else {
+        console.error('Failed to fetch drivers:', response.message);
+        drivers.value = [];
       }
-    }
-
-    // 대상 매장에 새 기사 할당
-    store.drivers = [driver];
-    
-    // 전체 기사 목록에서 제거
-    const indexInAll = allDrivers.value.findIndex(d => d.id === driver.id);
-    if (indexInAll > -1) {
-      allDrivers.value.splice(indexInAll, 1);
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
+      drivers.value = [];
+    } finally {
+      isLoading.value = false;
     }
   };
 
-  const unassignDriver = (store, driver) => {
-    store.drivers = [];
-    if (!allDrivers.value.some(d => d.id === driver.id)) {
-        allDrivers.value.push(driver);
+  const fetchUnassignedParcelsAction = async () => {
+    try {
+      const response = await fetchUnassignedParcels();
+      if (response.success && response.data) { // 응답 형식 일관성 유지
+        unassignedParcels.value = response.data;
+      } else {
+        console.error('Failed to fetch unassigned parcels:', response.message);
+        unassignedParcels.value = [];
+      }
+    } catch (error) {
+      console.error('Error fetching unassigned parcels:', error);
+      unassignedParcels.value = [];
     }
   };
 
+  const fetchAssignedParcelsAction = async () => {
+    try {
+      const response = await fetchAssignedParcels();
+      if (response.success && response.data) { // 응답 형식 일관성 유지
+        // 기존 할당된 택배 목록 초기화
+        drivers.value.forEach(driver => driver.assignedParcels = []);
+        
+        // 가져온 택배를 순회하며 적절한 드라이버에게 할당
+        response.data.forEach(parcel => {
+          const driver = drivers.value.find(d => d.id === parcel.driverId);
+          if (driver) {
+            driver.assignedParcels.push(parcel);
+          }
+        });
+      } else {
+        console.error('Failed to fetch assigned parcels:', response.message);
+      }
+    } catch (error) {
+      console.error('Error fetching assigned parcels:', error);
+    }
+  };
 
-  return { allDrivers, stores, addDriver, deleteDriver, assignDriverToStore, unassignDriver };
+  const addDriver = async (driverData) => {
+    try {
+      const response = await authApi.registerUser(driverData);
+      if (response.success) {
+        await fetchDrivers(); // Refresh the list
+        return true;
+      } else {
+        throw new Error(response.message || '기사 추가에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error adding driver:', error);
+      throw error;
+    }
+  };
+
+  const deleteDriver = async (driverId) => {
+    try {
+      const response = await usersApi.deleteDriver(driverId);
+      if (response.success) {
+        await fetchDrivers(); // Refresh the list
+        return true;
+      } else {
+        throw new Error(response.message || '기사 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error deleting driver:', error);
+      throw error;
+    }
+  };
+
+  const assignShipmentToDriver = async (shipmentId, driverId) => {
+    try {
+      const response = await assignShipment(shipmentId, driverId);
+      if (response.success) {
+        // Update state: move parcel from unassigned to assigned
+        const assignedParcel = unassignedParcels.value.find(p => p.shipmentId === shipmentId);
+        if (assignedParcel) {
+          // Remove from unassigned
+          unassignedParcels.value = unassignedParcels.value.filter(p => p.shipmentId !== shipmentId);
+
+          // Add to driver's assigned parcels
+          const driver = drivers.value.find(d => d.id === driverId);
+          if (driver) {
+            // Update status if needed (backend should handle this, but for UI consistency)
+            assignedParcel.shipmentStatus = 'ASSIGNED'; // Or whatever the new status is
+            driver.assignedParcels.push(assignedParcel);
+          }
+        }
+        return { success: true };
+      } else {
+        throw new Error(response.message || '택배 배정에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error assigning shipment:', error);
+      throw error;
+    }
+  };
+
+  return { 
+    drivers, 
+    unassignedParcels, 
+    isLoading, 
+    fetchDrivers, 
+    addDriver, 
+    deleteDriver,
+    fetchUnassignedParcelsAction,
+    fetchAssignedParcelsAction,
+    assignShipmentToDriver
+  };
 });

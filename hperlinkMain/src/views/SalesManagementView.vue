@@ -1,263 +1,371 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useAuthStore } from '@/stores/auth';
-import SalesChart from './sales-management/SalesChart.vue';
-import BaseCard from '@/components/BaseCard.vue';
-import BaseSpinner from '@/components/BaseSpinner.vue';
-import BaseEmptyState from '@/components/BaseEmptyState.vue';
-import SortIcon from '@/components/SortIcon.vue';
-import flatPickr from 'vue-flatpickr-component';
-import 'flatpickr/dist/flatpickr.css';
-import { Korean } from 'flatpickr/dist/l10n/ko.js';
+import {onMounted, ref, watch} from 'vue'
+import {getDailySalesGrouped} from '@/api/analytics'
+import {useRoute} from 'vue-router'
+import {usePosManagementStore} from '@/stores/store'
+import {storeToRefs} from 'pinia'
+import LineChart from '@/views/analytics/charts/LineChart.vue'
+import {format, subDays} from 'date-fns'
+import BaseSpinner from '@/components/BaseSpinner.vue'
+import BaseEmptyState from '@/components/BaseEmptyState.vue'
+import SortIcon from '@/components/SortIcon.vue'
 
-const authStore = useAuthStore();
+const route = useRoute()
+const managementStore = usePosManagementStore()
+const {selectedStoreId, selectableStores} = storeToRefs(managementStore)
 
-const allSalesData = ref([]);
-const isLoading = ref(true);
+const salesData = ref([])
+const salesChartData = ref(null)
+const loading = ref(true)
+const error = ref(null)
+const openDate = ref(null) // 현재 열려있는 아코디언 날짜
 
-const stores = ref([
-  { id: 1, name: 'HypeLink 강남점' }, { id: 2, name: 'HypeLink 홍대점' }, { id: 3, name: 'HypeLink 부산점' }, { id: 4, name: 'HypeLink 제주점' },
-]);
+const today = new Date()
+const defaultStartDate = format(subDays(today, 6), 'yyyy-MM-dd')
+const defaultEndDate = format(today, 'yyyy-MM-dd')
 
-const selectedStore = ref(null);
+const filters = ref({
+  startDate: defaultStartDate,
+  endDate: defaultEndDate,
+})
 
-// 검색, 필터, 정렬, 페이지네이션 상태
-const searchTerm = ref('');
-const dateRange = ref([]);
-const sortKey = ref('date');
-const sortOrder = ref('desc');
-const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const fetchData = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const salesRes = await getDailySalesGrouped(filters.value.startDate, filters.value.endDate,
+        selectedStoreId.value)
 
-const flatpickrConfig = {
-  mode: 'range',
-  dateFormat: 'Y-m-d',
-  locale: Korean,
-};
+    if (salesRes.data) {
+      salesData.value = salesRes.data
+      // 기본적으로 첫 번째 날짜를 열어둠
+      if (salesData.value.length > 0) {
+        openDate.value = salesData.value[0].date
+      } else {
+        openDate.value = null
+      }
+    } else {
+      salesData.value = []
+      openDate.value = null
+      console.warn('No daily grouped sales data received from API')
+    }
 
-// --- 데이터 로딩 시뮬레이션 ---
+    if (salesRes.data && salesRes.data.length > 0) {
+      // 날짜 역순으로 정렬 (오래된 날짜부터 최신 날짜로)
+      const reversedData = [...salesRes.data].reverse()
+      salesChartData.value = {
+        labels: reversedData.map(d => d.date),
+        datasets: [
+          {
+            label: '일별 매출',
+            data: reversedData.map(d => d.totalAmount),
+            borderColor: '#42A5F5',
+            tension: 0.4,
+            fill: false,
+          },
+        ],
+      }
+    } else {
+      salesChartData.value = null
+    }
+
+  } catch (err) {
+    console.error('Error fetching sales data:', err)
+    error.value = '데이터를 불러오는 중 오류가 발생했습니다.'
+    salesData.value = []
+    salesChartData.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+const applyFilters = () => {
+  fetchData()
+}
+
+const resetFilters = () => {
+  filters.value.startDate = defaultStartDate
+  filters.value.endDate = defaultEndDate
+  selectedStoreId.value = null
+  fetchData()
+}
+
+const toggleDate = (date) => {
+  openDate.value = openDate.value === date ? null : date
+}
+
 onMounted(() => {
-  setTimeout(() => {
-    allSalesData.value = [
-      { id: 1, storeName: 'HypeLink 강남점', date: '2025-09-29', amount: 1200000 },
-      { id: 2, storeName: 'HypeLink 홍대점', date: '2025-09-29', amount: 850000 },
-      { id: 3, storeName: 'HypeLink 강남점', date: '2025-09-28', amount: 1500000 },
-      { id: 4, storeName: 'HypeLink 부산점', date: '2025-09-28', amount: 900000 },
-      { id: 5, storeName: 'HypeLink 강남점', date: '2025-09-27', amount: 1100000 },
-      { id: 6, storeName: 'HypeLink 홍대점', date: '2025-09-27', amount: 700000 },
-      { id: 7, storeName: 'HypeLink 강남점', date: '2025-08-15', amount: 2100000 },
-      { id: 8, storeName: 'HypeLink 홍대점', date: '2025-08-15', amount: 1700000 },
-    ];
-    isLoading.value = false;
-  }, 1000);
-});
-
-// --- 검색, 필터링, 정렬 로직 ---
-const filteredAndSortedSalesData = computed(() => {
-  let sales = [...allSalesData.value];
-
-  // 역할에 따른 필터링 (점주는 자신의 매장 매출만)
-  if (authStore.isStoreManager) {
-    sales = sales.filter(sale => sale.storeName === authStore.user.name);
+  managementStore.fetchData() // 매장 목록 로드
+  const storeIdFromQuery = route.query.storeId
+  if (storeIdFromQuery) {
+    selectedStoreId.value = Number(storeIdFromQuery)
   }
+  fetchData()
+})
 
-  // 검색
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase();
-    sales = sales.filter(sale => 
-      sale.storeName.toLowerCase().includes(term) || 
-      sale.date.includes(term)
-    );
+watch(selectedStoreId, (newStoreId, oldStoreId) => {
+  if (newStoreId !== oldStoreId) {
+    fetchData()
   }
+})
 
-  // 날짜 범위 필터링
-  if (dateRange.value.length === 2) {
-    const [start, end] = dateRange.value;
-    sales = sales.filter(sale => {
-      const saleDate = new Date(sale.date);
-      return saleDate >= new Date(start) && saleDate <= new Date(end);
-    });
-  }
-
-  // 정렬
-  if (sortKey.value) {
-    sales.sort((a, b) => {
-      const valA = a[sortKey.value];
-      const valB = b[sortKey.value];
-      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
-
-  return sales;
-});
-
-// --- 페이지네이션 로직 ---
-const paginatedSalesData = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedSalesData.value.slice(start, end);
-});
-
-const totalPages = computed(() => Math.ceil(filteredAndSortedSalesData.value.length / itemsPerPage.value));
-
-// --- 이벤트 핸들러 ---
-const updateSort = (key) => {
-  if (sortKey.value === key) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
-  } else {
-    sortKey.value = key;
-    sortOrder.value = 'asc';
-  }
-  currentPage.value = 1;
-};
-const updatePage = (page) => { 
-  if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page; 
-  }
-};
-
-// 조회할 수 있는 다른 매장 목록
-const availableStores = computed(() => 
-  stores.value.filter(store => store.name !== authStore.user?.name)
-);
-
-// 차트에 필요한 가공된 매출 데이터 (임시)
-const salesData = {
-  '전체': {
-    series: [{ name: '전체 매출', data: [1050, 1230, 1180, 1350, 1400, 1520, 1480] }]
-  },
-  'HypeLink 강남점': {
-    series: [{ name: '강남점 매출', data: [380, 420, 400, 450, 470, 510, 490] }]
-  },
-  'HypeLink 홍대점': {
-    series: [{ name: '홍대점 매출', data: [255, 280, 270, 300, 310, 340, 330] }]
-  },
-  'HypeLink 부산점': {
-    series: [{ name: '부산점 매출', data: [270, 300, 290, 320, 330, 360, 350] }]
-  },
-   'HypeLink 제주점': {
-    series: [{ name: '제주점 매출', data: [145, 130, 120, 180, 190, 210, 210] }]
-  }
-};
-
-// 역할에 따라 보여줄 메인 차트 데이터
-const mainChart = computed(() => {
-  let dataKey = '전체';
-  if (authStore.isStoreManager) {
-    dataKey = authStore.user.name;
-  }
-  const sales = salesData[dataKey] || salesData['전체'];
-  return {
-    series: sales.series,
-    options: {
-      chart: { id: 'main-sales-chart', toolbar: { show: false } },
-      xaxis: { categories: ['월', '화', '수', '목', '금', '토', '일'] },
-      yaxis: { title: { text: '매출 (만원)' } }
-    }
-  };
-});
-
-// 조회용 차트 데이터
-const lookupChart = computed(() => {
-  if (!selectedStore.value) return { series: [], options: {} };
-  const sales = salesData[selectedStore.value] || { series: [] };
-  return {
-    series: sales.series,
-    options: {
-      chart: { id: 'lookup-sales-chart', toolbar: { show: false } },
-      xaxis: { categories: ['월', '화', '수', '목', '금', '토', '일'] },
-      colors: ['#6c757d']
-    }
-  };
-});
+const formatCurrency = (value) => {
+  if (value === null || value === undefined) return '0'
+  return value.toLocaleString()
+}
 </script>
 
 <template>
-  <div>
-    <!-- 내 매장 매출 (점주) 또는 전체 매출 (관리자) -->
-    <BaseCard>
-      <template #header>
-        <div class="d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">{{ authStore.isStoreManager ? '내 매장 매출' : '전체 매출 현황' }}</h5>
-          <div class="d-flex align-items-center">
-            <div class="me-2">
-              <input type="text" class="form-control form-control-sm" placeholder="매장명 검색" v-model="searchTerm">
-            </div>
-            <div class="me-2" style="width: 240px;">
-              <flat-pickr
-                v-model="dateRange"
-                :config="flatpickrConfig"
-                class="form-control form-control-sm"
-                placeholder="날짜 범위 선택"
-              />
-            </div>
-          </div>
+  <div class="sales-management-view">
+    <h1 class="main-title">일별 매출 관리</h1>
+
+    <div class="filter-section card">
+      <div class="filter-inputs">
+        <div class="form-group">
+          <label for="store-select">가맹점 선택</label>
+          <select id="store-select" v-model="selectedStoreId" class="form-control">
+            <option :value="null">전체 가맹점</option>
+            <option v-for="store in selectableStores" :key="store.id" :value="store.id">
+              {{ store.name }}
+            </option>
+          </select>
         </div>
-      </template>
-      <SalesChart :chartOptions="mainChart.options" :series="mainChart.series" />
-
-      <div v-if="paginatedSalesData.length > 0" class="mt-4">
-        <h6>상세 매출 데이터</h6>
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th @click="updateSort('storeName')" class="sortable">매장명 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="storeName" /></th>
-              <th @click="updateSort('date')" class="sortable">날짜 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="date" /></th>
-              <th @click="updateSort('amount')" class="sortable">매출액 <SortIcon :sortKey="sortKey" :sortOrder="sortOrder" currentKey="amount" /></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="sale in paginatedSalesData" :key="sale.id">
-              <td>{{ sale.storeName }}</td>
-              <td>{{ sale.date }}</td>
-              <td>{{ sale.amount.toLocaleString() }}원</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- 페이지네이션 -->
-        <nav v-if="totalPages > 1">
-          <ul class="pagination justify-content-center">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <a class="page-link" href="#" @click.prevent="updatePage(currentPage - 1)">이전</a>
-            </li>
-            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
-              <a class="page-link" href="#" @click.prevent="updatePage(page)">{{ page }}</a>
-            </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-              <a class="page-link" href="#" @click.prevent="updatePage(currentPage + 1)">다음</a>
-            </li>
-          </ul>
-        </nav>
+        <div class="form-group">
+          <label for="startDate">시작일</label>
+          <input type="date" id="startDate" v-model="filters.startDate" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="endDate">종료일</label>
+          <input type="date" id="endDate" v-model="filters.endDate" class="form-control">
+        </div>
       </div>
-      <BaseEmptyState v-else message="조회된 매출 데이터가 없습니다." />
-    </BaseCard>
-
-    <!-- 타 매장 매출 조회 (점주 전용) -->
-    <div v-if="authStore.isStoreManager" class="mt-4">
-      <BaseCard>
-        <template #header><h5>타 매장 매출 조회</h5></template>
-        <div class="row">
-          <div class="col-md-6">
-            <label for="store-lookup" class="form-label">매장 선택</label>
-            <select id="store-lookup" class="form-select" v-model="selectedStore">
-              <option :value="null">-- 조회할 매장 선택 --</option>
-              <option v-for="store in availableStores" :key="store.id" :value="store.name">
-                {{ store.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-        <div v-if="selectedStore" class="mt-3">
-          <hr>
-          <h6>'{{ selectedStore }}' 매출 현황</h6>
-          <SalesChart :chartOptions="lookupChart.options" :series="lookupChart.series" />
-        </div>
-      </BaseCard>
+      <div class="filter-actions">
+        <button @click="applyFilters" class="btn btn-primary">적용</button>
+        <button @click="resetFilters" class="btn btn-secondary">초기화</button>
+      </div>
     </div>
 
-    <BaseSpinner v-if="isLoading" height="200px" />
+    <div class="chart-section card">
+      <h2 class="chart-title">최근 7일 매출 추이 <span
+          v-if="managementStore.selectedStore">- {{ managementStore.selectedStore.name }}</span></h2>
+      <div v-if="loading" class="loading-spinner">
+        <BaseSpinner/>
+      </div>
+      <div v-else-if="error" class="error-message">
+        {{ error }}
+      </div>
+      <div v-else-if="salesChartData">
+        <LineChart :chart-data="salesChartData"/>
+      </div>
+      <div v-else class="no-data">
+        차트 데이터를 불러올 수 없습니다.
+      </div>
+    </div>
+
+    <div class="sales-data-section card">
+      <h2 class="section-title">매출 데이터</h2>
+      <div v-if="loading" class="loading-spinner">
+        <BaseSpinner/>
+      </div>
+      <div v-else-if="error" class="error-message">
+        {{ error }}
+      </div>
+      <div v-else-if="salesData.length > 0" class="accordion">
+        <div v-for="group in salesData" :key="group.date" class="accordion-item">
+          <div class="accordion-header" @click="toggleDate(group.date)">
+            <div class="header-content">
+              <span class="date">{{ group.date }}</span>
+              <span class="total-amount">총 매출: {{ formatCurrency(group.totalAmount) }}원</span>
+              <span class="store-count">매장 수: {{ group.storeCount }}</span>
+            </div>
+            <SortIcon :is-asc="openDate === group.date" class="accordion-icon"/>
+          </div>
+          <div v-if="openDate === group.date" class="accordion-body">
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead class="table-light">
+                <tr>
+                  <th>가맹점명</th>
+                  <th>가맹점 번호</th>
+                  <th class="text-end">매출액</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="store in group.stores" :key="store.storeId">
+                  <td>{{ store.storeName }}</td>
+                  <td>{{ store.storeNumber }}</td>
+                  <td class="text-end">{{ formatCurrency(store.amount) }}원</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else class="no-data">
+        <BaseEmptyState message="선택한 기간에 해당하는 매출 데이터가 없습니다."/>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped lang="scss">
+.sales-management-view {
+  padding: 2rem;
+  background-color: #f4f6f9;
+}
+
+.main-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-inputs {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+  color: #555;
+}
+
+.form-control {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+  background-color: #4a69bd;
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #3b539a;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.chart-title, .section-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.loading-spinner, .error-message, .no-data {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  font-size: 1.1rem;
+  color: #777;
+}
+
+/* Accordion Styles */
+.accordion-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  background-color: #f8f9fa;
+  transition: background-color 0.2s;
+}
+
+.accordion-header:hover {
+  background-color: #f1f3f5;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  font-weight: 500;
+}
+
+.date {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.total-amount {
+  color: #4a69bd;
+}
+
+.store-count {
+  color: #6c757d;
+}
+
+.accordion-icon {
+  transition: transform 0.3s ease;
+}
+
+.accordion-body {
+  padding: 0;
+  background-color: #fff;
+}
+
+.table-sm th, .table-sm td {
+  padding: 0.5rem 1rem;
+}
+
+.text-end {
+  text-align: right;
+}
+</style>

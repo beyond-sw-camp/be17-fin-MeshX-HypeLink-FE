@@ -6,18 +6,20 @@ import userRoutes from './routes/userRoutes.js'
 import storeRoutes from './routes/storeRoutes.js'
 import inventoryRoutes from './routes/inventoryRoutes.js'
 import salesRoutes from './routes/salesRoutes.js'
-import posSupportRoutes from './routes/posSupportRoutes.js'
+
 import promotionRoutes from './routes/promotionRoutes.js'
 import productRoutes from './routes/productRoutes.js'
 import warehouseInventoryRoutes from './routes/warehouseInventoryRoutes.js'
 import purchaseOrderRoutes from './routes/purchaseOrderRoutes.js'
 import trackingRoutes from './routes/trackingRoutes.js'
+
 import customerAnalyticsRoutes from './routes/customerAnalyticsRoutes.js'
+import analyticsRoutes from './routes/analyticsRoutes.js'
 import posHealthRoutes from './routes/posHealthRoutes.js'
 import driverRoutes from './routes/driverRoutes.js'
-import roleRoutes from './routes/roleRoutes.js'
 import communicationRoutes from './routes/communicationRoutes.js'
 import couponRoutes from './routes/couponRoutes.js'
+import asRoutes from './routes/asRoutes.js'
 import LoginView from '@/views/LoginView.vue';
 
 // 스프레드 연산자(...)를 사용하여 모든 라우트를 하나의 배열로 합칩니다.
@@ -33,18 +35,19 @@ const routes = [
   ...storeRoutes,
   ...inventoryRoutes,
   ...salesRoutes,
-  ...posSupportRoutes,
+  
   ...promotionRoutes,
   ...productRoutes,
   ...warehouseInventoryRoutes,
   ...purchaseOrderRoutes,
   ...trackingRoutes,
   ...customerAnalyticsRoutes,
+  ...analyticsRoutes,
   ...posHealthRoutes,
   ...driverRoutes,
-  ...roleRoutes,
   ...communicationRoutes,
-  ...couponRoutes
+  ...couponRoutes,
+  ...asRoutes
 ]
 
 const router = createRouter({

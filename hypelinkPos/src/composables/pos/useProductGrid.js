@@ -31,10 +31,28 @@ export function useProductGrid() {
     selectedSlot.value = null
   }
 
-  const addProductToSlot = (product) => {
+  const addProductToSlot = (item) => {
     showAddProductModal.value = false
     const absoluteSlotIndex = currentPage.value * slotsPerPage + selectedSlot.value
-    productsStore.assignProductToSlot(absoluteSlotIndex, product.id)
+
+    // API에서 가져온 상품 데이터를 products에 추가
+    const productId = item.id.toString() // Use StoreItemDetail ID (고유 ID)
+    const existingProduct = productsStore.getProductById(productId)
+
+    if (!existingProduct) {
+      // 새 상품이면 products에 추가
+      productsStore.addProduct({
+        id: productId,
+        storeItemId: item.storeItemId.toString(), // StoreItem ID (백엔드 결제용)
+        name: item.productName,
+        price: item.price,
+        category: item.category || 'all',
+        stock: item.stock
+      })
+    }
+
+    // 슬롯에 할당
+    productsStore.assignProductToSlot(absoluteSlotIndex, productId)
     selectedSlot.value = null
   }
 
