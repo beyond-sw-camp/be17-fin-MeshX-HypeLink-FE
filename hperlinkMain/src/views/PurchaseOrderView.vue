@@ -109,6 +109,29 @@ const onSearch = async () => {
 }
 
 // --- 표시할 페이지 버튼 계산 (최대 5개) ---
+const handleUpdateOrderStatus = async (orderId, status) => {
+  try {
+    const response = await purchaseOrderApi.updatePurchaseOrder({
+      orderId: orderId,
+      orderState: status
+    });
+
+    if (response.status === 200) {
+      toastStore.showToast(
+        checkOrder.value ? '입고 처리되었습니다.' : '입고 취소되었습니다.',
+        'success'
+      );
+      closeCompleteModal();
+      await loadItems(currentPage.value); // 목록 새로고침
+    } else {
+      toastStore.showToast(response.message || '처리 실패', 'danger');
+    }
+  } catch (e) {
+    console.error('상태 업데이트 오류:', e);
+    toastStore.showToast('서버 오류가 발생했습니다.', 'danger');
+  }
+};
+
 const visiblePages = computed(() => {
   const total = totalPages.value;
   const current = currentPage.value;
