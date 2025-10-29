@@ -38,7 +38,7 @@ const filterCategory = ref('all');
 const sortKey = ref('id');
 const sortOrder = ref('asc');
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 const totalPages = ref(0);
 
 let originalItem = null; // 수정 전 데이터 백업용

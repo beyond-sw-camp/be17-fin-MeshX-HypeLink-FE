@@ -20,6 +20,8 @@ const authStore = useAuthStore();
 const isLoading = ref(true);
 const isModalOpen = ref(false);
 const formSubmitted = ref(false);
+const isEditMode = ref(false);
+const editingCouponId = ref(null);
 
 // 페이징 상태
 const currentPage = ref(1);
@@ -80,7 +82,22 @@ onMounted(async () => {
 
 const openCouponModal = () => {
   formSubmitted.value = false;
+  isEditMode.value = false;
+  editingCouponId.value = null;
   Object.assign(couponForm, { name: '', type: 'Percentage', value: 0, period: '' });
+  isModalOpen.value = true;
+};
+
+const openEditModal = (coupon) => {
+  formSubmitted.value = false;
+  isEditMode.value = true;
+  editingCouponId.value = coupon.id;
+  Object.assign(couponForm, {
+    name: coupon.name,
+    type: coupon.type,
+    value: coupon.value,
+    period: coupon.period
+  });
   isModalOpen.value = true;
 };
 
@@ -105,40 +122,55 @@ const saveCoupon = async () => {
     }
   }
 
-  const success = await couponStore.addCoupon(couponForm, currentPage.value - 1);
-  if (success) {
-    toastStore.showToast('새 쿠폰이 등록되었습니다.', 'success');
-    isModalOpen.value = false;
-  } else {
-    toastStore.showToast('쿠폰 등록에 실패했습니다.', 'danger');
-  }
-};
-
-const deleteCoupon = async (id) => {
-  const confirmed = await modalStore.show({
-    title: '삭제 확인',
-    message: '정말 이 쿠폰을 삭제하시겠습니까?',
-    isConfirmation: true,
-  });
-  if (confirmed) {
-    const success = await couponStore.deleteCoupon(id, currentPage.value - 1);
+  let success;
+  if (isEditMode.value) {
+    success = await couponStore.updateCoupon(editingCouponId.value, couponForm, currentPage.value - 1);
     if (success) {
-      // 전체 페이지 수 계산 후 현재 페이지 조정
-      const total = couponStore.totalPages;
-      if (currentPage.value > total && total > 0) {
-        currentPage.value = total;
-        await loadCouponsData(total - 1);
-      }
-      toastStore.showToast('쿠폰이 삭제되었습니다.', 'success');
+      toastStore.showToast('쿠폰이 수정되었습니다.', 'success');
+      isModalOpen.value = false;
     } else {
-      toastStore.showToast('쿠폰 삭제에 실패했습니다.', 'danger');
+      toastStore.showToast('쿠폰 수정에 실패했습니다.', 'danger');
+    }
+  } else {
+    success = await couponStore.addCoupon(couponForm, currentPage.value - 1);
+    if (success) {
+      toastStore.showToast('새 쿠폰이 등록되었습니다.', 'success');
+      isModalOpen.value = false;
+    } else {
+      toastStore.showToast('쿠폰 등록에 실패했습니다.', 'danger');
     }
   }
 };
 
+
 const formatValue = (type, value) => {
   const upperType = type?.toUpperCase();
   return upperType === 'PERCENTAGE' ? `${value}%` : `${value.toLocaleString()}원`;
+};
+
+// 쿠폰 상태 계산 함수
+const getCouponStatus = (period) => {
+  if (!period || !period.includes(' ~ ')) {
+    return { text: '알 수 없음', class: 'text-secondary' };
+  }
+
+  const [start, end] = period.split(' ~ ');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 설정
+
+  const startDate = new Date(start);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(end);
+  endDate.setHours(0, 0, 0, 0);
+
+  if (today < startDate) {
+    return { text: '예정', class: 'text-info' };
+  } else if (today > endDate) {
+    return { text: '기간 만료', class: 'text-danger' };
+  } else {
+    return { text: '사용가능', class: 'text-success' };
+  }
 };
 
 // 서버에서 가져온 현재 페이지의 쿠폰 (서버 페이징)
@@ -206,6 +238,7 @@ const visiblePages = computed(() => {
             <th>타입</th>
             <th>할인 값</th>
             <th>유효 기간</th>
+            <th>상태</th>
             <th>관리</th>
           </tr>
           </thead>
@@ -216,12 +249,17 @@ const visiblePages = computed(() => {
             <td>{{ formatValue(coupon.type, coupon.value) }}</td>
             <td>{{ coupon.period }}</td>
             <td>
+              <span :class="['badge', getCouponStatus(coupon.period).class]">
+                {{ getCouponStatus(coupon.period).text }}
+              </span>
+            </td>
+            <td>
               <button
                 v-if="authStore.isAdmin || authStore.isManager"
-                class="btn btn-sm btn-danger"
-                @click="deleteCoupon(coupon.id)"
+                class="btn btn-sm btn-warning me-2"
+                @click="openEditModal(coupon)"
               >
-                삭제
+                수정
               </button>
             </td>
           </tr>
@@ -259,9 +297,9 @@ const visiblePages = computed(() => {
       </template>
     </BaseCard>
 
-    <!-- 쿠폰 생성 모달 -->
+    <!-- 쿠폰 생성/수정 모달 -->
     <BaseModal v-model="isModalOpen">
-      <template #header><h5>새 쿠폰 생성</h5></template>
+      <template #header><h5>{{ isEditMode ? '쿠폰 수정' : '새 쿠폰 생성' }}</h5></template>
       <form @submit.prevent="saveCoupon">
         <div class="mb-3">
           <label class="form-label"

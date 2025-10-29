@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import { createCoupon, getAllCoupons, deleteCoupon as deleteCouponAPI } from '@/api/coupons';
+import { createCoupon, getAllCoupons, deleteCoupon as deleteCouponAPI, updateCoupon as updateCouponAPI } from '@/api/coupons';
 
 export const useCouponStore = defineStore('coupons', () => {
   const allCoupons = ref([]);
@@ -68,5 +68,21 @@ export const useCouponStore = defineStore('coupons', () => {
     }
   };
 
-  return { allCoupons, isLoading, totalPages, totalElements, currentPage, pageSize, fetchAllCoupons, addCoupon, deleteCoupon };
+  // 쿠폰 수정
+  const updateCoupon = async (id, coupon, page = 0) => {
+    try {
+      const response = await updateCouponAPI(id, coupon);
+      if (response.data) {
+        // 수정 성공 후 목록 새로고침
+        await fetchAllCoupons(page, pageSize.value);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('쿠폰 수정 실패:', error);
+      return false;
+    }
+  };
+
+  return { allCoupons, isLoading, totalPages, totalElements, currentPage, pageSize, fetchAllCoupons, addCoupon, deleteCoupon, updateCoupon };
 });

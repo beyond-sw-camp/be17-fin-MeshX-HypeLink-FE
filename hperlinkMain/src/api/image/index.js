@@ -42,6 +42,26 @@ export const getItemImagePresignedUrl = async (file) => {
 };
 
 /**
+ * 프로모션용 Presigned URL 발급
+ */
+export const getPromotionImagePresignedUrl = async (file) => {
+  const requestUrl = `/api/image/presigned/promotion`;
+  let data = {};
+  await api
+    .post(requestUrl, {
+      originalFilename: file.name,
+      contentType: file.type,
+    })
+    .then((response) => {
+      data = response.data;
+    })
+    .catch((error) => {
+      data = error.response?.data || error.message;
+    });
+  return data;
+};
+
+/**
  * S3에 직접 파일 업로드 (Presigned URL 사용)
  */
 export const uploadToS3 = async (presignedUrl, file) => {
@@ -122,10 +142,41 @@ export const uploadItemImage = async (file) => {
   }
 };
 
+/**
+ * 프로모션 이미지 업로드 전체 프로세스
+ */
+export const uploadPromotionImage = async (file) => {
+  try {
+    const presignedResponse = await getPromotionImagePresignedUrl(file);
+    if (!presignedResponse.data) {
+      throw new Error("Presigned URL 발급 실패");
+    }
+
+    const { uploadUrl, s3Key } = presignedResponse.data;
+
+    const uploadSuccess = await uploadToS3(uploadUrl, file);
+    if (!uploadSuccess) {
+      throw new Error("S3 업로드 실패");
+    }
+
+    return {
+      originalFilename: file.name,
+      fileSize: file.size,
+      contentType: file.type,
+      s3Key: s3Key,
+    };
+  } catch (error) {
+    console.error("이미지 업로드 실패:", error);
+    throw error;
+  }
+};
+
 export default {
   getNoticeImagePresignedUrl,
   getItemImagePresignedUrl,
+  getPromotionImagePresignedUrl,
   uploadToS3,
   uploadNoticeImage,
   uploadItemImage,
+  uploadPromotionImage,
 };

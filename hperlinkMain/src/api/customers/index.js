@@ -27,7 +27,28 @@ export const issueCouponToCustomer = async (customerId, couponId) => {
   return data;
 };
 
+export const searchCustomers = async (keyword = '', ageGroup = 'all', page = 0, size = 10) => {
+  const params = new URLSearchParams();
+  if (keyword) params.append('keyword', keyword);
+  if (ageGroup && ageGroup !== 'all') params.append('ageGroup', ageGroup);
+  params.append('page', page);
+  params.append('size', size);
+
+  const requestUrl = `/api/customer/search?${params.toString()}`;
+  let data = {};
+  await api
+    .get(requestUrl)
+    .then((response) => {
+      data = response.data;
+    })
+    .catch((error) => {
+      data = error.response?.data || error.message;
+    });
+  return data;
+};
+
 export default {
   getAllCustomers,
   issueCouponToCustomer,
+  searchCustomers,
 };

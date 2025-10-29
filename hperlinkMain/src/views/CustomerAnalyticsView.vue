@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import BaseCard from '@/components/BaseCard.vue';
 import BaseSpinner from '@/components/BaseSpinner.vue';
 import BaseEmptyState from '@/components/BaseEmptyState.vue';
@@ -12,7 +12,7 @@ import { useCouponStore } from '@/stores/coupons';
 import { useModalStore } from '@/stores/modal';
 import { useToastStore } from '@/stores/toast';
 import { useAuthStore } from '@/stores/auth';
-import { issueCouponToCustomer } from '@/api/customers';
+import { issueCouponToCustomer, searchCustomers } from '@/api/customers';
 import { getAgeDistribution, getCategoryCustomerSales } from '@/api/analytics';
 
 const customerStore = useCustomerStore();
@@ -26,7 +26,7 @@ const isLoading = ref(true);
 // --- 필터 및 선택 상태 ---
 const searchTerm = ref('');
 const filterAgeGroup = ref('all');
-const filterCategory = ref('all');
+const isSearchMode = ref(false); // 검색 모드인지 여부
 
 const selectedCustomers = ref(new Set());
 const selectedCoupon = ref(null);
@@ -117,6 +117,22 @@ const loadCustomersData = async (page = 0) => {
   }
 };
 
+// --- 고객 검색 함수 (백엔드 검색 with 페이징) ---
+const searchCustomersData = async (page = 0) => {
+  try {
+    const response = await searchCustomers(searchTerm.value, filterAgeGroup.value, page, itemsPerPage.value);
+    if (response.data && response.data.customerInfoResList) {
+      customerStore.allCustomers = response.data.customerInfoResList;
+      customerStore.totalPages = response.data.totalPages;
+      customerStore.totalElements = response.data.totalElements;
+      customerStore.currentPage = response.data.currentPage;
+    }
+  } catch (error) {
+    console.error('Failed to search customers:', error);
+    toastStore.showToast('고객 검색에 실패했습니다.', 'error');
+  }
+};
+
 // --- 데이터 로딩 ---
 onMounted(async () => {
   isLoading.value = true;
@@ -132,7 +148,7 @@ onMounted(async () => {
   }
 });
 
-// --- 필터링 및 정렬 로직 (클라이언트 측) ---
+// --- 필터링 및 정렬 로직 (클라이언트 측 정렬만) ---
 const filteredAndSortedCustomers = computed(() => {
   let customers = [...customerStore.allCustomers];
 
@@ -142,18 +158,7 @@ const filteredAndSortedCustomers = computed(() => {
     calculatedAgeGroup: calculateAgeGroup(c.birthday) // Use 'birthday' from CustomerInfoRes
   }));
 
-
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase();
-    customers = customers.filter(c => c.name.toLowerCase().includes(term));
-  }
-  if (filterAgeGroup.value !== 'all') {
-    customers = customers.filter(c => c.calculatedAgeGroup === filterAgeGroup.value);
-  }
-  if (filterCategory.value !== 'all') {
-    customers = customers.filter(c => c.purchaseHistory && c.purchaseHistory.some(p => p.category === filterCategory.value));
-  }
-
+  // Sorting
   customers.sort((a, b) => {
     const valA = a[sortKey.value];
     const valB = b[sortKey.value];
@@ -164,6 +169,13 @@ const filteredAndSortedCustomers = computed(() => {
 
   return customers;
 });
+
+// --- 검색 버튼 핸들러 ---
+const handleSearch = async () => {
+  isSearchMode.value = true;
+  currentPage.value = 1;
+  await searchCustomersData(0);
+};
 
 // --- 페이지네이션 로직 (서버 페이징 사용) ---
 const paginatedCustomers = computed(() => {
@@ -208,7 +220,12 @@ const toggleSelectAll = () => {
 const updatePage = async (page) => {
   if (page > 0 && page <= totalPages.value) {
     currentPage.value = page;
-    await loadCustomersData(page - 1); // Convert to 0-based index for API
+    // 검색 모드일 때는 검색 API 호출, 아니면 일반 목록 API 호출
+    if (isSearchMode.value) {
+      await searchCustomersData(page - 1);
+    } else {
+      await loadCustomersData(page - 1);
+    }
   }
 };
 const updateSort = (key) => {
@@ -282,16 +299,12 @@ const issueCoupon = async () => {
             <div class="d-flex justify-content-between align-items-center">
               <h5 class="mb-0">고객 목록</h5>
               <div class="d-flex align-items-center">
-
-                <input type="text" class="form-control form-control-sm me-2" placeholder="고객명 검색" v-model="searchTerm">
+                <input type="text" class="form-control form-control-sm me-2" placeholder="고객명/전화번호 검색" v-model="searchTerm" @keyup.enter="handleSearch">
                 <select class="form-select form-select-sm me-2" v-model="filterAgeGroup">
                   <option value="all">전체 연령대</option>
                   <option v-for="age in ageChartLabels" :key="age" :value="age">{{ age }}</option>
                 </select>
-                <select class="form-select form-select-sm" v-model="filterCategory">
-                  <option value="all">전체 카테고리</option>
-                  <option v-for="cat in categoryChartCategories" :key="cat" :value="cat">{{ cat }}</option>
-                </select>
+                <button class="btn btn-primary btn-sm search-btn" @click="handleSearch">검색</button>
               </div>
             </div>
           </template>
@@ -387,5 +400,9 @@ const issueCoupon = async () => {
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+.search-btn {
+  white-space: nowrap;
+  min-width: 60px;
 }
 </style>
