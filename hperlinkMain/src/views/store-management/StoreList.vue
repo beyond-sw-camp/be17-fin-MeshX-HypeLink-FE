@@ -59,11 +59,11 @@ const activeSearchTerm = ref('');
 const activeStatusFilter = ref('all');
 
 // 버튼 눌렸을 때만 검색어/필터 반영
-const handleSearch = () => {
-  activeSearchTerm.value = searchTerm.value;
-  activeStatusFilter.value = filterStatus.value;
-  currentPage.value = 1;
-};
+// const handleSearch = () => {
+//   activeSearchTerm.value = searchTerm.value;
+//   activeStatusFilter.value = filterStatus.value;
+//   currentPage.value = 1;
+// };
 
 // 검색 결과 필터링
 const filteredStores = computed(() => {
