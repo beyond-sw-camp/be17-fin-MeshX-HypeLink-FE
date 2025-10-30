@@ -27,6 +27,7 @@ const emit = defineEmits([
   'update:sort',
   'update:page',
   'delete-store',
+  'search',
 ]);
 
 // 전체 데이터 복사
@@ -97,6 +98,18 @@ const statusClass = (status) => {
   }
 };
 
+// 검색 실행 함수
+const handleSearch = () => {
+  emit('search');
+};
+
+// 엔터키 핸들러
+const handleKeyPress = (event) => {
+  if (event.key === 'Enter') {
+    handleSearch();
+  }
+};
+
 </script>
 
 <template>
@@ -107,17 +120,21 @@ const statusClass = (status) => {
         <div class="d-flex">
           <div class="me-2">
             <input
-                type="text"
-                class="form-control form-control-sm"
-                placeholder="매장명/주소 검색"
-                v-model="searchTerm"
-            >
+              type="text"
+              class="form-control form-control-sm"
+              placeholder="매장명/주소 검색"
+              v-model="searchTermModel"
+              @keypress="handleKeyPress">
+          </div>
+          <div class="me-2">
+            <button class="btn btn-outline-primary btn-sm" @click="handleSearch">
+              <i class="bi bi-search"></i> 검색
+            </button>
           </div>
           <div class="me-2">
             <select class="form-select form-select-sm" v-model="filterStatus">
               <option value="all">전체 상태</option>
-              <option value="운영중">운영중</option>
-              <option value="영업 종료">영업 종료</option>
+              <option value="영업 중">영업 중</option>
               <option value="휴점">휴점</option>
             </select>
           </div>

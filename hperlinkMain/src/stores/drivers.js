@@ -72,6 +72,8 @@ export const useDriverStore = defineStore('drivers', () => {
       const response = await authApi.registerUser(driverData);
       if (response.success) {
         await fetchDrivers(); // Refresh the list
+        await fetchUnassignedParcelsAction(); // Refresh unassigned parcels
+        await fetchAssignedParcelsAction(); // Refresh assigned parcels
         return true;
       } else {
         throw new Error(response.message || '기사 추가에 실패했습니다.');
@@ -87,6 +89,8 @@ export const useDriverStore = defineStore('drivers', () => {
       const response = await usersApi.deleteDriver(driverId);
       if (response.success) {
         await fetchDrivers(); // Refresh the list
+        await fetchUnassignedParcelsAction(); // Refresh unassigned parcels
+        await fetchAssignedParcelsAction(); // Refresh assigned parcels
         return true;
       } else {
         throw new Error(response.message || '기사 삭제에 실패했습니다.');
