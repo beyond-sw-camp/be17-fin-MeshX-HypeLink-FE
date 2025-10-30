@@ -87,6 +87,7 @@ export const updateHeadOfficeAsStatus = async (id, statusData) => {
         const errorData = error.response?.data || { message: '네트워크 오류 또는 서버 응답 없음' };
         errorData.success = false;
         return errorData;
+
     }
 };
 
