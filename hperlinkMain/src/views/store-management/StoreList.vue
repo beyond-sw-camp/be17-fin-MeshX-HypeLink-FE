@@ -26,6 +26,7 @@ const emit = defineEmits([
   'update:sort',
   'update:page',
   'delete-store',
+  'search',
 ]);
 
 // 검색어 및 필터 상태를 v-model로 바인딩하기 위한 computed 속성
@@ -50,6 +51,18 @@ const statusClass = (status) => {
   }
 };
 
+// 검색 실행 함수
+const handleSearch = () => {
+  emit('search');
+};
+
+// 엔터키 핸들러
+const handleKeyPress = (event) => {
+  if (event.key === 'Enter') {
+    handleSearch();
+  }
+};
+
 </script>
 
 <template>
@@ -59,12 +72,22 @@ const statusClass = (status) => {
         <h5 class="mb-0">매장 목록</h5>
         <div class="d-flex">
           <div class="me-2">
-            <input type="text" class="form-control form-control-sm" placeholder="매장명/주소 검색" v-model="searchTermModel">
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              placeholder="매장명/주소 검색"
+              v-model="searchTermModel"
+              @keypress="handleKeyPress">
+          </div>
+          <div class="me-2">
+            <button class="btn btn-outline-primary btn-sm" @click="handleSearch">
+              <i class="bi bi-search"></i> 검색
+            </button>
           </div>
           <div class="me-2">
             <select class="form-select form-select-sm" v-model="filterStatusModel">
               <option value="all">전체 상태</option>
-              <option value="운영중">운영중</option>
+              <option value="영업 중">영업 중</option>
               <option value="휴점">휴점</option>
             </select>
           </div>
