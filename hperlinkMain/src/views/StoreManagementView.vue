@@ -41,60 +41,73 @@ const currentPage = ref(1);
 const itemsPerPage = ref(5);
 
 // --- 데이터 로딩 ---
-onMounted(async () => {
+const loadStores = async () => {
   isLoading.value = true;
   try {
-    await storeStore.fetchStores();
+    // Spring Data는 0-based 페이지 인덱스 사용
+    const page = currentPage.value - 1;
+
+    // sortKey를 백엔드 엔티티 필드로 매핑
+    let mappedSortKey = sortKey.value;
+    if (sortKey.value === 'name') {
+      mappedSortKey = 'member.name';
+    } else if (sortKey.value === 'member.address') {
+      mappedSortKey = 'member.address';
+    }
+
+    const sort = `${mappedSortKey},${sortOrder.value}`;
+
+    // 검색어와 필터 상태 전달
+    const keyWord = searchTerm.value;
+    const status = filterStatus.value;
+
+    await storeStore.fetchStores(page, itemsPerPage.value, sort, keyWord, status);
   } catch (error) {
-    console.error('Failed to fetch stores on mount:', error);
+    console.error('Failed to fetch stores:', error);
     toastStore.showToast('매장 목록을 불러오는 데 실패했습니다.', 'danger');
   } finally {
     isLoading.value = false;
   }
+};
+
+onMounted(async () => {
+  await loadStores();
 });
 
-// --- 검색, 필터링, 정렬 로직 ---
-const filteredAndSortedStores = computed(() => {
-  let stores = [...storeStore.allStores];
-
-  if (searchTerm.value) {
-    const term = searchTerm.value.toLowerCase();
-    stores = stores.filter(store => 
-      store.name.toLowerCase().includes(term) || 
-            store.member.address.toLowerCase().includes(term)
-    );
-  }
-
-  if (filterStatus.value !== 'all') {
-    stores = stores.filter(store => store.status === filterStatus.value);
-  }
-
-  if (sortKey.value) {
-    stores.sort((a, b) => {
-      const valA = a[sortKey.value];
-      const valB = b[sortKey.value];
-      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }
-
-  return stores;
-});
-
-// --- 페이지네이션 로직 ---
+// --- 서버 사이드 페이지네이션 및 필터링 ---
 const paginatedStores = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredAndSortedStores.value.slice(start, end);
+  return storeStore.allStores;
 });
 
-const totalPages = computed(() => Math.ceil(filteredAndSortedStores.value.length / itemsPerPage.value));
+const totalPages = computed(() => {
+  return storeStore.totalPages;
+});
+
+const totalStores = computed(() => {
+  return storeStore.totalElements;
+});
 
 // --- 이벤트 핸들러 ---
-const updateSearchTerm = (term) => { searchTerm.value = term; currentPage.value = 1; };
-const updateFilterStatus = (status) => { filterStatus.value = status; currentPage.value = 1; };
-const updateSort = (key) => {
+const updateSearchTerm = (term) => {
+  // 검색어만 업데이트, API 호출은 하지 않음
+  searchTerm.value = term;
+};
+
+const updateFilterStatus = async (status) => {
+  filterStatus.value = status;
+  currentPage.value = 1;
+  // 필터 변경 시 서버에서 데이터 다시 불러오기
+  await loadStores();
+};
+
+// 검색 실행 핸들러
+const handleSearch = async () => {
+  currentPage.value = 1;
+  // 검색 버튼 클릭 또는 엔터 시 서버에서 데이터 불러오기
+  await loadStores();
+};
+
+const updateSort = async (key) => {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
   } else {
@@ -102,8 +115,15 @@ const updateSort = (key) => {
     sortOrder.value = 'asc';
   }
   currentPage.value = 1;
+  // 정렬 변경 시 서버에서 데이터 다시 불러오기
+  await loadStores();
 };
-const updatePage = (page) => { currentPage.value = page; };
+
+const updatePage = async (page) => {
+  currentPage.value = page;
+  // 페이지 변경 시 서버에서 데이터 다시 불러오기
+  await loadStores();
+};
 
 const openPostcodeSearch = () => {
   new window.daum.Postcode({
@@ -180,7 +200,7 @@ const saveStore = async () => {
     const response = await usersApi.updateStoreInfo(newStore.id, newStore);
     if (response.success) {
       toastStore.showToast('매장 정보가 성공적으로 수정되었습니다.', 'success');
-      await storeStore.fetchStores(); // 목록 새로고침
+      await loadStores(); // 목록 새로고침
     } else {
       toastStore.showToast(response.message || '매장 정보 수정에 실패했습니다.', 'danger');
     }
@@ -207,7 +227,7 @@ const saveStore = async () => {
       const response = await authApi.registerUser(payload);
       if (response.success) {
         toastStore.showToast('새 매장(지점장)이 등록되었습니다.', 'success');
-        await storeStore.fetchStores(); // Refresh store list
+        await loadStores(); // Refresh store list
       } else {
         toastStore.showToast(response.message || '매장 등록에 실패했습니다.', 'danger');
       }
@@ -243,7 +263,7 @@ const downloadPdf = () => {
   <div id="store-list-content">
     <StoreList
       :stores="paginatedStores"
-      :totalStores="filteredAndSortedStores.length"
+      :totalStores="totalStores"
       :currentPage="currentPage"
       :itemsPerPage="itemsPerPage"
       :sortKey="sortKey"
@@ -257,6 +277,7 @@ const downloadPdf = () => {
       @update:sort="updateSort"
       @update:page="updatePage"
       @delete-store="deleteStore"
+      @search="handleSearch"
     />
 
     <BaseModal v-model="isModalOpen">
