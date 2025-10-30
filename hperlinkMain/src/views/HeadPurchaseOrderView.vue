@@ -191,7 +191,7 @@ const visiblePages = computed(() => {
               </select>
             </div>
             <!-- 검색 버튼 -->
-            <button class="btn btn-primary btn-sm" @click="onSearch">검색</button>
+            <button class="btn btn-success btn-sm me-2" @click="onSearch">🔍 검색</button>
           </div>
         </div>
       </template>

@@ -80,8 +80,8 @@ const particlesOptions = ref({
 <template>
   <div>
     <!-- Logged-in user dashboards -->
-    <AdminDashboard v-if="authStore.isAdmin" />
-    <StoreOwnerDashboard v-else-if="authStore.isStoreOwner" />
+    <AdminDashboard v-if="authStore.isAdmin || authStore.isManager" />
+    <StoreOwnerDashboard v-else-if="authStore.isBranchManager" />
 
     <!-- Logged-out User View: Network Particles Background -->
     <div v-else class="logged-out-container">

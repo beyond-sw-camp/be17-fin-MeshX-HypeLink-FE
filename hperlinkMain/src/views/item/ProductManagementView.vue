@@ -320,7 +320,7 @@ const visiblePages = computed(() => {
               </select>
             </div>
             <div class="me-2">
-              <button class="btn btn-primary btn-sm" @click="onSearch">검색</button>
+              <button class="btn btn-success btn-sm me-2" @click="onSearch">🔍 검색</button>
             </div>
             <button class="btn btn-primary btn-sm" @click="openProductModal()">+ 새 상품 등록</button>
           </div>
