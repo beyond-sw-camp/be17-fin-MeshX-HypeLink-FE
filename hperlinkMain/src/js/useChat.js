@@ -82,9 +82,16 @@ export function useChat() {
     const connect = (token) => {
         if (isConnected.value) return;
 
+        // 동적 WebSocket URL 생성
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host; // 현재 도메인과 포트
+        const wsUrl = `${protocol}//${host}/ws?token=${token}`;
+
+        console.log('Chat WebSocket URL:', wsUrl);
+
         // WebSocket은 헤더를 지원하지 않으므로 쿼리 파라미터로 토큰 전달
         const client = new Client({
-            brokerURL: `ws://localhost:8080/ws?token=${token}`,
+            brokerURL: wsUrl,
             connectHeaders: {
                 Authorization: `Bearer ${token}`,
             },

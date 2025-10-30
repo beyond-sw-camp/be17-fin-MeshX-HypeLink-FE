@@ -8,8 +8,15 @@ export function useShipmentSocket(updateMapMarkers) {
 
     /** 🌐 WebSocket 연결 */
     const connectWebSocket = (token) => {
+        // 동적 WebSocket URL 생성
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host; // 현재 도메인과 포트
+        const wsUrl = `${protocol}//${host}/ws?token=${token}`;
+
+        console.log('WebSocket URL:', wsUrl);
+
         stompClient = new Client({
-            brokerURL: `ws://localhost:8080/ws?token=${token}`,
+            brokerURL: wsUrl,
             connectHeaders: {
                 Authorization: `Bearer ${token}`,
             },
