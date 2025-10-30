@@ -58,3 +58,28 @@ const authStore = useAuthStore();
     </BaseCard>
   </div>
 </template>
+
+<style scoped>
+.guide-section {
+  padding: 1rem 0;
+}
+
+.guide-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.guide-list li {
+  padding: 0.5rem 0;
+  line-height: 1.6;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.guide-list li:last-child {
+  border-bottom: none;
+}
+
+.guide-list strong {
+  color: #212529;
+}
+</style>
