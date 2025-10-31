@@ -44,45 +44,25 @@ watch(
     (newVal) => {
       if (Array.isArray(newVal) && newVal.length > 0) {
         localStores.value = [...newVal];
-        handleSearch(); // 필터도 다시 반영
       }
     },
     { immediate: true } // props가 이미 들어와 있을 경우 즉시 실행
 );
 
-// 검색/필터용 반응형 값
-const searchTerm = ref('');
-const filterStatus = ref('all');
+// 검색/필터용 computed (부모 props 사용)
+const searchTerm = computed({
+  get: () => props.searchTerm || '',
+  set: (value) => emit('update:search-term', value)
+});
 
-// 실제 검색 적용 상태 (버튼 누를 때만 변경)
-const activeSearchTerm = ref('');
-const activeStatusFilter = ref('all');
+const filterStatus = computed({
+  get: () => props.filterStatus || 'all',
+  set: (value) => emit('update:filter-status', value)
+});
 
-// 버튼 눌렸을 때만 검색어/필터 반영
-// const handleSearch = () => {
-//   activeSearchTerm.value = searchTerm.value;
-//   activeStatusFilter.value = filterStatus.value;
-//   currentPage.value = 1;
-// };
-
-// 검색 결과 필터링
+// 검색 결과 필터링 (서버사이드에서 처리하므로 그대로 표시)
 const filteredStores = computed(() => {
-  const keyword = activeSearchTerm.value.trim().toLowerCase();
-  const status = activeStatusFilter.value;
-
-  return localStores.value.filter(store => {
-    const matchesKeyword =
-        !keyword ||
-        store.name?.toLowerCase().includes(keyword) ||
-        store.address?.toLowerCase().includes(keyword);
-
-    const matchesStatus =
-        status === 'all' ||
-        store.status === status ||
-        (status === '운영중' && store.status === '영업 중');
-
-    return matchesKeyword && matchesStatus;
-  });
+  return localStores.value;
 });
 
 const totalPages = computed(() =>
@@ -123,13 +103,8 @@ const handleKeyPress = (event) => {
               type="text"
               class="form-control form-control-sm"
               placeholder="매장명/주소 검색"
-              v-model="searchTermModel"
+              v-model="searchTerm"
               @keypress="handleKeyPress">
-          </div>
-          <div class="me-2">
-            <button class="btn btn-outline-primary btn-sm" @click="handleSearch">
-              <i class="bi bi-search"></i> 검색
-            </button>
           </div>
           <div class="me-2">
             <select class="form-select form-select-sm" v-model="filterStatus">
