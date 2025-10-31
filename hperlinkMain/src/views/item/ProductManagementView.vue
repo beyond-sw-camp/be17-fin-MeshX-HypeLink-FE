@@ -147,6 +147,7 @@ const applyFieldUpdates = async (changedFields) => {
       payload = {
         itemId: originalItem.id,
         images: itemForm.images.map(img => ({
+          id: img.id,  // ← 이미지 ID 추가!
           originalFilename: img.originalFilename || img.originalName,
           index: img.index
         }))
@@ -154,8 +155,9 @@ const applyFieldUpdates = async (changedFields) => {
     }
 
     const result = await field.api(payload);
-    if (!(result.status === 200)) {
+    if (!result || result.status !== 200) {
       console.error(`${field.key} 업데이트 실패`, result);
+      throw new Error(`${field.key} 업데이트 실패`);
     }
   }
 };
