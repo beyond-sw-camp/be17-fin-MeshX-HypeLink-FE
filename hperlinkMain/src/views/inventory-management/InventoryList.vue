@@ -4,8 +4,9 @@ import BaseModal from "@/components/BaseModal.vue";
 import {computed, onMounted, reactive, ref} from "vue";
 import {useToastStore} from "@/stores/toast.js";
 import {useAuthStore} from "@/stores/auth.js";
+import {usePosManagementStore} from '@/stores/store'
+import {storeToRefs} from 'pinia'
 
-import userApi from '@/api/users'
 import storeItemApi from '@/api/item/store'
 import purchaseOrderApi from "@/api/purchase-order/index.js";
 import categoryApi from "@/api/item/category/index.js";
@@ -14,9 +15,10 @@ defineProps({ inventory: Array });
 const emit = defineEmits(['send-shipment']);
 const auth = useAuthStore();
 const toastStore = useToastStore();
+const managementStore = usePosManagementStore()
+const {selectableStores} = storeToRefs(managementStore)
 
 // 서버에서 받은 데이터 처리
-const allStores = ref([]);
 const selectStore = ref(0);
 const currentStore = ref(0);
 const categories = ref([]);
@@ -49,21 +51,15 @@ const isOrderModalOpen = ref(false);
 const formSubmitted = ref(false);
 
 const getStores = async () => {
-  let res =  await userApi.getStoresList();
-  if(res.success) {
-    allStores.value = res.data;
-    const matchedStore = allStores.value.find(
-        (one) => one.storeName === auth.user.name
-    );
+  await managementStore.fetchData(); // 매장 목록 로드
+  const matchedStore = selectableStores.value.find(
+      (one) => one.name === auth.user.name
+  );
 
-    // 일치하는 스토어가 있으면 loginStore에 id 저장
-    if (matchedStore) {
-      loginStore.value = matchedStore.storeId;
-    }
-
-    return;
+  // 일치하는 스토어가 있으면 loginStore에 id 저장
+  if (matchedStore) {
+    loginStore.value = matchedStore.id;
   }
-  toastStore.showToast('Store 정보를 못 받아왔습니다.', 'danger');
 }
 
 const loadItems = async (page = 1) => {
@@ -139,7 +135,7 @@ const getCategories = async () => {
 }
 
 const filteredStores = computed(() =>
-    allStores.value.filter(cat => cat.storeId !== currentStore.value)
+    selectableStores.value.filter(cat => cat.id !== currentStore.value)
 )
 
 const isLightColor = (hex) => {
@@ -223,11 +219,11 @@ onMounted(() => {
           >
             <option :value="0">본사 재고</option>
             <option
-                v-for="cat in allStores"
-                :key="cat.storeName"
-                :value="cat.storeId"
+                v-for="cat in selectableStores"
+                :key="cat.id"
+                :value="cat.id"
             >
-              {{ cat.storeName }}
+              {{ cat.name }}
             </option>
           </select>
 
@@ -259,12 +255,12 @@ onMounted(() => {
           <th>현재고</th>
           <th>발주 재고</th>
           <th v-if="(auth.user.role !== 'BRANCH_MANAGER' ||
-          allStores[currentStore - 1]?.storeName === auth.user.name) && currentStore !== 0">발주</th>
+          selectableStores.find(s => s.id === currentStore)?.name === auth.user.name) && currentStore !== 0">발주</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="item in allItems" :key="item.id">
-          <td>  {{ currentStore === 0 ? '본사 재고' : allStores.find(store => store.storeId === currentStore)?.storeName }}
+          <td>  {{ currentStore === 0 ? '본사 재고' : selectableStores.find(store => store.id === currentStore)?.name }}
           </td>
           <td>{{ item.itemCode }}</td>
           <td>{{ item.itemDetailCode }}</td>
@@ -285,7 +281,7 @@ onMounted(() => {
           <td>{{ item.stock }} 개</td>
           <td>{{ item.totalQuantity }} 개</td>
           <td v-if="(auth.user.role !== 'BRANCH_MANAGER' ||
-          allStores[currentStore - 1]?.storeName === auth.user.name) && currentStore !== 0">
+          selectableStores.find(s => s.id === currentStore)?.name === auth.user.name) && currentStore !== 0">
             <button class="btn btn-outline-primary btn-sm" @click="orderItem(item)">발주</button>
           </td>
         </tr>
@@ -346,9 +342,9 @@ onMounted(() => {
           <option :value="0">본사 재고</option>
           <option
               v-for="cat in filteredStores"
-              :key="cat.storeName"
-              :value="cat.storeId">
-            {{ cat.storeName }}
+              :key="cat.id"
+              :value="cat.id">
+            {{ cat.name }}
           </option>
         </select>
       </div>
@@ -357,7 +353,7 @@ onMounted(() => {
         <label class="form-label">발주 수령 위치<span class="text-danger">*</span></label>
         <br>
         <div class="p-2 border rounded bg-light fw-bold text-dark">
-          {{ allStores[currentStore - 1]?.storeName }}
+          {{ selectableStores.find(s => s.id === currentStore)?.name }}
         </div>
       </div>
 
