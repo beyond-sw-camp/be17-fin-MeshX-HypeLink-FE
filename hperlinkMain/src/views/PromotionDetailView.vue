@@ -124,7 +124,7 @@ const statusClass = (status) => {
         <p><strong>이미지:</strong></p>
         <div class="image-gallery">
           <div v-for="image in promotion.images" :key="image.id" class="image-item">
-            <img :src="image.imageUrl" :alt="image.originalName" class="img-fluid rounded shadow-sm">
+            <img :src="image.imageUrl" :alt="image.originalName" class="img-fluid rounded shadow-sm" style="max-width: 100%; height: auto; border: 1px solid #eee;">
           </div>
         </div>
       </div>

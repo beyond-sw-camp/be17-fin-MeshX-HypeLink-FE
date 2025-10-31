@@ -10,11 +10,13 @@ import FlatPickr from 'vue-flatpickr-component';
 import 'flatpickr/dist/flatpickr.css'; // 매출 코드와 동일
 import { Korean } from 'flatpickr/dist/l10n/ko.js';
 import { useToastStore } from '@/stores/toast';
+import { useAuthStore } from '@/stores/auth';
 import { getPagedPromotions, createPromotion, updatePromotion, searchPromotions, getPromotionStatusList } from '@/api/promotion';
 import { getAllCoupons } from '@/api/coupons';
 import { uploadPromotionImage } from '@/api/image';
 
 const toastStore = useToastStore();
+const authStore = useAuthStore();
 const router = useRouter();
 
 const promotionStatusList = ref([]);
@@ -512,7 +514,7 @@ const visiblePages = computed(() => {
             <button class="btn btn-success btn-sm me-2" @click="handleSearch">
               🔍 검색
             </button>
-            <button class="btn btn-primary btn-sm" @click="openPromotionModal()">
+            <button v-if="authStore.isAdmin || authStore.isManager" class="btn btn-primary btn-sm" @click="openPromotionModal()">
               + 새 프로모션 등록
             </button>
           </div>
@@ -571,11 +573,13 @@ const visiblePages = computed(() => {
           </td>
           <td>
             <button
+              v-if="authStore.isAdmin || authStore.isManager"
               class="btn btn-sm btn-outline-secondary"
               @click="openPromotionModal(promo)"
             >
               수정
             </button>
+            <span v-else class="text-muted">-</span>
           </td>
         </tr>
         </tbody>
