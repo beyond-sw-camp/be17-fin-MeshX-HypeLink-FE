@@ -71,7 +71,7 @@ const submitItem = async () => {
 
 const updateItem = async () => {
   try {
-    if (!originalItem.itemCode) {
+    if (!originalItem || !originalItem.itemCode) {
       toastStore.showToast('상품 코드(itemCode)가 없습니다.', 'danger');
       return;
     }
