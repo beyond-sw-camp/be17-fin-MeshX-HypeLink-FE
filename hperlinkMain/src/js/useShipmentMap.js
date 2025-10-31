@@ -27,8 +27,6 @@ export function useShipmentMap(filteredAndSortedShipments) {
 
         // 기사 핀 세팅
         updateDriverMarkers();
-
-        console.log('지도 초기화 완료');
     };
 
     /** 모든 마커 제거 */
@@ -98,8 +96,6 @@ export function useShipmentMap(filteredAndSortedShipments) {
 
                 storeMarkers[id] = marker;
             });
-
-            console.log(`매장 ${stores.length}개 마커 표시 완료`);
         } catch (err) {
             console.error('매장 목록 로딩 실패:', err);
         }

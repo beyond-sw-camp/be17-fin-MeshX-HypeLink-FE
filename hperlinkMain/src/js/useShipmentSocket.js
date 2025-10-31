@@ -13,8 +13,6 @@ export function useShipmentSocket(updateMapMarkers) {
         const host = window.location.host; // 현재 도메인과 포트
         const wsUrl = `${protocol}//${host}/ws?token=${token}`;
 
-        console.log('WebSocket URL:', wsUrl);
-
         stompClient = new Client({
             brokerURL: wsUrl,
             connectHeaders: {
@@ -22,12 +20,10 @@ export function useShipmentSocket(updateMapMarkers) {
             },
             reconnectDelay: 5000,
             heartbeatIncoming: 4000,
-            heartbeatOutgoing: 4000,
-            debug: str => console.log('STOMP:', str)
+            heartbeatOutgoing: 4000
         });
 
         stompClient.onConnect = () => {
-            console.log('STOMP 연결 성공');
         };
 
         stompClient.onStompError = frame =>
@@ -57,7 +53,6 @@ export function useShipmentSocket(updateMapMarkers) {
         });
 
         subscriptions.set(topic, subscription);
-        console.log(`구독 시작: ${topic}`);
     };
 
     /** 🧹 구독 해제 */
@@ -66,7 +61,6 @@ export function useShipmentSocket(updateMapMarkers) {
             const subscription = subscriptions.get(topic);
             subscription.unsubscribe();
             subscriptions.delete(topic);
-            console.log(`구독 해제: ${topic}`);
         } else {
             console.warn(`해제할 구독이 없습니다: ${topic}`);
         }
@@ -78,12 +72,10 @@ export function useShipmentSocket(updateMapMarkers) {
             // 모든 구독 해제
             for (const [topic, subscription] of subscriptions.entries()) {
                 subscription.unsubscribe();
-                console.log(`구독 해제: ${topic}`);
             }
             subscriptions.clear();
 
             stompClient.deactivate();
-            console.log('STOMP 연결 해제 완료');
         }
     };
 

@@ -50,7 +50,6 @@ onMounted(() => { // async 추가
     setTimeout(() => {
       subscribe('/topic/dashboard', msg => {
         const driverData = JSON.parse(msg.body);
-        console.log('Dashboard:', driverData);
         shipmentStore.updateDriverLocation(driverData);
         updateMapMarkers();
       });

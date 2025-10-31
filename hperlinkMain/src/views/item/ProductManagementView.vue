@@ -121,10 +121,11 @@ const detectChangedFields = () => {
       // 개수 달라짐 (삭제/추가)
       itemForm.images.length !== (originalItem.images?.length || 0)
       ||
-      // 순서 달라짐
-      itemForm.images.some((img, i) => img.index !== originalItem.images?.[i]?.index)
-      //새 이미지가 추가됨 (id나 s3Key 없는 경우)
-      ||itemForm.images.some(img => !img.id && !img.s3Key);
+      // 순서 달라짐: 같은 위치(i)에 다른 이미지(id)가 있는지 확인
+      itemForm.images.some((img, i) => img.id !== originalItem.images?.[i]?.id)
+      ||
+      //새 이미지가 추가됨 (id가 없는 경우)
+      itemForm.images.some(img => !img.id);
 
   if (imagesChanged) {
     changedFields.push({ key: 'images', api: itemApi.updateImages });
@@ -136,10 +137,21 @@ const detectChangedFields = () => {
 // ② 변경된 필드 API 순차 업데이트
 const applyFieldUpdates = async (changedFields) => {
   for (const field of changedFields) {
-    const payload = {
+    let payload = {
       itemId: originalItem.id,
       [field.key]: itemForm[field.key],
     };
+
+    // images 필드의 경우, 필요한 데이터만 필터링해서 전송
+    if (field.key === 'images') {
+      payload = {
+        itemId: originalItem.id,
+        images: itemForm.images.map(img => ({
+          originalFilename: img.originalFilename || img.originalName,
+          index: img.index
+        }))
+      };
+    }
 
     const result = await field.api(payload);
     if (!(result.status === 200)) {
@@ -162,8 +174,6 @@ const uploadNewItemDetails = async () => {
     const result = await itemApi.updateItemDetails(payload);
     if (!(result.status === 200 || result.status === 201)) {
       console.error('itemDetailList 추가 실패', result);
-    } else {
-      console.log(`${newDetails.length}개의 신규 상세 항목이 추가되었습니다.`);
     }
   } catch (error) {
     console.error('itemDetailList 전송 중 오류:', error);

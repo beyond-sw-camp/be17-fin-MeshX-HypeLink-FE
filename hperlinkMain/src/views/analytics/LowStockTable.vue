@@ -52,7 +52,6 @@ const getStatusBadge = (status, stock) => {
 };
 
 const handleOrder = (item) => {
-  console.log('Order item:', item);
   // TODO: Navigate to order page or open modal
 };
 </script>

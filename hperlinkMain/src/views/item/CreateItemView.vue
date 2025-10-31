@@ -31,7 +31,6 @@ const handleFileSelect = async (event) => {
 
     // 이미 업로드된 파일이면 스킵
     if (uploadedFiles.has(fileKey)) {
-      console.log(`[SKIP] 이미 업로드된 파일: ${file.name}`);
       continue;
     }
 
