@@ -104,9 +104,11 @@ const updateOrder = () => {
 
   // itemForm.images를 동일한 순서로 맞추기
   itemForm.images = imagePreviews.value.map(preview => {
-    // uploaded 객체 찾기 (originalFilename 또는 name 기준)
+    // uploaded 객체 찾기 (originalFilename, originalName 또는 name 기준)
     const match = itemForm.images.find(img =>
-        img.originalFilename === preview.name
+        img.originalFilename === preview.name ||
+        img.originalName === preview.name ||
+        img.name === preview.name
     );
 
     return match

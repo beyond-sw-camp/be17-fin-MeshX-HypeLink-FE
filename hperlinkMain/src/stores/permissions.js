@@ -17,7 +17,7 @@ export const usePermissionStore = defineStore('permissions', () => {
   const permissions = ref({
     ADMIN: allRoutes.filter(route => route !== 'my-store'), // 'my-store' 제외
     MANAGER: ['dashboard', 'announcements', 'announcement-detail', 'messenger', 'stores', 'inventory', 'sales', 'pos-support', 'promotions', 'promotion-detail', 'tracking', 'analytics', 'analytics-sales', 'analytics-orders', 'analytics-stores', 'analytics-products', 'analytics-inventory', 'customer-analytics', 'pos-health', 'drivers', 'products', 'warehouse-inventory', 'purchase-orders', 'coupons', 'pos-management', 'store-detail', 'asList', 'asDetail'],
-    BRANCH_MANAGER: ['dashboard', 'announcements', 'announcement-detail', 'messenger', 'my-store', 'pos-management', 'inventory', 'sales', 'pos-support', 'purchase-orders', 'asList', 'asCreate', 'asDetail'],
+    BRANCH_MANAGER: ['dashboard', 'announcements', 'announcement-detail', 'messenger', 'my-store', 'inventory', 'sales', 'pos-support', 'promotions', 'promotion-detail', 'purchase-orders', 'asList', 'asCreate', 'asDetail'],
   });
 
   // 특정 역할이 특정 라우트에 접근할 수 있는지 확인하는 함수

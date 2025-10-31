@@ -380,6 +380,50 @@ export const getCategoryCustomerSales = async () => {
 }
 
 /**
+ * 특정 연령대의 인기 품목 조회 (드릴다운, 페이지네이션)
+ * @param {string} ageGroup - "10대", "20대", "30대", "40대", "50대 이상"
+ * @param {number} page - 페이지 번호 (0부터 시작)
+ * @param {number} size - 페이지 크기
+ */
+export const getTopItemsByAgeGroup = async (ageGroup, page = 0, size = 10) => {
+    const requestUrl = `/api/analytics/customers/age-distribution/top-items`
+    let data = {}
+    await api.get(requestUrl, {
+        params: { ageGroup, page, size }
+    })
+        .then((response) => {
+            data = response.data
+        })
+        .catch((error) => {
+            console.error('Failed to fetch top items by age group:', error)
+            data = { data: { content: [], totalElements: 0, totalPages: 0 } }
+        })
+    return data
+}
+
+/**
+ * 특정 카테고리의 인기 품목 조회 (드릴다운, 페이지네이션)
+ * @param {string} category - 카테고리 이름
+ * @param {number} page - 페이지 번호 (0부터 시작)
+ * @param {number} size - 페이지 크기
+ */
+export const getTopItemsByCategory = async (category, page = 0, size = 10) => {
+    const requestUrl = `/api/analytics/customers/category-sales/top-items`
+    let data = {}
+    await api.get(requestUrl, {
+        params: { category, page, size }
+    })
+        .then((response) => {
+            data = response.data
+        })
+        .catch((error) => {
+            console.error('Failed to fetch top items by category:', error)
+            data = { data: { content: [], totalElements: 0, totalPages: 0 } }
+        })
+    return data
+}
+
+/**
  * 일별 그룹화된 매출 데이터 조회 (Sales Management 페이지용)
  * @param {string} startDate - 시작일 (yyyy-MM-dd)
  * @param {string} endDate - 종료일 (yyyy-MM-dd)
@@ -423,5 +467,7 @@ export default {
     getCustomerAnalytics,
     getAgeDistribution,
     getCategoryCustomerSales,
+    getTopItemsByAgeGroup,
+    getTopItemsByCategory,
     getDailySalesGrouped
 }
