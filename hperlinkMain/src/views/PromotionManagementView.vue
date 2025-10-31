@@ -121,20 +121,16 @@ onMounted(async () => {
 // 쿠폰 목록 로드 (모든 페이지 순회)
 const loadCoupons = async () => {
   try {
-    console.log('🔍 쿠폰 로드 시작...');
     let allCouponsData = [];
     let currentPage = 0;
     let totalPages = 1;
-    const pageSize = 10; // ✅ 한 번에 가져올 개수 (0이면 안됨!)
+    const pageSize = 10;
 
     // 모든 페이지를 순회하며 쿠폰 로드
     do {
-      console.log(`📄 페이지 ${currentPage} 로드 중... (size: ${pageSize})`);
       const res = await getAllCoupons(currentPage, pageSize);
-      console.log('📦 API 응답:', res);
-      
+
       if (res.data && res.data.couponInfoResList) {
-        console.log('✅ couponInfoResList 발견:', res.data.couponInfoResList.length, '개');
         const coupons = res.data.couponInfoResList.map(coupon => ({
           id: coupon.id,
           type: coupon.type?.toUpperCase(),
@@ -142,10 +138,9 @@ const loadCoupons = async () => {
           value: coupon.value,
         }));
         allCouponsData = [...allCouponsData, ...coupons];
-        
+
         // 페이지 정보 업데이트
         totalPages = res.data.totalPages || 1;
-        console.log(`📊 현재: ${currentPage + 1}/${totalPages} 페이지, 누적: ${allCouponsData.length}개`);
         currentPage++;
       } else {
         console.error('❌ 응답 구조가 예상과 다름:', res);
@@ -154,11 +149,6 @@ const loadCoupons = async () => {
     } while (currentPage < totalPages);
 
     couponList.value = allCouponsData;
-    console.log('✨ 쿠폰 목록 로드 완료:', couponList.value.length, '개');
-    console.log('📋 쿠폰 타입별:', 
-      'PERCENTAGE:', couponList.value.filter(c => c.type === 'PERCENTAGE').length,
-      'FIXED:', couponList.value.filter(c => c.type === 'FIXED').length
-    );
   } catch (error) {
     console.error('💥 쿠폰 목록 로드 실패:', error);
     toastStore.showToast('쿠폰 목록을 불러오는데 실패했습니다.', 'danger');

@@ -47,11 +47,9 @@ export const useAsStore = defineStore('as', () => {
             } else {
                 throw new Error("AS 요청을 조회할 권한이 없습니다.");
             }
-            console.log(response);
             if (response.success) {
                 // 페이징 응답 처리
                 if(typeof response.data === 'undefined') {
-                    console.log("success")
                     asRequests.value = [];
                     totalPages.value = 0;
                     totalElements.value = 0;
