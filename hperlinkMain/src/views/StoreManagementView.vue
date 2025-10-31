@@ -264,6 +264,7 @@ const downloadPdf = () => {
     <StoreList
       :stores="paginatedStores"
       :totalStores="totalStores"
+      :totalPages="totalPages"
       :currentPage="currentPage"
       :itemsPerPage="itemsPerPage"
       :sortKey="sortKey"

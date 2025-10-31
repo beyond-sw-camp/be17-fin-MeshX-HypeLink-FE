@@ -11,6 +11,7 @@ const currentPage = ref(1);
 const props = defineProps({
   stores: Array,
   totalStores: Number,
+  totalPages: Number,
   currentPage: Number,
   itemsPerPage: Number,
   sortKey: String,
@@ -64,10 +65,6 @@ const filterStatus = computed({
 const filteredStores = computed(() => {
   return localStores.value;
 });
-
-const totalPages = computed(() =>
-    Math.ceil(filteredStores.value.length / props.itemsPerPage)
-);
 
 const statusClass = (status) => {
   switch (status) {
@@ -154,16 +151,16 @@ const handleKeyPress = (event) => {
         </table>
 
         <!-- 페이지네이션 -->
-        <nav v-if="totalPages > 1">
+        <nav v-if="props.totalPages > 1">
           <ul class="pagination justify-content-center">
-            <li class="page-item" :class="{ disabled: currentPage === 1 }">
-              <a class="page-link" href="#" @click.prevent="emit('update:page', currentPage - 1)">이전</a>
+            <li class="page-item" :class="{ disabled: props.currentPage === 1 }">
+              <a class="page-link" href="#" @click.prevent="emit('update:page', props.currentPage - 1)">이전</a>
             </li>
-            <li class="page-item" :class="{ active: page === currentPage }" v-for="page in totalPages" :key="page">
+            <li class="page-item" :class="{ active: page === props.currentPage }" v-for="page in props.totalPages" :key="page">
               <a class="page-link" href="#" @click.prevent="emit('update:page', page)">{{ page }}</a>
             </li>
-            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-              <a class="page-link" href="#" @click.prevent="emit('update:page', currentPage + 1)">다음</a>
+            <li class="page-item" :class="{ disabled: props.currentPage === props.totalPages }">
+              <a class="page-link" href="#" @click.prevent="emit('update:page', props.currentPage + 1)">다음</a>
             </li>
           </ul>
         </nav>
