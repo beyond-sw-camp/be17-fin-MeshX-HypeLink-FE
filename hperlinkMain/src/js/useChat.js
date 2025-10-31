@@ -87,8 +87,6 @@ export function useChat() {
         const host = window.location.host; // 현재 도메인과 포트
         const wsUrl = `${protocol}//${host}/ws?token=${token}`;
 
-        console.log('Chat WebSocket URL:', wsUrl);
-
         // WebSocket은 헤더를 지원하지 않으므로 쿼리 파라미터로 토큰 전달
         const client = new Client({
             brokerURL: wsUrl,
@@ -102,7 +100,6 @@ export function useChat() {
 
         client.onConnect = () => {
             isConnected.value = true;
-            console.log('STOMP 연결 성공');
 
             // 개인 메시지 큐 구독
             client.subscribe('/user/queue/messages', onMessageReceived);
@@ -117,7 +114,6 @@ export function useChat() {
 
         client.onDisconnect = () => {
             isConnected.value = false;
-            console.log('STOMP 연결 해제');
         };
 
         client.activate();

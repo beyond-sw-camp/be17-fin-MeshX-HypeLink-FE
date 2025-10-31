@@ -48,21 +48,11 @@ const flatpickrConfig = ref({
   minDate: 'today', // 오늘 이후
   maxDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1년 후
   onChange: (selectedDates, dateStr) => {
-    console.log('Selected date range:', dateStr); // 디버깅
     couponForm.period = dateStr;
-  },
-  onReady: (selectedDates, dateStr, instance) => {
-    console.log('Flatpickr initialized:', instance); // 초기화 확인
   },
 });
 
 // period 변화 감지 (디버�инг용)
-watch(
-  () => couponForm.period,
-  (newValue) => {
-    console.log('couponForm.period updated:', newValue);
-  }
-);
 
 // 데이터 로딩 함수
 const loadCouponsData = async (page = 0) => {

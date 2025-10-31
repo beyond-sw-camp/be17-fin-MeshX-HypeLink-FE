@@ -53,7 +53,6 @@ onMounted(async () => {
 const handleParcelDrop = async (driver, event) => {
   // vuedraggable @change 이벤트 구조 확인
   if (!event.added) {
-    console.log('Event structure:', event);
     return;
   }
 

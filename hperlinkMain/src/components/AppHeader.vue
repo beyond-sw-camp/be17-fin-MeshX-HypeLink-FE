@@ -92,7 +92,6 @@ const handleLogout = () => {
         </a>
         <ul class="dropdown-menu dropdown-menu-end">
           <template v-if="authStore.isLoggedIn">
-            <li v-if="authStore.isStoreOwner"><router-link to="/my-store" class="dropdown-item">내 점포 보기</router-link></li>
             <li><a class="dropdown-item" href="#" @click.prevent="showLogoutModal = true">로그아웃</a></li>
           </template>
           <template v-else>

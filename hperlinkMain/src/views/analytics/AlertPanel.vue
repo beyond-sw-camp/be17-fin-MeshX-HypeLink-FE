@@ -53,7 +53,6 @@ const getAlertClass = (type) => {
 };
 
 const handleAction = (alert) => {
-  console.log('Alert action clicked:', alert);
   // TODO: Navigate to relevant page
 };
 </script>

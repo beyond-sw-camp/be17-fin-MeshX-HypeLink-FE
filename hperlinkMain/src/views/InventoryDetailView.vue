@@ -235,13 +235,11 @@ const getCategoryBadgeClass = (category) => {
 };
 
 const createReorderRequest = (item) => {
-  console.log('Creating reorder request for:', item);
   alert(`발주 요청: ${item.name} - ${item.reorderQty}개`);
 };
 
 const createBulkReorder = () => {
   const criticalItems = lowStockItems.value.filter(item => item.urgency === 'critical');
-  console.log('Creating bulk reorder for critical items:', criticalItems);
   alert(`일괄 발주 요청: ${criticalItems.length}개 품목`);
 };
 
