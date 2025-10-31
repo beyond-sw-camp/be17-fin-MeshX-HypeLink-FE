@@ -13,7 +13,7 @@ import { useModalStore } from '@/stores/modal';
 import { useToastStore } from '@/stores/toast';
 import { useAuthStore } from '@/stores/auth';
 import { issueCouponToCustomer, searchCustomers } from '@/api/customers';
-import { getAgeDistribution, getCategoryCustomerSales } from '@/api/analytics';
+import { getAgeDistribution, getCategoryCustomerSales, getTopItemsByAgeGroup, getTopItemsByCategory } from '@/api/analytics';
 
 const customerStore = useCustomerStore();
 const couponStore = useCouponStore();
@@ -38,21 +38,79 @@ const currentPage = ref(1);
 const itemsPerPage = ref(10);
 
 // --- 드릴다운 데이터 및 로직 ---
-const drillDown = ref({ title: null, items: [] });
-const handleAgeSelect = (ageGroup) => {
+const drillDown = ref({
+  title: null,
+  items: [],
+  currentPage: 1,
+  totalPages: 0,
+  totalElements: 0,
+  segment: null, // 'age' or 'category'
+  segmentValue: null // actual age group or category name
+});
+
+const loadDrillDownPage = async (page = 0) => {
+  try {
+    let response;
+    if (drillDown.value.segment === 'age') {
+      response = await getTopItemsByAgeGroup(drillDown.value.segmentValue, page, 10);
+    } else if (drillDown.value.segment === 'category') {
+      response = await getTopItemsByCategory(drillDown.value.segmentValue, page, 10);
+    }
+
+    if (response && response.data) {
+      drillDown.value.items = response.data.content || [];
+      drillDown.value.totalPages = response.data.totalPages || 0;
+      drillDown.value.totalElements = response.data.totalElements || 0;
+      drillDown.value.currentPage = page + 1; // 백엔드는 0부터 시작, UI는 1부터 시작
+    }
+  } catch (error) {
+    console.error('Failed to fetch drill-down items:', error);
+    toastStore.showToast('인기 품목 조회에 실패했습니다.', 'error');
+  }
+};
+
+const handleAgeSelect = async (ageGroup) => {
   drillDown.value = {
     title: `'${ageGroup}' 고객이 가장 많이 구매한 품목`,
-    items: customerStore.topItemsByAge[ageGroup] || []
+    items: [],
+    currentPage: 1,
+    totalPages: 0,
+    totalElements: 0,
+    segment: 'age',
+    segmentValue: ageGroup
   };
+  await loadDrillDownPage(0);
 };
-const handleCategorySelect = (category) => {
+
+const handleCategorySelect = async (category) => {
   drillDown.value = {
     title: `'${category}' 카테고리 인기 품목`,
-    items: customerStore.topItemsByCategory[category] || []
+    items: [],
+    currentPage: 1,
+    totalPages: 0,
+    totalElements: 0,
+    segment: 'category',
+    segmentValue: category
   };
+  await loadDrillDownPage(0);
 };
+
+const updateDrillDownPage = async (page) => {
+  if (page > 0 && page <= drillDown.value.totalPages) {
+    await loadDrillDownPage(page - 1); // UI는 1부터, 백엔드는 0부터
+  }
+};
+
 const clearDrillDown = () => {
-  drillDown.value = { title: null, items: [] };
+  drillDown.value = {
+    title: null,
+    items: [],
+    currentPage: 1,
+    totalPages: 0,
+    totalElements: 0,
+    segment: null,
+    segmentValue: null
+  };
 };
 
 // --- 차트 데이터 ---
@@ -292,6 +350,14 @@ const issueCoupon = async () => {
       </div>
     </div>
 
+    <transition name="fade">
+      <div class="row mt-4" v-if="drillDown.title">
+        <div class="col-12">
+          <DrillDownResults :drillDown="drillDown" @close="clearDrillDown" @page-change="updateDrillDownPage" />
+        </div>
+      </div>
+    </transition>
+
     <div class="row mt-4">
       <div class="col-lg-12">
         <BaseCard>
@@ -374,14 +440,6 @@ const issueCoupon = async () => {
         </BaseCard>
       </div>
     </div>
-
-    <transition name="fade">
-      <div class="row mt-4" v-if="drillDown.title">
-        <div class="col-12">
-          <DrillDownResults :drillDown="drillDown" @close="clearDrillDown" />
-        </div>
-      </div>
-    </transition>
 
     <BaseSpinner v-if="isLoading" height="200px" />
   </div>

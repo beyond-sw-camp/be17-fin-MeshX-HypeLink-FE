@@ -7,9 +7,12 @@ import BaseEmptyState from '@/components/BaseEmptyState.vue';
 import SortIcon from '@/components/SortIcon.vue';
 import CreateItemView from "@/views/item/CreateItemView.vue";
 import UpdateItemView from "@/views/item/UpdateItemView.vue";
+import { useToastStore } from '@/stores/toast';
 
 import itemApi from '@/api/item/index.js'
 import categoryApi from '@/api/item/category'
+
+const toastStore = useToastStore();
 
 const allProducts = ref([]);
 const categories = ref([]);
@@ -69,14 +72,14 @@ const submitItem = async () => {
 const updateItem = async () => {
   try {
     if (!originalItem.itemCode) {
-      alert('상품 코드(itemCode)가 없습니다.');
+      toastStore.showToast('상품 코드(itemCode)가 없습니다.', 'danger');
       return;
     }
 
     const changedFields = detectChangedFields();
 
     if (changedFields.length === 0 && itemForm.itemDetailList.every(d => d.id)) {
-      alert('변경된 항목이 없습니다.');
+      toastStore.showToast('변경된 항목이 없습니다.', 'info');
       return;
     }
 
@@ -85,13 +88,13 @@ const updateItem = async () => {
     }
     await uploadNewItemDetails();
 
-    alert('상품 정보가 성공적으로 수정되었습니다.');
+    toastStore.showToast('상품 정보가 성공적으로 수정되었습니다.', 'success');
     isModalOpen.value = false;
     await loadItems(currentPage.value);
     originalItem = null;
   } catch (error) {
     console.error('상품 수정 중 오류:', error);
-    alert('상품 수정 중 오류가 발생했습니다.');
+    toastStore.showToast('상품 수정 중 오류가 발생했습니다.', 'danger');
     originalItem = null;
   }
 }
@@ -171,7 +174,7 @@ const saveItem = async () => {
   try {
     // ✅ 유효성 검사
     if (!itemForm.itemCode || !itemForm.koName || !itemForm.amount) {
-      alert('상품 코드, 한글명, 가격은 필수입니다.');
+      toastStore.showToast('상품 코드, 한글명, 가격은 필수입니다.', 'danger');
       return;
     }
 
@@ -204,16 +207,16 @@ const saveItem = async () => {
     const result = await itemApi.saveNewItem(requestData);
 
     if (result.status === 200 || result.status === 201) {
-      alert('상품이 성공적으로 등록되었습니다.');
+      toastStore.showToast('상품이 성공적으로 등록되었습니다.', 'success');
       isModalOpen.value = false;
       // 등록 후 다시 목록 갱신
       await loadItems(1);
     } else {
-      alert(result.message || '등록 실패');
+      toastStore.showToast(result.message || '등록 실패', 'danger');
     }
   } catch (error) {
     console.error('상품 등록 중 오류:', error);
-    alert('상품 등록 중 오류가 발생했습니다.');
+    toastStore.showToast('상품 등록 중 오류가 발생했습니다.', 'danger');
   }
 }
 

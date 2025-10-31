@@ -1,28 +1,18 @@
 <script setup>
-import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import BaseCard from '@/components/BaseCard.vue';
 
 const authStore = useAuthStore();
-const showGuide = ref(true);
 </script>
 
 <template>
   <div>
     <!-- 사용 가이드 섹션 -->
-    <div v-if="showGuide" class="row mb-4">
+    <div class="row mb-4">
       <div class="col-12">
         <BaseCard>
           <template #header>
-            <div class="d-flex justify-content-between align-items-center">
-              <h5 class="mb-0">{{ authStore.user.name }}님, 환영합니다!</h5>
-              <button class="btn btn-sm btn-outline-secondary" @click="showGuide = false">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
-                  <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-                </svg>
-                닫기
-              </button>
-            </div>
+            <h5 class="mb-0">{{ authStore.user.name }}님, 환영합니다!</h5>
           </template>
 
           <div class="guide-header mb-4">
