@@ -143,7 +143,7 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 🪪 ID : pos1_1@store.com (1가맹점의 1POS기) <br/>🔑 PASSWORD : 1234
 
 
-### <a href="https://www.meshx.shop">본사/서브관리자/가맹점 대시보드 바로가기 </a>
+### <a href="https://www.meshx.store">본사/서브관리자/가맹점 대시보드 바로가기 </a>
 
 
 🪪 본사 ID : hq@company.com <br/>🔑 PASSWORD : 1234
