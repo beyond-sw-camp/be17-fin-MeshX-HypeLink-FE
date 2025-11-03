@@ -135,8 +135,24 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
 
 ---
-## ⚙️ Back-end
-- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-BE">백엔드 깃허브 바로가기</a>
+## ⚙️ 도메인 주소
+### <a href="https://www.meshx.shop">POS기 바로가기</a>
+
+
+
+🪪 ID : pos1_1@store.com (1가맹점의 1POS기) <br/>🔑 PASSWORD : 1234
+
+
+### <a href="https://www.meshx.shop">본사/서브관리자/가맹점 대시보드 바로가기 </a>
+
+
+🪪 본사 ID : hq@company.com <br/>🔑 PASSWORD : 1234
+
+
+🪪 서브관리자 ID : manager(2~5)@company.com <br/>🔑 PASSWORD : 1234
+
+
+🪪 가맹점 ID : owner(1~5)@store.com <br/>🔑 PASSWORD : 1234
 <details>
  
 <summary>POS기 작동 영상 </summary>
