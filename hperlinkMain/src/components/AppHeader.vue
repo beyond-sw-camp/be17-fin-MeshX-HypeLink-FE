@@ -73,7 +73,7 @@ const handleLogout = () => {
 
     <!-- 오른쪽 사용자 메뉴 -->
     <div class="d-flex align-items-center">
-      <div class="me-3 badge bg-secondary">Role: {{ authStore.user?.role || 'None' }}</div>
+<!--      <div class="me-3 badge bg-secondary">Role: {{ authStore.user?.role || 'None' }}</div>-->
       <!-- 홈 버튼 -->
       <router-link to="/" class="me-3 text-dark">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-house-door-fill" viewBox="0 0 16 16">
