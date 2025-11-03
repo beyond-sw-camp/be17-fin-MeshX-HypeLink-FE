@@ -25,12 +25,10 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   const addProduct = (product) => {
-    // 이미 id가 있으면 그대로 사용, 없으면 새로 생성
     const newProduct = {
       ...product,
       id: product.id || Date.now().toString()
     }
-    console.log('✅ products store에 상품 추가:', newProduct)
     products.value.push(newProduct)
     return newProduct
   }
@@ -66,10 +64,12 @@ export const useProductsStore = defineStore('products', () => {
 
   const assignProductToSlot = (slotIndex, productId) => {
     posSlots.value[slotIndex] = productId
+    saveSlotsToLocalStorage()
   }
 
   const removeProductFromSlot = (slotIndex) => {
     delete posSlots.value[slotIndex]
+    saveSlotsToLocalStorage()
   }
 
   const getProductBySlot = (slotIndex) => {
@@ -78,24 +78,48 @@ export const useProductsStore = defineStore('products', () => {
     return products.value.find(p => p.id === productId)
   }
 
+  const loadSlotsFromLocalStorage = () => {
+    const savedSlots = localStorage.getItem('posSlots')
+    if (savedSlots) {
+      try {
+        posSlots.value = JSON.parse(savedSlots)
+        return true
+      } catch (error) {
+        return false
+      }
+    }
+    return false
+  }
+
+  const saveSlotsToLocalStorage = () => {
+    try {
+      localStorage.setItem('posSlots', JSON.stringify(posSlots.value))
+    } catch (error) {
+      // Silent fail
+    }
+  }
+
   const fetchProducts = async () => {
     const result = await itemAPI.getItemList()
     if (result.success) {
-      console.log('📦 백엔드에서 받은 상품 데이터 샘플:', result.data.content[0])
-
-      // Assuming result.data.content is the array of products from PageRes
       products.value = result.data.content.map(item => ({
-            id: item.id.toString(), // Use StoreItemDetail ID (고유 ID)
-            storeItemId: item.storeItemId.toString(), // StoreItem ID (백엔드 결제용)
+            id: item.id.toString(),
+            storeItemId: item.storeItemId.toString(),
             name: item.productName,
             price: item.price,
             category: item.category,
-            stock: item.stock // Assuming stock is directly available, not stockQuantity
+            stock: item.stock
           }))
 
-      console.log('✅ products store에 저장된 상품 샘플:', products.value[0])
-    } else {
-      console.error('Failed to fetch products:', result.message)
+      const hasExistingSlots = loadSlotsFromLocalStorage()
+
+      if (!hasExistingSlots || Object.keys(posSlots.value).length === 0) {
+        const topProducts = products.value.slice(0, 10)
+        topProducts.forEach((product, index) => {
+          posSlots.value[index] = product.id
+        })
+        saveSlotsToLocalStorage()
+      }
     }
   }
 
@@ -114,6 +138,8 @@ export const useProductsStore = defineStore('products', () => {
     assignProductToSlot,
     removeProductFromSlot,
     getProductBySlot,
+    loadSlotsFromLocalStorage,
+    saveSlotsToLocalStorage,
     fetchProducts
   }
 })
