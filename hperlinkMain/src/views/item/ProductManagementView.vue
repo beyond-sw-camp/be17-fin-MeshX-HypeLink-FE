@@ -9,7 +9,7 @@ import CreateItemView from "@/views/item/CreateItemView.vue";
 import UpdateItemView from "@/views/item/UpdateItemView.vue";
 import { useToastStore } from '@/stores/toast';
 
-import itemApi from '@/api/item/index.js'
+import itemApi, {validateItem} from '@/api/item/index.js'
 import categoryApi from '@/api/item/category'
 
 const toastStore = useToastStore();
@@ -184,13 +184,13 @@ const uploadNewItemDetails = async () => {
 
 const saveItem = async () => {
   try {
-    // ✅ 유효성 검사
+    // 유효성 검사
     if (!itemForm.itemCode || !itemForm.koName || !itemForm.amount) {
       toastStore.showToast('상품 코드, 한글명, 가격은 필수입니다.', 'danger');
       return;
     }
 
-    // ✅ itemDetailList가 없으면 기본값 추가
+    // itemDetailList가 없으면 기본값 추가
     if (!itemForm.itemDetailList || itemForm.itemDetailList.length === 0) {
       itemForm.itemDetailList = [
         {
@@ -202,7 +202,7 @@ const saveItem = async () => {
       ];
     }
 
-    // ✅ 요청 데이터 구성 (서버 DTO 구조와 동일)
+    // 요청 데이터 구성 (서버 DTO 구조와 동일)
     const requestData = {
       enName: itemForm.enName,
       koName: itemForm.koName,
