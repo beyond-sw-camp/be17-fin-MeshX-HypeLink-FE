@@ -187,8 +187,23 @@ export const updateItemDetails = async (updateForm) => {
     return data
 }
 
+export const validateItem = async (itemCode) => {
+    const requestUrl = `/api/item/validate`
+    let data = {}
+    await api.get(requestUrl, {
+        params: { itemCode },
+    })
+        .then((response) => {
+            data = response
+        })
+        .catch((error) => {
+            data = error.data
+        })
+    return data
+}
+
 export default {
     saveNewItem, getItems, updateContent, updateStock, updateEnName, updateKoName, updateAmount,
     updateCompany, updateCategory, updateImages, updateUnitPrice, getItemDetails, getAllItemDetails,
-    updateItemDetails
+    updateItemDetails, validateItem
 }

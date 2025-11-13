@@ -135,8 +135,24 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
 
 ---
-## ⚙️ Back-end
-- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-BE">백엔드 깃허브 바로가기</a>
+## ⚙️ 도메인 주소
+### <a href="https://www.meshx.shop">POS기 바로가기</a>
+
+
+
+🪪 ID : pos1_1@store.com (1가맹점의 1POS기) <br/>🔑 PASSWORD : 1234
+
+
+### <a href="https://www.meshx.store">본사/서브관리자/가맹점 대시보드 바로가기 </a>
+
+
+🪪 본사 ID : hq@company.com <br/>🔑 PASSWORD : 1234
+
+
+🪪 서브관리자 ID : manager(2~5)@company.com <br/>🔑 PASSWORD : 1234
+
+
+🪪 가맹점 ID : owner(1~5)@store.com <br/>🔑 PASSWORD : 1234
 <details>
  
 <summary>POS기 작동 영상 </summary>
@@ -211,17 +227,22 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 
 </div>
 </details>
+<br/>
 
 ## 🧩 시스템 아키텍처
-<a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/wiki/%EC%8B%9C%EC%8A%A4%ED%85%9C-%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90">시스템 아키텍처 문서 보기</a>
+- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/wiki/%EC%8B%9C%EC%8A%A4%ED%85%9C-%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90">시스템 아키텍처 문서 보기</a>
+<br/>
+
+## ⚙️ CI/CD 파이프라인 문서
+- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/wiki/HypeLink-CI-CD-%ED%8C%8C%EC%9D%B4%ED%94%84%EB%9D%BC%EC%9D%B8-%EB%AC%B8%EC%84%9C">시스템 아키텍처 문서 보기</a>
+<br/>
 
 ## 🧩 피그마 
-<a href="https://www.figma.com/design/apT7cRFWE4TS6WcdayD1Tn/HypeLink?node-id=0-1&p=f&t=s8E79kwSqskjhKOT-0">피그마 주소</a>
+- <a href="https://www.figma.com/design/apT7cRFWE4TS6WcdayD1Tn/HypeLink?node-id=0-1&p=f&t=s8E79kwSqskjhKOT-0">피그마 주소</a>
 
 
-<a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/blob/main/doc/Fiqma.png">피그마 보기</a>
-
----
+- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/blob/main/doc/Fiqma.png">피그마 보기</a>
+<br/>
 
 ## ⚙️ 기술적 선택과 설계 배경
 - **Spring Boot MVC** 구조로 서비스·도메인·컨트롤러 명확히 분리
