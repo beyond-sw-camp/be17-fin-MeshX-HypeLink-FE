@@ -18,10 +18,17 @@ export default defineConfig({
     // host: "0.0.0.0",
     proxy: {
       // API 요청을 백엔드 서버로 프록시
+      '/ws': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        ws: true
+      },
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        ws: true
       },
       // 이미지 요청을 S3로 프록시
       '/images': {
