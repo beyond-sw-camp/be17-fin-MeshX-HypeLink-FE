@@ -164,8 +164,9 @@ const processPortOnePayment = async (currentOrder) => {
 
     console.log('✅ 백엔드 검증 결과:', response)
 
-    // 4. 백엔드 검증 성공
-    if (response) {
+    // 4. 백엔드 검증 성공 여부 확인
+    // BaseResponse 구조: { data: "검증 성공", message: "" }
+    if (response && response.data && response.success !== false) {
       console.log('✅ 결제 검증 성공!')
 
       // 재고 차감은 백엔드에서 처리됨

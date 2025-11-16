@@ -3,7 +3,7 @@ import { tokenManager } from "@/utils/tokenManager"
 
 const api = axios.create({
     baseURL: '',
-    timeout: 5000
+    timeout: 30000  // 30초 (결제 검증 시간 고려)
 });
 
 // 요청 인터셉터: 모든 요청에 대해 토큰을 확인하고 헤더에 추가합니다.
