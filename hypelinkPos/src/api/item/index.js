@@ -2,7 +2,7 @@ import api from "@/plugins/axiosinterceptors.js";
 
 // 특정 매장의 전체 상품 조회 (페이징)
 const getItemList = async (page = 0, size = 50) => {
-    const url = "/api/store/item/list"
+    const url = "/api/direct/store/item/list"
     let result = { success: false }
 
     await api.get(url, { params: { page, size } })
@@ -18,7 +18,7 @@ const getItemList = async (page = 0, size = 50) => {
 
 // 상품 검색 (한글명, 영문명, 바코드)
 const searchItems = async (keyword, page = 0, size = 50) => {
-    const url = "/api/store/item/search"
+    const url = "/api/direct/store/item/search"
     let result = { success: false }
 
     await api.get(url, { params: { keyword, page, size } })
@@ -34,7 +34,7 @@ const searchItems = async (keyword, page = 0, size = 50) => {
 
 // 카테고리별 상품 조회
 const getItemsByCategory = async (category, page = 0, size = 50) => {
-    const url = "/api/store/item/category"
+    const url = "/api/direct/store/item/category"
     let result = { success: false }
 
     await api.get(url, { params: { category, page, size } })
@@ -50,7 +50,7 @@ const getItemsByCategory = async (category, page = 0, size = 50) => {
 
 // 재고 부족 상품 조회
 const getLowStockItems = async (minStock = 10, page = 0, size = 50) => {
-    const url = "/api/store/item/low-stock"
+    const url = "/api/direct/store/item/low-stock"
     let result = { success: false }
 
     await api.get(url, { params: { minStock, page, size } })
@@ -66,7 +66,7 @@ const getLowStockItems = async (minStock = 10, page = 0, size = 50) => {
 
 // 바코드로 상품 조회
 const getItemByBarcode = async (code) => {
-    const url = "/api/store/item/barcode"
+    const url = "/api/direct/store/item/barcode"
     let result = { success: false }
 
     await api.get(url, { params: { code } })
