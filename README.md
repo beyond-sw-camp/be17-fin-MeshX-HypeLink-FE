@@ -140,19 +140,19 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 
 
 
-🪪 ID : pos.gangnam.01@hypelink.com (강남가맹점의 1POS기) <br/>🔑 PASSWORD : 1234
+🪪 ID : pos.​gangnam.​01@hypelink.​com (강남가맹점의 1POS기) <br/>🔑 PASSWORD : 1234
 
 
 ### <a href="https://www.meshx.store">본사/서브관리자/가맹점 대시보드 바로가기 </a>
 
 
-🪪 본사 ID : hq@company.com <br/>🔑 PASSWORD : 1234
+🪪 본사 ID : hq@company.​com <br/>🔑 PASSWORD : 1234
 
 
-🪪 서브관리자 ID : manager@hypelink.com <br/>🔑 PASSWORD : 1234
+🪪 서브관리자 ID : manager@hype​link.com <br/>🔑 PASSWORD : 1234
 
 
-🪪 직영점 ID : gangnam@hypelink.com (강남 직영점) <br/>🔑 PASSWORD : 1234
+🪪 직영점 ID : gangnam@hype​link.com (강남 직영점) <br/>🔑 PASSWORD : 1234
 <details>
  
 <summary>POS기 작동 영상 </summary>
