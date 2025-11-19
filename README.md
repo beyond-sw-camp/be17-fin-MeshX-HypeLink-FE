@@ -230,11 +230,19 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 <br/>
 
 ## 🧩 시스템 아키텍처
-- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/wiki/%EC%8B%9C%EC%8A%A4%ED%85%9C-%EC%95%84%ED%82%A4%ED%85%8D%EC%B3%90">시스템 아키텍처 문서 보기</a>
+
+### V1. 모놀리식 시스템 아키텍쳐
+<img width="6538" height="3727" alt="모놀리식 시스템 아키텍쳐" src="https://github.com/user-attachments/assets/49e0d7b9-9d31-4d3b-bcf0-6bd7a8841ec5" />
+
+### V2. MSA 시스템 아키텍쳐
+<img width="9492" height="7614" alt="MSA 시스템 아키텍쳐" src="https://github.com/user-attachments/assets/262f26f8-732b-421d-83d1-3286acc2c20f" />
+
+
+
 <br/>
 
 ## ⚙️ CI/CD 파이프라인 문서
-- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/wiki/HypeLink-CI-CD-%ED%8C%8C%EC%9D%B4%ED%94%84%EB%9D%BC%EC%9D%B8-%EB%AC%B8%EC%84%9C">시스템 아키텍처 문서 보기</a>
+- <a href="https://github.com/beyond-sw-camp/be17-fin-MeshX-HypeLink-FE/wiki/HypeLink-CI-CD-%ED%8C%8C%EC%9D%B4%ED%94%84%EB%9D%BC%EC%9D%B8-%EB%AC%B8%EC%84%9C">파이프라인 문서 보기</a>
 <br/>
 
 ## 🧩 피그마 
