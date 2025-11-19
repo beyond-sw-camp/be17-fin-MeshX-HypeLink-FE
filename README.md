@@ -174,7 +174,7 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 </details>
 
 <details>
-<summary>관리자 페이지 </summary>
+<summary>관리자 페이지 작동 영상 </summary>
 <div markdown="1">
 
 ## 가맹점 로그인
