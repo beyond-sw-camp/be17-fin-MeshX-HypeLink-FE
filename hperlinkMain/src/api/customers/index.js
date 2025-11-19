@@ -1,7 +1,7 @@
 import api from "@/plugins/axiosinterceptor";
 
 export const getAllCustomers = async (page = 0, size = 10) => {
-  const requestUrl = `api/customer/list?page=${page}&size=${size}`;
+  const requestUrl = `api/mono/customer/list?page=${page}&size=${size}`;
   let data = {};
   await api
     .get(requestUrl)
@@ -15,7 +15,7 @@ export const getAllCustomers = async (page = 0, size = 10) => {
 };
 
 export const issueCouponToCustomer = async (customerId, couponId) => {
-  const requestUrl = `/api/customer/${customerId}/coupons?couponId=${couponId}`;
+  const requestUrl = `/api/mono/customer/${customerId}/coupons?couponId=${couponId}`;
   let data = {};
   try {
     const response = await api.post(requestUrl);
@@ -34,7 +34,7 @@ export const searchCustomers = async (keyword = '', ageGroup = 'all', page = 0, 
   params.append('page', page);
   params.append('size', size);
 
-  const requestUrl = `/api/customer/search?${params.toString()}`;
+  const requestUrl = `/api/mono/customer/search?${params.toString()}`;
   let data = {};
   await api
     .get(requestUrl)

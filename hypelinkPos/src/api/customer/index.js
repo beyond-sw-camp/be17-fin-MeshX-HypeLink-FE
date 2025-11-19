@@ -16,7 +16,7 @@ const getCustomerByPhone = async (phone) => {
 }
 
 const getCustomerWithAvailableCoupons = async (phone) => {
-    const url = `/api/customer/phone/${phone}/available-coupons`
+    const url = `/api/mono/customer/phone/${phone}/available-coupons`
     let result = { success: false }
 
     await api.get(url)
