@@ -232,10 +232,11 @@ MeshX 팀은 이러한 문제를 해결하기 위해
 ## 🧩 시스템 아키텍처
 
 ### V1. 모놀리식 시스템 아키텍쳐
-<img width="6538" height="3727" alt="모놀리식 시스템 아키텍쳐" src="https://github.com/user-attachments/assets/49e0d7b9-9d31-4d3b-bcf0-6bd7a8841ec5" />
+<img width="7431" height="5973" alt="c8f1e49bdf603afd" src="https://github.com/user-attachments/assets/48ffca35-6a8c-47fc-99ee-c1471f15846b" />
+
 
 ### V2. MSA 시스템 아키텍쳐
-<img width="9492" height="7614" alt="MSA 시스템 아키텍쳐" src="https://github.com/user-attachments/assets/262f26f8-732b-421d-83d1-3286acc2c20f" />
+<img width="9311" height="7528" alt="MSA_" src="https://github.com/user-attachments/assets/f6177763-81cd-4ab5-af80-407d28bc2fe2" />
 
 
 
