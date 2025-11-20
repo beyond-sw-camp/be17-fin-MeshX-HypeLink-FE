@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import itemAPI from '@/api/item'
+import { useAuthStore } from '@/stores/auth'
 
 export const useProductsStore = defineStore('products', () => {
   // 실제 DB에서 가져온 상품만 저장
@@ -79,7 +80,11 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   const loadSlotsFromLocalStorage = () => {
-    const savedSlots = localStorage.getItem('posSlots')
+    const authStore = useAuthStore()
+    const storeId = authStore.currentStoreId
+    if (!storeId) return false
+
+    const savedSlots = localStorage.getItem(`posSlots_${storeId}`)
     if (savedSlots) {
       try {
         posSlots.value = JSON.parse(savedSlots)
@@ -92,8 +97,12 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   const saveSlotsToLocalStorage = () => {
+    const authStore = useAuthStore()
+    const storeId = authStore.currentStoreId
+    if (!storeId) return
+
     try {
-      localStorage.setItem('posSlots', JSON.stringify(posSlots.value))
+      localStorage.setItem(`posSlots_${storeId}`, JSON.stringify(posSlots.value))
     } catch (error) {
       // Silent fail
     }
@@ -114,7 +123,7 @@ export const useProductsStore = defineStore('products', () => {
       const hasExistingSlots = loadSlotsFromLocalStorage()
 
       if (!hasExistingSlots || Object.keys(posSlots.value).length === 0) {
-        const topProducts = products.value.slice(0, 10)
+        const topProducts = products.value.slice(0, 24)
         topProducts.forEach((product, index) => {
           posSlots.value[index] = product.id
         })

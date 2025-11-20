@@ -8,11 +8,13 @@ export const useAuthStore = defineStore('auth', () => {
   // State - sessionStorage에서 사용자 정보를 복원.
   const user = ref(JSON.parse(sessionStorage.getItem('user')) || null)
   const accessToken = ref(null)
+  const storeId = ref(JSON.parse(sessionStorage.getItem('storeId')) || null)
 
   // Getters
   const isAuthenticated = computed(() => !!accessToken.value)
   const currentUser = computed(() => user.value)
   const isPOSMember = computed(() => user.value?.role === 'POS_MEMBER')
+  const currentStoreId = computed(() => storeId.value)
 
   /**
    * 새로운 access token을 설정합니다.
@@ -45,6 +47,13 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.setItem('user', JSON.stringify(user.value));
       // setAuthHeader(newAccessToken); // Interceptor가 처리하므로 삭제
 
+      // Store ID 가져오기
+      const storeIdResult = await authApi.getMyStoreId();
+      if (storeIdResult.success) {
+        storeId.value = storeIdResult.data;
+        sessionStorage.setItem('storeId', JSON.stringify(storeId.value));
+      }
+
       return true;
     } else {
       const errorMessage = data.message || '아이디 또는 비밀번호가 올바르지 않습니다.';
@@ -63,8 +72,10 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       // 로컬 상태 및 sessionStorage 초기화
       sessionStorage.removeItem('user');
+      sessionStorage.removeItem('storeId');
       accessToken.value = null;
       user.value = null;
+      storeId.value = null;
       // clearAuthHeader(); // Interceptor가 처리하므로 삭제
 
       await router.push('/login');
@@ -96,11 +107,13 @@ export const useAuthStore = defineStore('auth', () => {
     // State
     user,
     accessToken,
+    storeId,
 
     // Getters
     isAuthenticated,
     currentUser,
     isPOSMember,
+    currentStoreId,
 
     // Actions
     login,
