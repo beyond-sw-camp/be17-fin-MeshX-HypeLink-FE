@@ -82,7 +82,7 @@ onUnmounted(() => {
     <div class="header-right">
       <h2>{{ currentTime }}</h2>
 
-      <div class="user-info-wrapper">
+      <div v-if="authStore.isAuthenticated" class="user-info-wrapper">
         <button class="user-info" @click="toggleUserMenu">
           <span class="user-icon">🏪</span>
           <span class="user-name">{{ authStore.currentUser?.name || '지점' }}</span>
