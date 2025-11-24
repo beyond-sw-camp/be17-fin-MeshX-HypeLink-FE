@@ -142,7 +142,7 @@ const copyToClipboard = async (text, type) => {
     <div class="login-container">
       <div class="login-box">
         <div class="login-header">
-          <h1 class="logo">HypeLink POS V2</h1>
+          <h1 class="logo">HypeLink POS</h1>
           <p class="subtitle">지점 관리 시스템</p>
         </div>
 
