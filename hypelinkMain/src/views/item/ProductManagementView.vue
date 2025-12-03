@@ -147,8 +147,11 @@ const applyFieldUpdates = async (changedFields) => {
       payload = {
         itemId: originalItem.id,
         images: itemForm.images.map(img => ({
-          id: img.id,  // ← 이미지 ID 추가!
-          originalFilename: img.originalFilename || img.originalName,
+          id: img.id,
+          originalFilename: img.originalFilename,
+          fileSize: img.fileSize,
+          contentType: img.contentType,
+          s3Key: img.s3Key,
           index: img.index
         }))
       };
