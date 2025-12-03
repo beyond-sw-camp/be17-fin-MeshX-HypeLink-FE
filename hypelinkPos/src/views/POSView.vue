@@ -19,6 +19,7 @@ import MembershipSection from '@/components/pos/MembershipSection.vue'
 import HeldOrdersModal from '@/components/pos/modals/HeldOrdersModal.vue'
 import MembershipRegisterModal from '@/components/pos/modals/MembershipRegisterModal.vue'
 import AddProductModal from '@/components/pos/modals/AddProductModal.vue'
+import UsageGuideModal from '@/components/pos/modals/UsageGuideModal.vue'
 
 const productsStore = useProductsStore()
 const ordersStore = useOrdersStore()
@@ -28,8 +29,9 @@ const productGrid = useProductGrid()
 const order = useOrder()
 const membership = useMembership()
 
-// Payment State
+// Modal States
 const showPaymentModal = ref(false)
+const showUsageGuide = ref(false)
 
 // Computed
 const orderTotal = computed(() => ordersStore.getOrderTotal())
@@ -86,6 +88,7 @@ onMounted(() => {
       @add-product="order.addProduct"
       @open-add-product="productGrid.openAddProduct"
       @remove-product-from-slot="productGrid.removeProductFromSlot"
+      @open-usage-guide="showUsageGuide = true"
     />
 
     <!-- Order Section -->
@@ -170,6 +173,11 @@ onMounted(() => {
       :max-length="20"
       @confirm="membership.confirmNameInput"
       @close="membership.showNameKeypad.value = false"
+    />
+
+    <UsageGuideModal
+      v-if="showUsageGuide"
+      @close="showUsageGuide = false"
     />
   </div>
 </template>

@@ -19,7 +19,10 @@ const copyMessage = ref('');
 // 계정 정보
 const accounts = {
   '본사': ['hq@company.com'],
-  '서브 관리자': ['manager@hypelink.com'],
+  '서브 관리자1': ['manager@hypelink.com'],
+  '서브 관리자2': ['manager2@hypelink.com'],
+  '서브 관리자3': ['manager3@hypelink.com'],
+  '서브 관리자4': ['manager4@hypelink.com'],
   '강남 가맹점': ['gangnam@hypelink.com'],
   '홍대 가맹점': ['hongdae@hypelink.com'],
   '잠실 가맹점': ['jamsil@hypelink.com'],

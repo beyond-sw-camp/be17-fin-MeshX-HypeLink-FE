@@ -16,7 +16,8 @@ const emit = defineEmits([
   'toggleEditMode',
   'addProduct',
   'openAddProduct',
-  'removeProductFromSlot'
+  'removeProductFromSlot',
+  'openUsageGuide'
 ])
 
 const productsStore = useProductsStore()
@@ -86,11 +87,15 @@ const formatPrice = (price) => {
       <button class="edit-mode-btn" :class="{ active: isEditMode }" @click="emit('toggleEditMode')">
         {{ isEditMode ? '완료' : '편집' }}
       </button>
+      <button class="usage-guide-btn" @click="emit('openUsageGuide')">
+        ❓ 이용 방법
+      </button>
     </div>
 
     <div class="categories">
       <button
         v-for="category in productsStore.categories"
+        v-show="category.id !== 'all'"
         :key="category.id"
         class="category-btn"
         :class="{ active: selectedCategory === category.id }"
@@ -124,16 +129,6 @@ const formatPrice = (price) => {
             <div class="add-product-btn">+</div>
           </template>
         </div>
-      </div>
-
-      <div class="pagination">
-        <button class="page-btn" :disabled="currentPage === 0" @click="prevPage">
-          ◀ 이전
-        </button>
-        <span class="page-info">{{ currentPage + 1 }} / {{ totalPages }}</span>
-        <button class="page-btn" :disabled="currentPage === totalPages - 1" @click="nextPage">
-          다음 ▶
-        </button>
       </div>
     </div>
   </div>
@@ -171,6 +166,31 @@ const formatPrice = (price) => {
 .search-bar {
   flex: 1;
   max-width: 600px;
+}
+
+.usage-guide-btn {
+  padding: 16px 28px;
+  border: 2px solid var(--primary-color);
+  border-radius: 12px;
+  background: var(--primary-color);
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  box-shadow: 0 2px 8px rgba(0, 100, 255, 0.3);
+}
+
+.usage-guide-btn:hover {
+  background: #0052CC;
+  border-color: #0052CC;
+  box-shadow: 0 4px 12px rgba(0, 100, 255, 0.4);
+  transform: translateY(-1px);
 }
 
 .edit-mode-btn {
@@ -265,47 +285,6 @@ const formatPrice = (price) => {
     grid-template-rows: repeat(6, 1fr);
     gap: 12px;
   }
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 0;
-  margin-top: 16px;
-  flex-shrink: 0;
-}
-
-.page-btn {
-  padding: 12px 24px;
-  background: white;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.page-btn:hover:not(:disabled) {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-  background: #f0f7ff;
-}
-
-.page-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.page-info {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  min-width: 80px;
-  text-align: center;
 }
 
 .product-card {
